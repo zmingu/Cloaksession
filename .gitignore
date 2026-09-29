@@ -8,6 +8,9 @@
 # Trellis / Claude Code local config
 /.claude/
 /.trellis/
+/.pi/
+/.codex/
+/.agents/
 
 # Planning docs
 /docs/
