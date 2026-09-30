@@ -9,10 +9,16 @@
 //!   danmaku-pipeline transcribe --input <video> [--out-audio <wav>]
 //!         本地 whisper.cpp 绑定尚未接入，当前会提示改用外部 ASR + build 导入。
 
+use std::collections::HashMap;
+use std::error::Error;
 use std::process::exit;
 
-use danmaku_pipeline::build_from_transcript;
+use danmaku_pipeline::build_with_detector;
 use danmaku_pipeline::config::PipelineConfig;
+use danmaku_pipeline::detect::llm::{CannedClient, ChatClient, LlmDetector};
+use danmaku_pipeline::detect::rule::RuleDetector;
+use danmaku_pipeline::detect::FallbackDetector;
+use danmaku_pipeline::transcript::Transcript;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -79,7 +85,43 @@ fn cmd_build(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let raw = std::fs::read_to_string(&transcript_path)?;
-    let script = build_from_transcript(&transcript_path, &raw, config)?;
+    let transcript = Transcript::from_file_content(&transcript_path, &raw)?;
+
+    // 检测器选择：rule（默认，离线）| llm | auto（LLM 为主，规则兜底）。
+    let detector_kind = opts.get("detector").map(|s| s.as_str()).unwrap_or("rule");
+    let chunk: usize = opts
+        .get("llm-chunk")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(200);
+    let llm_client = build_llm_client(&opts)?;
+    let rule = RuleDetector;
+
+    let script = match detector_kind {
+        "rule" => build_with_detector(&transcript, &rule, config),
+        "llm" => {
+            let client = llm_client.ok_or(
+                "--detector llm 需要 --llm-response <file>（离线回放），\
+                 或用 --features llm-http 构建并设置 DANMAKU_LLM_BASE_URL/API_KEY/MODEL",
+            )?;
+            let det = LlmDetector::new(client, chunk);
+            build_with_detector(&transcript, &det, config)
+        }
+        "auto" => match llm_client {
+            Some(client) => {
+                let llm = LlmDetector::new(client, chunk);
+                let fb = FallbackDetector {
+                    primary: &llm,
+                    fallback: &rule,
+                };
+                build_with_detector(&transcript, &fb, config)
+            }
+            None => {
+                eprintln!("[warn] 未配置 LLM 客户端，auto 退化为规则版");
+                build_with_detector(&transcript, &rule, config)
+            }
+        },
+        other => return Err(format!("未知 --detector: {other}（rule|llm|auto）").into()),
+    };
     let json = serde_json::to_string_pretty(&script)?;
 
     match opts.get("out") {
@@ -106,9 +148,30 @@ fn cmd_transcribe(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// 构造 LLM 客户端：
+/// - 若给了 --llm-response <file>，用 CannedClient 做离线回放（无需网络）；
+/// - 否则在启用 llm-http feature 时用真正的 HTTP 客户端（读环境变量）；
+/// - 都没有则返回 None。
+fn build_llm_client(opts: &HashMap<String, String>) -> Result<Option<Box<dyn ChatClient>>, Box<dyn Error>> {
+    if let Some(path) = opts.get("llm-response") {
+        let resp = std::fs::read_to_string(path)?;
+        return Ok(Some(Box::new(CannedClient { response: resp })));
+    }
+    #[cfg(feature = "llm-http")]
+    {
+        let cfg = danmaku_pipeline::detect::llm::LlmConfig::from_env();
+        let client = danmaku_pipeline::detect::llm::HttpChatClient::new(cfg)?;
+        Ok(Some(Box::new(client)))
+    }
+    #[cfg(not(feature = "llm-http"))]
+    {
+        Ok(None)
+    }
+}
+
 /// 极简 --key value 解析（避免引入 clap）。支持 --flag（无值时置空串）。
-fn parse_opts(args: &[String]) -> std::collections::HashMap<String, String> {
-    let mut map = std::collections::HashMap::new();
+fn parse_opts(args: &[String]) -> HashMap<String, String> {
+    let mut map = HashMap::new();
     let mut i = 0;
     while i < args.len() {
         let a = &args[i];
@@ -142,7 +205,13 @@ fn print_usage() {
          \x20 --confidence <阈值>   read 置信度阈值，默认 0.6\n\
          \x20 --viewers <数量>      虚拟观众数（轮换 account_hint），默认 8\n\
          \x20 --config <路径>       先从 JSON 载入配置，再被上述单项覆盖\n\
+         \x20 --detector <种类>     rule(默认,离线) | llm | auto(LLM为主,规则兜底)\n\
+         \x20 --llm-response <路径> 离线回放：用文件里的 LLM 响应替代真实调用\n\
+         \x20 --llm-chunk <数量>    LLM 单次请求携带的分段数，默认 200\n\
          \x20 --asr-model <名>      写入 meta 溯源\n\
-         \x20 --llm-model <名>      写入 meta 溯源"
+         \x20 --llm-model <名>      写入 meta 溯源\n\n\
+         LLM 说明: --detector llm/auto 需要 --llm-response（离线回放）\n\
+         或用 `cargo build --features llm-http` 构建并设置环境变量\n\
+         DANMAKU_LLM_BASE_URL / DANMAKU_LLM_API_KEY / DANMAKU_LLM_MODEL。"
     );
 }

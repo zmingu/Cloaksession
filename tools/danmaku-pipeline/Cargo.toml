@@ -13,12 +13,19 @@ path = "src/main.rs"
 name = "danmaku_pipeline"
 path = "src/lib.rs"
 
+[features]
+# 默认不含网络依赖，保证离线可构建。
+default = []
+# 启用真正的 LLM HTTP 客户端（引入 reqwest 阻塞客户端）。
+llm-http = ["dep:reqwest"]
+
 [dependencies]
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 anyhow = "1.0.104"
 thiserror = "2.0.20"
 chrono = "0.4.45"
+reqwest = { version = "0.12.28", default-features = false, features = ["blocking", "json", "rustls-tls"], optional = true }
 
 # 自成独立 workspace，与仓库根 Cargo.toml 的 workspace 解耦，
 # 避免与其他 crate 的在建改动互相影响。

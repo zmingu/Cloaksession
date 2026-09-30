@@ -1,8 +1,10 @@
 //! 弹幕识别：从转写中判定主播"在念/回应弹幕"的时刻并还原原文。
 //!
 //! - `DanmakuDetector`：识别器 trait，可插拔。
-//! - `rule`：规则版（离线、可测、零依赖），基于提示语匹配。
-//! - `llm`：LLM 版预留（HTTP 调用），当前为占位。
+//! - `rule`：规则版（离线、零依赖），基于提示语匹配，作兜底。
+//! - `llm`：LLM 版，语义识别隐式回应、还原口语弹幕；HTTP 走 `llm-http` feature，
+//!   核心解析/映射为纯函数可离线回放验证。
+//! - `FallbackDetector`：auto 模式，LLM 为主、规则兜底。
 
 pub mod llm;
 pub mod rule;
@@ -29,4 +31,23 @@ pub struct DetectedRead {
 pub trait DanmakuDetector {
     /// 从转写中识别所有"念/回应弹幕"的时刻。
     fn detect(&self, transcript: &Transcript) -> Vec<DetectedRead>;
+}
+
+/// 降级检测器：先跑 primary，结果为空则回退到 fallback。
+/// 用于 auto 模式：LLM 为主、规则兜底。
+pub struct FallbackDetector<'a> {
+    pub primary: &'a dyn DanmakuDetector,
+    pub fallback: &'a dyn DanmakuDetector,
+}
+
+impl DanmakuDetector for FallbackDetector<'_> {
+    fn detect(&self, transcript: &Transcript) -> Vec<DetectedRead> {
+        let primary = self.primary.detect(transcript);
+        if primary.is_empty() {
+            eprintln!("[info] 主识别器无结果，回退到兜底识别器");
+            self.fallback.detect(transcript)
+        } else {
+            primary
+        }
+    }
 }

@@ -1,0 +1,11 @@
+好的，以下是我识别到的主播在念/回应弹幕的时刻：
+
+```json
+[
+  {"seg": 1, "text": "这个多少钱", "confidence": 0.95, "persona": "buyer"},
+  {"seg": 4, "text": "想看颜色", "confidence": 0.9, "persona": "buyer"},
+  {"seg": 5, "text": "这个是纯棉的吗", "confidence": 0.78, "persona": "newcomer"}
+]
+```
+
+其中 seg 5 是隐式回应反推（主播说“对，这个面料是纯棉的”，反推观众问“是纯棉的吗”），规则版无法识别。
