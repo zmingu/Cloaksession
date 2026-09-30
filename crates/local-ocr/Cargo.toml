@@ -1,0 +1,18 @@
+[package]
+name = "local-ocr"
+version = "0.1.0"
+edition = "2021"
+license.workspace = true
+
+[dependencies]
+image = { version = "0.25.8", default-features = false, features = ["png", "jpeg", "webp"] }
+sha2 = "0.10"
+thiserror = "1"
+tokio = { version = "1", features = ["rt", "sync", "time"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-future = "0.2.1"
+windows = { version = "0.61.3", features = ["Foundation", "Globalization", "Graphics_Imaging", "Media_Ocr", "Storage_Streams", "Win32_System_WinRT"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }

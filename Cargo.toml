@@ -11,5 +11,6 @@ members = [
     "crates/browser-launcher",
     "crates/cdp-driver",
     "crates/mcp-server",
+    "crates/local-ocr",
     "crates/tauri-app",
 ]
