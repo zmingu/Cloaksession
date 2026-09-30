@@ -1,0 +1,25 @@
+[package]
+name = "danmaku-pipeline"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "直播录像 → 分析主播念/回应弹幕 → 生成符合契约的定时弹幕脚本（上游管线）"
+
+[[bin]]
+name = "danmaku-pipeline"
+path = "src/main.rs"
+
+[lib]
+name = "danmaku_pipeline"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+anyhow = "1.0.104"
+thiserror = "2.0.20"
+chrono = "0.4.45"
+
+# 自成独立 workspace，与仓库根 Cargo.toml 的 workspace 解耦，
+# 避免与其他 crate 的在建改动互相影响。
+[workspace]
