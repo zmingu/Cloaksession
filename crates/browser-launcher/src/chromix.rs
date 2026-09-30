@@ -1,11 +1,11 @@
 use std::path::Path;
 use std::process::Stdio;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use multizen_core::{ChromixSettings, MultizenError, Profile, Result};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::process::{Child, ChildStdin, Command};
@@ -92,7 +92,7 @@ fn request(
         "binaryPath": binary_path.to_string_lossy(),
         "skipDownload": skip_download,
         "cdpPort": port,
-        "userDataDir": Path::new(&profile.data_dir).join("engines").join("chromix"),
+        "userDataDir": crate::data_dir::default_data_dir(profile, multizen_core::BrowserEngine::Chromix),
         "proxy": proxy,
         "extensionPaths": extensions,
         "startUrl": profile.start_url,

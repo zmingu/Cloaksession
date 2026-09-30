@@ -2,7 +2,9 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::sync::Arc;
 
-use multizen_core::{BrowserEngine, ChromixSettings, LaunchedProfile, MultizenError, Result, UpdateProfileInput};
+use multizen_core::{
+    BrowserEngine, ChromixSettings, LaunchedProfile, MultizenError, Result, UpdateProfileInput,
+};
 use profile_manager::ProfileManager;
 use tokio::process::{Child, Command};
 
@@ -20,6 +22,10 @@ pub struct BrowserHandle {
     pub cdp_endpoint: String,
     pub pid: u32,
     pub started_at: String,
+    // Raw path plus canonical identity at launch time: later DB edits must not hide live cookies.
+    pub(crate) data_dir: PathBuf,
+    pub(crate) verified_data_dir: Option<crate::data_dir::VerifiedDataDir>,
+    pub(crate) business_scope: Option<multizen_core::BusinessProfileScope>,
     child: Option<Child>,
     bridge: Option<Socks5Bridge>,
     chromix: Option<crate::chromix::ChromixProcess>,
@@ -27,7 +33,9 @@ pub struct BrowserHandle {
 
 impl BrowserHandle {
     pub(crate) fn is_alive(&self) -> bool {
-        self.chromix.as_ref().map_or(true, |process| process.is_alive())
+        self.chromix
+            .as_ref()
+            .map_or(true, |process| process.is_alive())
     }
 
     pub fn endpoint_info(&self) -> (String, String, u32) {
@@ -36,8 +44,8 @@ impl BrowserHandle {
 }
 
 pub struct BrowserLauncher {
-    pm: Arc<ProfileManager>,
-    registry: RunningRegistry,
+    pub(crate) pm: Arc<ProfileManager>,
+    pub(crate) registry: RunningRegistry,
     next_port: AtomicU16,
     chromix_launch: tokio::sync::Mutex<()>,
 }
@@ -65,7 +73,8 @@ impl BrowserLauncher {
     ) -> Result<LaunchedProfile> {
         if engine == BrowserEngine::Chromix {
             return Err(MultizenError::Launch(
-                "Chromix requires launch_with_chromix with its settings and npm runtime directory".into(),
+                "Chromix requires launch_with_chromix with its settings and npm runtime directory"
+                    .into(),
             ));
         }
         // 1. Idempotent: if already running, return the existing endpoint info.
@@ -96,13 +105,7 @@ impl BrowserLauncher {
         let cdp_port = self.next_port.fetch_add(1, Ordering::SeqCst);
 
         // 4. Compute browser data dir.
-        let browser_data_dir: PathBuf = match engine {
-            BrowserEngine::Cloakbrowser => PathBuf::from(&profile.data_dir)
-                .join("engines")
-                .join("cloakbrowser"),
-            BrowserEngine::Cft => PathBuf::from(&profile.data_dir),
-            BrowserEngine::Chromix => unreachable!("Chromix uses launch_with_chromix"),
-        };
+        let browser_data_dir = crate::data_dir::default_data_dir(&profile, engine);
         std::fs::create_dir_all(&browser_data_dir)
             .map_err(|e| MultizenError::Launch(format!("data_dir: {e}")))?;
 
@@ -157,6 +160,9 @@ impl BrowserLauncher {
             companion_dir_str.as_deref(),
         );
 
+        // Resolve metadata before spawn so an error cannot leave an unregistered process.
+        let business_scope = self.pm.business_profile_scope(profile_id)?;
+        let verified_data_dir = crate::data_dir::verify_data_dir(&browser_data_dir).ok();
         // 9. Spawn.
         let mut cmd = Command::new(binary_path);
         cmd.args(&args);
@@ -173,6 +179,9 @@ impl BrowserLauncher {
             cdp_endpoint: cdp_endpoint.clone(),
             pid,
             started_at: started_at.clone(),
+            data_dir: browser_data_dir,
+            verified_data_dir,
+            business_scope,
             child: Some(child),
             bridge: bridge_handle.map(|(b, _)| b),
             chromix: None,
@@ -217,6 +226,10 @@ impl BrowserLauncher {
             .get(profile_id)
             .map_err(|error| MultizenError::Launch(format!("profile get: {error}")))?
             .ok_or_else(|| MultizenError::NotFound(profile_id.into()))?;
+        let data_dir =
+            crate::data_dir::effective_data_dir(&profile, BrowserEngine::Chromix, config)?;
+        let verified_data_dir = crate::data_dir::verify_data_dir(&data_dir).ok();
+        let business_scope = self.pm.business_profile_scope(profile_id)?;
         let process = crate::chromix::start(
             &profile,
             binary_path,
@@ -242,6 +255,9 @@ impl BrowserLauncher {
                 cdp_endpoint: launched.cdp_endpoint.clone(),
                 pid: launched.pid,
                 started_at: launched.started_at.clone(),
+                data_dir,
+                verified_data_dir,
+                business_scope,
                 child: None,
                 bridge: None,
                 chromix: Some(process),
@@ -269,8 +285,8 @@ impl BrowserLauncher {
                 tokio::time::timeout(std::time::Duration::from_millis(2000), child.wait()).await;
             if child.try_wait().ok().flatten().is_none() {
                 let _ = child.kill().await;
-                let _ =
-                    tokio::time::timeout(std::time::Duration::from_millis(2000), child.wait()).await;
+                let _ = tokio::time::timeout(std::time::Duration::from_millis(2000), child.wait())
+                    .await;
             }
         }
         Ok(())

@@ -8,6 +8,7 @@ import { ProxyTester } from "./ProxyTester";
 import { ExtensionsSection } from "./ExtensionsSection";
 import { EmojiField } from "./EmojiField";
 import { BrowserSection } from "./BrowserSection";
+import { BusinessAccountSection } from "./BusinessAccountSection";
 import { parseProxyString } from "../../lib/parseProxy";
 import {
   Field,
@@ -20,10 +21,10 @@ import {
 
 /**
  * Edit an existing profile. Discord-settings-style: a left rail switches
- * sections, only the content pane scrolls, and edits AUTOSAVE (debounced) so
- * there is no Save button and no discard prompt. A pending save is flushed on
- * close so the last keystroke is never lost. Extensions save themselves live
- * (their own IPC), so they sit outside the form's autosave.
+ * sections and only the content pane scrolls. Profile fields AUTOSAVE
+ * (debounced); a pending profile save is flushed on close. Extensions save
+ * themselves live. Business account registration uses its own explicit save
+ * and local IPC refresh, entirely outside the profile form's autosave.
  */
 
 interface FormState {
@@ -210,6 +211,7 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
 
       {/* Content pane — only this scrolls */}
       <div className="flex-1 min-h-0 min-w-0 overflow-y-auto px-5 py-4">
+        {/* Local IPC refresh only: never reset the profile's pending autosave form. */}
         {section === "general" && (
           <div className="space-y-3">
             <div className="flex gap-2.5 items-end">
@@ -240,6 +242,8 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
             </Field>
           </div>
         )}
+
+        <BusinessAccountSection key={profile.id} profileId={profile.id} active={section === "general"} />
 
         {section === "browser" && (
           <BrowserSection startUrl={form.startUrl} onStartUrl={(v) => update("startUrl", v)} />

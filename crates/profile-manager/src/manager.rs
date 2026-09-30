@@ -19,7 +19,7 @@ pub struct ExtensionRef {
 }
 
 pub struct ProfileManager {
-    conn: Connection,
+    pub(crate) conn: Connection,
     profiles_root: PathBuf,
 }
 
