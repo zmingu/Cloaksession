@@ -1,11 +1,12 @@
-use chromiumoxide::Page;
 use chromiumoxide::cdp::browser_protocol::target::TargetId;
 use chromiumoxide::handler::HandlerConfig;
+use chromiumoxide::Page;
 use chromiumoxide::{Command, Method};
 use multizen_core::{BrowserEngine, MultizenError, Result};
 use serde::ser::Serializer;
 use tokio::sync::Mutex;
 
+use crate::bound_page::BoundPage;
 use crate::safe_cdp::{self, SafeEnableRefcount};
 
 #[derive(Debug)]
@@ -61,11 +62,11 @@ pub struct BrowserSession {
     pub browser: chromiumoxide::Browser,
     pub engine: BrowserEngine,
     pub safe: SafeEnableRefcount,
-    /// Active page used by all tools (navigate/screenshot/evaluate/click/
-    /// type_text/extract). `None` until the first navigate or first tool
-    /// call. `Page` is `Clone` and stores shared browser state, so we keep
-    /// an `Option<Page>` and clone on retrieval.
+    /// Active page used by legacy tools only. BoundPage never reads/writes this.
+    /// `None` until a legacy page selection; clone handles on retrieval.
     active_page: Mutex<Option<Page>>,
+    pub(crate) task_locks: crate::task_page::TaskLocks,
+    pub(crate) avatar_locks: crate::task_page::TaskLocks,
 }
 
 impl BrowserSession {
@@ -88,9 +89,10 @@ impl BrowserSession {
             ignore_invalid_messages: true,
             ..HandlerConfig::default()
         };
-        let (browser, mut handler) = chromiumoxide::Browser::connect_with_config(&ws_url, handler_config)
-            .await
-            .map_err(|e| MultizenError::Cdp(format!("connect: {e}")))?;
+        let (browser, mut handler) =
+            chromiumoxide::Browser::connect_with_config(&ws_url, handler_config)
+                .await
+                .map_err(|e| MultizenError::Cdp(format!("connect: {e}")))?;
         // Drive the CDP handler in background. `Handler` implements
         // `futures::Stream`; poll it forever so the CDP connection stays alive.
         tokio::spawn(async move {
@@ -103,6 +105,8 @@ impl BrowserSession {
             engine,
             safe: SafeEnableRefcount::new(),
             active_page: Mutex::new(None),
+            task_locks: crate::task_page::TaskLocks::default(),
+            avatar_locks: crate::task_page::TaskLocks::default(),
         };
 
         // C1: The safe-CDP gate is not yet wired into chromiumoxide's
@@ -122,10 +126,8 @@ impl BrowserSession {
         Ok(session)
     }
 
-    /// Returns the active `Page`, creating one if none is set yet. `Page` is
-    /// `Clone` in chromiumoxide 0.7 (it wraps `Arc<PageInner>`), so we clone
-    /// on retrieval — callers get an owned `Page` that is cheap to hold
-    /// across await points.
+    /// Returns the cached page or the first existing attached page; errors if none.
+    /// Chromiumoxide 0.9.1 Page wraps shared state and is cheap to clone.
     pub(crate) async fn active_page(&self) -> Result<Page> {
         let mut guard = self.active_page.lock().await;
         if let Some(ref p) = *guard {
@@ -149,6 +151,35 @@ impl BrowserSession {
     pub(crate) async fn set_active_page(&self, page: Page) {
         let mut guard = self.active_page.lock().await;
         *guard = Some(page);
+    }
+
+    /// Bind an already attached target without activation or active-page changes.
+    /// Missing/closed targets fail instead of selecting a different page.
+    pub async fn bind_page(&self, target_id: &str) -> Result<BoundPage<'_>> {
+        let page = self
+            .browser
+            .get_page(TargetId::new(target_id))
+            .await
+            .map_err(|e| MultizenError::Cdp(format!("bind page {target_id}: {e}")))?;
+        Ok(BoundPage::new(self, page))
+    }
+
+    /// Create a task page without updating this session's legacy active-page cache.
+    /// Requests background creation; the browser may not honor that request.
+    /// The caller owns cleanup (close_page); dropping BoundPage does not close it.
+    pub async fn new_bound_page(&self, url: &str) -> Result<BoundPage<'_>> {
+        use chromiumoxide::cdp::browser_protocol::target::CreateTargetParams;
+        let params = CreateTargetParams::builder()
+            .url(url)
+            .background(true)
+            .build()
+            .map_err(|e| MultizenError::Cdp(format!("new bound page parameters: {e}")))?;
+        let page = self
+            .browser
+            .new_page(params)
+            .await
+            .map_err(|e| MultizenError::Cdp(format!("new bound page {url}: {e}")))?;
+        Ok(BoundPage::new(self, page))
     }
 
     /// Select an attached page by target id for subsequent page operations.
@@ -231,7 +262,10 @@ impl BrowserSession {
             params: params.unwrap_or_default(),
         };
         let response = match method {
-            "Target.getTargets" | "Target.createTarget" | "Target.activateTarget" | "Target.closeTarget" => self
+            "Target.getTargets"
+            | "Target.createTarget"
+            | "Target.activateTarget"
+            | "Target.closeTarget" => self
                 .browser
                 .execute(command(method, params))
                 .await
