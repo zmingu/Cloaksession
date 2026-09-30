@@ -49,6 +49,7 @@ mod business_tests;
 #[cfg(test)]
 mod shop_login_tests;
 mod identity;
+mod account_init;
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -120,6 +121,7 @@ pub struct ChromiumStatus {
 /// Commands sent to the dedicated launcher thread.
 enum LauncherCmd {
     Identity(identity::IdentityCmd),
+    Init(account_init::InitCmd),
     Launch {
         profile_id: String,
         binary: PathBuf,
@@ -215,6 +217,7 @@ pub struct TauriBrowserDriver {
     /// itself is `!Send + !Sync`.
     launcher_tx: mpsc::Sender<LauncherCmd>,
     identity: Arc<identity::IdentityRuntime>,
+    account_init: Arc<account_init::InitRuntime>,
     registry: Arc<ProfileRegistry>,
     engine: BrowserEngine,
     browser_binary: PathBuf,
@@ -262,6 +265,9 @@ impl TauriBrowserDriver {
         let identity = Arc::new(identity::IdentityRuntime::new(
             db_path.with_file_name("kuaishou-avatars"),
         ));
+        let account_init = Arc::new(account_init::InitRuntime::new(
+            db_path.with_file_name("kuaishou-subjects"),
+        ));
         let handle = builder
             .spawn(move || {
                 launcher_thread_main(db_path, profiles_root_for_thread, rx, registry_for_thread)
@@ -271,6 +277,7 @@ impl TauriBrowserDriver {
         Ok(Self {
             launcher_tx: tx,
             identity,
+            account_init,
             registry,
             engine,
             browser_binary,
@@ -339,6 +346,7 @@ impl TauriBrowserDriver {
     /// thread runs `close_all` on its `BrowserLauncher` before terminating.
     pub async fn shutdown(&self) {
         self.identity.stop.cancel();
+        self.account_init.stop.cancel();
         self.registry.clear().await;
         let _ = tokio::time::timeout(
             std::time::Duration::from_secs(2),
@@ -365,6 +373,12 @@ fn launcher_thread_main(
             return;
         }
     };
+    // Must run once before any initialization worker can claim a step:
+    // leftover `running` steps from a previous process become
+    // `failed(interrupted-needs-verification)` and are re-verified later.
+    if let Err(e) = pm.kuaishou_init_recover_interrupted() {
+        tracing::warn!(error = %e, "launcher thread: kuaishou init recovery failed");
+    }
     // `BrowserLauncher::new` takes `Arc<ProfileManager>`. `ProfileManager`
     // is `!Sync` (sqlite Connection), so the `Arc` is `!Send + !Sync`, but
     // the launcher is single-threaded by construction (lives only on this
@@ -402,6 +416,7 @@ async fn launcher_task(
     while let Some(cmd) = rx.recv().await {
         match cmd {
             LauncherCmd::Identity(cmd) => identity::handle(cmd, &pm, &registry, &launcher).await,
+            LauncherCmd::Init(cmd) => account_init::handle(cmd, &pm, &registry, &launcher).await,
             LauncherCmd::Launch {
                 profile_id,
                 binary,
@@ -1026,5 +1041,6 @@ impl TauriBrowserDriver {
 impl Drop for TauriBrowserDriver {
     fn drop(&mut self) {
         self.identity.stop.cancel();
+        self.account_init.stop.cancel();
     }
 }

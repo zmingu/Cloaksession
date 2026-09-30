@@ -4262,6 +4262,7 @@ dependencies = [
  "cdp-driver",
  "chrono",
  "futures-util",
+ "local-ocr",
  "mcp-server",
  "multizen-core",
  "percent-encoding",

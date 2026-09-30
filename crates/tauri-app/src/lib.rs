@@ -42,6 +42,11 @@ use crate::commands::{
     kuaishou_identity::{
         kuaishou_identity_avatar, kuaishou_identity_detect, kuaishou_identity_list,
     },
+    kuaishou_init::{
+        kuaishou_init_retry, kuaishou_init_steps, kuaishou_ocr_availability,
+        kuaishou_subject_attachment, kuaishou_subject_confirm, kuaishou_subject_correct,
+        kuaishou_subject_detail, kuaishou_subject_list, kuaishou_subject_reocr,
+    },
     profiles::{
         profiles_close, profiles_create, profiles_delete, profiles_get, profiles_launch,
         profiles_list, profiles_update,
@@ -327,6 +332,10 @@ pub fn run() {
             // `profiles:running-changed` / `chromium:status` push events.
             state.driver.set_app(app.handle().clone());
             state.driver.start_kuaishou_identity_monitor();
+            // The account-init monitor (`start_kuaishou_init_monitor`) is deliberately
+            // NOT started: it performs platform writes (slice permission toggles) whose
+            // save semantics are not yet verified on a real account. Initialization
+            // only runs from the explicit `kuaishou_init_retry` command for now.
 
             // Spawn a background task that bridges `ActivityLog`'s broadcast
             // stream to the Tauri frontend via `activity:event`. Every
@@ -461,6 +470,16 @@ pub fn run() {
             kuaishou_identity_list,
             kuaishou_identity_detect,
             kuaishou_identity_avatar,
+            // kuaishou subject archive + account initialization
+            kuaishou_subject_list,
+            kuaishou_subject_detail,
+            kuaishou_subject_correct,
+            kuaishou_subject_confirm,
+            kuaishou_subject_reocr,
+            kuaishou_subject_attachment,
+            kuaishou_init_steps,
+            kuaishou_init_retry,
+            kuaishou_ocr_availability,
             // profiles
             profiles_list,
             profiles_get,
@@ -513,9 +532,9 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(|app, event| {
             if matches!(event, tauri::RunEvent::Exit) {
-                app.state::<AppState>()
-                    .driver
-                    .stop_kuaishou_identity_monitor();
+                let state = app.state::<AppState>();
+                state.driver.stop_kuaishou_identity_monitor();
+                state.driver.stop_kuaishou_init_monitor();
             }
         });
 }

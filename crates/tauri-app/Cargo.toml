@@ -7,6 +7,7 @@ license.workspace = true
 [dependencies]
 multizen-core = { path = "../multizen-core" }
 profile-manager = { path = "../profile-manager" }
+local-ocr = { path = "../local-ocr" }
 settings-store = { path = "../settings-store" }
 browser-launcher = { path = "../browser-launcher" }
 cdp-driver = { path = "../cdp-driver" }

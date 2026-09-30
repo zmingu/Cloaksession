@@ -5,6 +5,7 @@ import { useKuaishouIdentities, useKuaishouIdentity } from "../../lib/KuaishouId
 import { Modal } from "../atoms";
 import { Button } from "../atoms/Button";
 import { profiles } from "../../lib/ipc";
+import { InitSummary, SubjectPanel } from "./KuaishouSubject";
 
 function AvatarImage({ avatarKey, size }: { avatarKey: string | null; size: number }): JSX.Element {
   const { avatar } = useKuaishouIdentities();
@@ -82,12 +83,14 @@ export function KuaishouIdentitySummary({ profileId }: { profileId: string }): J
         </div>}
       </div>
     </div>
-    <div className="flex flex-wrap gap-1.5">
-      <Button size="sm" onClick={identity.openDetails}>快手详情</Button>
-      <DetectButton profileId={profileId} />
-    </div>
-    <ShopLoginButton profileId={profileId} />
-  </div>;
+      <div className="flex flex-wrap gap-1.5">
+        <Button size="sm" onClick={identity.openDetails}>快手详情</Button>
+        <DetectButton profileId={profileId} />
+      </div>
+      {identity.snapshot?.platformUserId && <InitSummary key={identity.snapshot.platformUserId}
+        platformUserId={identity.snapshot.platformUserId} observation={identity.snapshot.checkedAt ?? null} />}
+      <ShopLoginButton profileId={profileId} />
+    </div>;
 }
 
 /** This reads the global snapshot only. It never invokes detect on a timer. */
@@ -171,9 +174,10 @@ function IdentityDetails({ profileId }: { profileId: string }): JSX.Element {
       {copyMessage && <p role="status">{copyMessage}</p>}
       <div className="rounded-xl bg-white/[0.03] p-4 space-y-2 text-[12px] leading-relaxed text-slate-400">
         <p>仅展示页面已读出的身份，不能据此确认当前已登录；离线或检测未成功时展示上次识别信息。重新检测的运行条件由后台最终判定。</p>
-        <p>本批未实现主体资料、OCR 或初始化；没有初始化完成状态。</p>
+        <p>账号初始化（主体采集、切片权限关闭）当前不会自动执行，只能在下方手动触发；初始化状态与身份检测状态分开显示。</p>
         <p>识别结果与手工登记分开保存，不会自动覆盖人工ID，也不会自动解绑或迁移账号。</p>
       </div>
+      {platformId && <SubjectPanel key={platformId} platformUserId={platformId} profileId={profileId} />}
     </section>
   </Modal>;
 }
