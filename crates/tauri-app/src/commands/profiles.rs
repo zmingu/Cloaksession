@@ -66,16 +66,38 @@ pub async fn profiles_delete(
     state.driver.delete_profile(&id).await.map_err(|e| e.to_string())
 }
 
+/// Only this explicit entry opens the shop login page; generic launch stays unchanged.
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LaunchEntry {
+    KuaishouShop,
+}
+
+pub const KUAISHOU_LOGIN_URL: &str = "https://login.kwaixiaodian.com/?biz=zone&redirect_url=https%3A%2F%2Fs.kwaixiaodian.com%2Fzone%2Fhome";
+
 #[tauri::command]
 pub async fn profiles_launch(
     state: State<'_, AppState>,
     app: tauri::AppHandle,
     id: String,
+    entry: Option<LaunchEntry>,
 ) -> Result<LaunchedProfile, String> {
+    if entry.is_some() {
+        state.driver.require_kuaishou_login_scope(&id).await.map_err(|e| e.to_string())?;
+    }
     // `BrowserDriver::launch` returns the full LaunchedProfile.
     let launched = mcp_server::driver::BrowserDriver::launch(state.driver.as_ref(), &id)
         .await
         .map_err(|e| e.to_string())?;
+
+    if entry.is_some() {
+        // Recheck after launch, then open a NEW tab. Never overwrite startUrl or restored pages.
+        state.driver.require_kuaishou_login_scope(&id).await.map_err(|e| e.to_string())?;
+        let tab = state.driver.new_tab(&id, KUAISHOU_LOGIN_URL).await
+            .map_err(|e| format!("浏览器已启动，小店扫码页未打开，可重试：{e}"))?;
+        state.driver.activate_tab(&id, &tab).await
+            .map_err(|e| format!("小店扫码页已打开但未激活，请切换标签页：{e}"))?;
+    }
 
     // Spawn the companion poller for this profile — it watches Chrome Web
     // Store pages for the "Add to Cloaksession" button signal and installs

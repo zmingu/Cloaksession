@@ -17,6 +17,7 @@ import { profileEmoji } from "../../lib/profileEmoji";
 import { emojiTint } from "../../lib/emojiTint";
 import { useProxyHealth } from "../../lib/proxyHealth";
 import type { TileData, TileState } from "./ProfileTile";
+import { KuaishouIdentitySummary } from "./KuaishouIdentity";
 import { PROFILE_TABLE_GRID_TEMPLATE } from "./ProfileTable";
 
 const STATE_RING_COLOR: Record<TileState, string> = {
@@ -120,6 +121,7 @@ export function ProfileRow({
             <span className="text-slate-700 flex-shrink-0">·</span>
             <span className="truncate">{profile.id.slice(0, 12)}</span>
           </div>
+          <div className="mt-1.5"><KuaishouIdentitySummary profileId={profile.id} /></div>
         </div>
       </div>
 

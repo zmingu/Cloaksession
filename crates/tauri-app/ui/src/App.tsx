@@ -17,6 +17,8 @@ import { ChromiumBootstrapModal } from "./components/onboarding/ChromiumBootstra
 import { UpdateBanner } from "./components/UpdateBanner";
 import { Modal, ConfirmHost, confirm } from "./components/atoms";
 import { readPersisted, usePersistedState, writePersisted } from "./lib/persisted";
+import { KuaishouIdentityProvider } from "./lib/KuaishouIdentityProvider";
+import { KuaishouIdentityDialog } from "./components/profile/KuaishouIdentity";
 import type { ActivityEvent, ChromiumStatus, ProfileSummary, SystemInfo } from "./types";
 
 type ModalState =
@@ -349,7 +351,9 @@ export function App(): JSX.Element {
   }
 
   return (
+    <KuaishouIdentityProvider profiles={profiles} closingIds={closingIds}>
     <div className="h-screen flex flex-col">
+      <KuaishouIdentityDialog />
       <TopBar
         totalCount={profiles.length}
         runningCount={runningCount}
@@ -448,7 +452,7 @@ export function App(): JSX.Element {
       <Modal
         open={editingProfile !== null}
         title={editingProfile ? `Edit ${editingProfile.name}` : "Edit profile"}
-        subtitle="Changes autosave and apply on the next profile launch."
+        subtitle="Profile changes autosave. Business account registration saves separately."
         width={720}
         onClose={() => {
           setEditingProfile(null);
@@ -537,5 +541,6 @@ export function App(): JSX.Element {
         </div>
       )}
     </div>
+    </KuaishouIdentityProvider>
   );
 }

@@ -94,6 +94,7 @@ export async function installTauriMock(page: Page, initial: AppSettings = defaul
               localStorage.setItem(profileKey, JSON.stringify(next));
               return next;
             }
+            case "kuaishou_identity_list": return []; // No observed identity in the base UI fixture.
             case "activity_recent": return [];
             case "update_status":
             case "update_check": return { kind: "idle" };

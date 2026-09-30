@@ -17,6 +17,7 @@ import { cn } from "../../lib/cn";
 import { profileEmoji } from "../../lib/profileEmoji";
 import { emojiTint } from "../../lib/emojiTint";
 import { useProxyHealth } from "../../lib/proxyHealth";
+import { KuaishouIdentitySummary } from "./KuaishouIdentity";
 import type { ActivityEvent } from "../../types";
 
 export type TileState = "idle" | "running" | "ai" | "error";
@@ -153,6 +154,8 @@ export function ProfileTile({
         </div>
         <PillForState state={profile.state} />
       </button>
+
+      <KuaishouIdentitySummary profileId={profile.id} />
 
       {/* Tags */}
       {profile.tags.length > 0 && (

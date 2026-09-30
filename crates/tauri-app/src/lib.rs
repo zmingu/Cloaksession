@@ -24,16 +24,23 @@ use tokio::sync::Mutex;
 use crate::commands::{
     activity::activity_recent,
     archive::{profiles_export_archive, profiles_import_archive},
+    business_accounts::{
+        business_accounts_list, business_accounts_profile_state, business_accounts_save,
+        business_accounts_unbind,
+    },
     dialog::{dialog_pick_browser_binary, dialog_pick_directory},
     extensions::{
         extensions_add_from_file, extensions_add_from_folder, extensions_add_from_web_store,
         extensions_icon, extensions_list, extensions_prepare_from_file,
-        extensions_prepare_from_folder, extensions_prepare_from_web_store,
-        extensions_remove, extensions_store_entries, extensions_toggle,
+        extensions_prepare_from_folder, extensions_prepare_from_web_store, extensions_remove,
+        extensions_store_entries, extensions_toggle,
     },
     fingerprint::{
         fingerprint_devices, fingerprint_generate, fingerprint_locale_for_country,
         fingerprint_locales, fingerprint_reconcile,
+    },
+    kuaishou_identity::{
+        kuaishou_identity_avatar, kuaishou_identity_detect, kuaishou_identity_list,
     },
     profiles::{
         profiles_close, profiles_create, profiles_delete, profiles_get, profiles_launch,
@@ -132,7 +139,10 @@ fn build_app_state(app: &tauri::AppHandle) -> (AppState, PathBuf) {
     let settings: AppSettings = match store.load() {
         Ok(s) => s,
         Err(e) => {
-            tracing::warn!("settings load failed at {}: {e}; using defaults", settings_path.display());
+            tracing::warn!(
+                "settings load failed at {}: {e}; using defaults",
+                settings_path.display()
+            );
             AppSettings::default()
         }
     };
@@ -153,7 +163,8 @@ fn build_app_state(app: &tauri::AppHandle) -> (AppState, PathBuf) {
     let manifest_path = companion_root.join("manifest.json");
     let cs_path = companion_root.join("cs.js");
     // Only rewrite if content differs (avoid touching disk every launch).
-    let needs_write = std::fs::read_to_string(&manifest_path).ok().as_deref() != Some(companion_manifest)
+    let needs_write = std::fs::read_to_string(&manifest_path).ok().as_deref()
+        != Some(companion_manifest)
         || std::fs::read_to_string(&cs_path).ok().as_deref() != Some(companion_cs);
     if needs_write {
         std::fs::write(&manifest_path, companion_manifest).ok();
@@ -196,10 +207,7 @@ fn build_app_state(app: &tauri::AppHandle) -> (AppState, PathBuf) {
 /// Runs sequentially (don't hammer the upstream proxy). Emits a
 /// `profiles:proxy-country-updated` event after each successful probe so the
 /// renderer refetches and re-renders flag chips. Failures are non-fatal.
-async fn backfill_proxy_countries(
-    app: tauri::AppHandle,
-    driver: Arc<TauriBrowserDriver>,
-) {
+async fn backfill_proxy_countries(app: tauri::AppHandle, driver: Arc<TauriBrowserDriver>) {
     let summaries = match driver.list_profiles().await {
         Ok(s) => s,
         Err(e) => {
@@ -318,6 +326,7 @@ pub fn run() {
             // Wire the driver's `AppHandle` so launch/close can emit
             // `profiles:running-changed` / `chromium:status` push events.
             state.driver.set_app(app.handle().clone());
+            state.driver.start_kuaishou_identity_monitor();
 
             // Spawn a background task that bridges `ActivityLog`'s broadcast
             // stream to the Tauri frontend via `activity:event`. Every
@@ -333,9 +342,7 @@ pub fn run() {
                     loop {
                         match rx.recv().await {
                             Ok(event) => {
-                                if let Err(e) =
-                                    app_handle.emit("activity:event", &event)
-                                {
+                                if let Err(e) = app_handle.emit("activity:event", &event) {
                                     tracing::warn!(
                                         error = %e,
                                         "emit activity:event failed"
@@ -360,7 +367,10 @@ pub fn run() {
             // Load (or create) the MCP bearer token.
             match token::load_or_create_mcp_token(&data_dir) {
                 Ok(tok) => {
-                    tracing::info!("mcp token loaded from {}", data_dir.join("mcp-token").display());
+                    tracing::info!(
+                        "mcp token loaded from {}",
+                        data_dir.join("mcp-token").display()
+                    );
                     // Decide whether to spawn the HTTP server.
                     let port = {
                         let mut store = state.settings.blocking_lock();
@@ -385,7 +395,10 @@ pub fn run() {
                     *state.mcp_token.blocking_lock() = Some(tok);
                 }
                 Err(e) => {
-                    tracing::warn!("failed to load/create mcp token at {}: {e}", data_dir.join("mcp-token").display());
+                    tracing::warn!(
+                        "failed to load/create mcp token at {}: {e}",
+                        data_dir.join("mcp-token").display()
+                    );
                 }
             }
 
@@ -432,10 +445,7 @@ pub fn run() {
                     if auto_update {
                         tracing::info!("auto-update: checking for updates");
                         let app_state = app_handle.state::<AppState>();
-                        let _ = update_check(
-                            app_handle.clone(),
-                            app_state,
-                        ).await;
+                        let _ = update_check(app_handle.clone(), app_state).await;
                     }
                 });
             }
@@ -443,6 +453,14 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // business metadata (never a login command)
+            business_accounts_list,
+            business_accounts_profile_state,
+            business_accounts_save,
+            business_accounts_unbind,
+            kuaishou_identity_list,
+            kuaishou_identity_detect,
+            kuaishou_identity_avatar,
             // profiles
             profiles_list,
             profiles_get,
@@ -491,6 +509,13 @@ pub fn run() {
             extensions_prepare_from_folder,
             extensions_icon,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            if matches!(event, tauri::RunEvent::Exit) {
+                app.state::<AppState>()
+                    .driver
+                    .stop_kuaishou_identity_monitor();
+            }
+        });
 }

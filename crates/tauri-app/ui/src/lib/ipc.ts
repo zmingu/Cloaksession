@@ -92,6 +92,10 @@ export const profiles = {
   launch: (id: ProfileId): Promise<LaunchedProfile> =>
     invoke<LaunchedProfile>("profiles_launch", { id }),
 
+  /** Explicit shop login tab; leaves saved startUrl and generic launch untouched. */
+  launchKuaishou: (id: ProfileId): Promise<LaunchedProfile> =>
+    invoke<LaunchedProfile>("profiles_launch", { id, entry: "kuaishou-shop" }),
+
   /** `profiles_close` → `()`. */
   close: (id: ProfileId): Promise<void> => invoke<void>("profiles_close", { id }),
 

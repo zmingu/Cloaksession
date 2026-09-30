@@ -120,6 +120,10 @@ export function Modal({
     previouslyFocused.current = document.activeElement as HTMLElement | null;
     const t = window.setTimeout(() => {
       if (!panelRef.current) return;
+      // Initial focus is a fallback, not permission to steal a user's chosen field.
+      // A newer nested modal also owns its own focus.
+      if (modalStack[modalStack.length - 1] !== idRef.current
+        || panelRef.current.contains(document.activeElement)) return;
       // Prefer an explicitly-tagged field (e.g. the sheet's Name input) over the
       // first tab-order element, which would otherwise be a nav/rail button.
       const candidate =

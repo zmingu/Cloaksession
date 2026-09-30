@@ -2,6 +2,7 @@ import { access, mkdir, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { pathToFileURL } from 'node:url';
+import { applyWindowsFonts } from './windows-fonts.mjs';
 
 const own = (object, key) => Object.hasOwn(object, key);
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -67,18 +68,21 @@ export function prepareOptions(request) {
   const explicitProxy = layers.some(([, layer]) => layer && own(layer, 'proxy')) || args.some((arg) => proxyFlag.test(arg));
   if (!explicitProxy && request.proxy) options.proxy = structuredClone(request.proxy);
   const defaultExtensions = !own(options, 'extensionPaths') && !args.some((arg) => extensionFlag.test(arg)) && request.extensionPaths?.length;
-  if (defaultExtensions) options.extensionPaths = [...request.extensionPaths];
+
+  // Keep host-managed extension paths as filesystem paths. The pinned SDK's
+  // extensionPaths helper treats them as file URLs, turning C:\\... into /C:/...
+  // and escaping spaces or truncating # characters. Explicit SDK choices remain untouched.
+  const extensionArgs = defaultExtensions ? [
+    `--load-extension=${request.extensionPaths.join(',')}`,
+    `--disable-extensions-except=${request.extensionPaths.join(',')}`,
+  ] : [];
 
   // SDK launchOptions and contextOptions can replace args, so protect every effective layer.
   const controlArgs = [`--remote-debugging-address=127.0.0.1`, `--remote-debugging-port=${request.cdpPort}`];
-  options.args = [...(options.args ?? []), ...controlArgs];
+  options.args = [...(options.args ?? []), ...controlArgs, ...extensionArgs];
   for (const name of ['launchOptions', 'contextOptions']) {
     if (options[name] && own(options[name], 'args')) {
-      options[name].args.push(...controlArgs);
-      if (defaultExtensions) {
-        const joined = request.extensionPaths.join(',');
-        options[name].args.push(`--load-extension=${joined}`, `--disable-extensions-except=${joined}`);
-      }
+      options[name].args.push(...controlArgs, ...extensionArgs);
     }
   }
   return options;
@@ -214,6 +218,7 @@ export function runBridge({
       launching = true;
       try {
         const options = prepareOptions(request);
+        applyWindowsFonts(options);
         const sdk = await loadSdk();
         await configureBinary(request, options, sdk, env);
         await mkdir(options.userDataDir, { recursive: true });

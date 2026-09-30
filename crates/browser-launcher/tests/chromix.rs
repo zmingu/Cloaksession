@@ -5,7 +5,7 @@ use std::time::Duration;
 use browser_launcher::BrowserLauncher;
 use multizen_core::{BrowserEngine, ChromixSettings, CreateProfileInput, Profile, ProxyConfig};
 use profile_manager::ProfileManager;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use tempfile::TempDir;
 
 struct Fixture {
@@ -16,18 +16,24 @@ struct Fixture {
     config: ChromixSettings,
 }
 
+// Let Node normalize Windows verbatim paths and percent-encode URL characters.
+// Keep the filesystem path as JSON data, never a hand-assembled file:// URL.
+fn bridge_import(bridge: &Path) -> String {
+    format!(
+        "import {{ pathToFileURL }} from 'node:url';\nconst {{ runBridge }} = await import(pathToFileURL({}).href);",
+        serde_json::to_string(bridge).unwrap()
+    )
+}
+
 impl Fixture {
     fn new() -> Self {
         let directory = TempDir::new().unwrap();
         let bridge =
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../tauri-app/resources/chromix/bridge.mjs");
-        let bridge_url = format!(
-            "file://{}",
-            std::fs::canonicalize(bridge).unwrap().display()
-        );
+        let bridge = std::fs::canonicalize(bridge).unwrap();
         let script = format!(
-            "import {{ runBridge }} from {};\n{}",
-            serde_json::to_string(&bridge_url).unwrap(),
+            "{}\n{}",
+            bridge_import(&bridge),
             r#"
 import { writeFileSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
@@ -127,6 +133,43 @@ process.exit(0);
 }
 
 #[tokio::test]
+async fn fixture_import_handles_canonical_and_url_sensitive_paths() {
+    let directory = TempDir::new().unwrap();
+    let module = directory.path().join("bridge 空格 # %.mjs");
+    std::fs::write(&module, "export const runBridge = 'fixture loaded';").unwrap();
+    let canonical = std::fs::canonicalize(&module).unwrap();
+    #[cfg(windows)]
+    assert!(
+        matches!(
+            canonical.components().next(),
+            Some(std::path::Component::Prefix(prefix))
+                if matches!(prefix.kind(), std::path::Prefix::VerbatimDisk(_) | std::path::Prefix::VerbatimUNC(_, _))
+        ),
+        "canonical fixture must exercise a Windows extended-length path"
+    );
+
+    for path in [&module, &canonical] {
+        let script = format!("{}\nprocess.stdout.write(runBridge);", bridge_import(path));
+        let output = tokio::time::timeout(
+            Duration::from_secs(5),
+            tokio::process::Command::new("node")
+                .args(["--input-type=module", "--eval", &script])
+                .kill_on_drop(true)
+                .output(),
+        )
+        .await
+        .expect("fixture import deadline")
+        .expect("Node is required by the Chromix test suite");
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(output.stdout, b"fixture loaded");
+    }
+}
+
+#[tokio::test]
 async fn persistent_launch_preserves_options_and_keeps_secrets_off_argv() {
     let mut fixture = Fixture::new();
     fixture.config.options = json!({
@@ -151,19 +194,17 @@ async fn persistent_launch_preserves_options_and_keeps_secrets_off_argv() {
         .await
         .unwrap();
     assert!(fixture.launcher.is_running_async(&fixture.profile.id).await);
-    assert!(
-        fixture
-            .pm
-            .get(&fixture.profile.id)
-            .unwrap()
-            .unwrap()
-            .last_opened_at
-            .is_some()
-    );
+    assert!(fixture
+        .pm
+        .get(&fixture.profile.id)
+        .unwrap()
+        .unwrap()
+        .last_opened_at
+        .is_some());
     let captured = fixture.capture();
     assert_eq!(
         captured["options"]["userDataDir"],
-        json!(PathBuf::from(&fixture.profile.data_dir).join("engines/chromix"))
+        json!(PathBuf::from(&fixture.profile.data_dir).join("engines").join("chromix"))
     );
     for (key, value) in &fixture.config.options {
         assert_eq!(&captured["options"][key], value);
@@ -172,18 +213,27 @@ async fn persistent_launch_preserves_options_and_keeps_secrets_off_argv() {
     assert_eq!(captured["secret"], "private-env-token");
     let argv = captured["argv"].as_array().unwrap();
     assert_eq!(argv.len(), 2);
-    assert!(
-        argv.iter()
-            .all(|value| !value.as_str().unwrap().contains("private-"))
-    );
+    assert!(argv
+        .iter()
+        .all(|value| !value.as_str().unwrap().contains("private-")));
     let port = launched.cdp_endpoint.rsplit(':').next().unwrap();
+    let args = captured["options"]["args"].as_array().unwrap();
     assert_eq!(
-        captured["options"]["args"],
-        json!([
-            "--remote-debugging-address=127.0.0.1",
-            format!("--remote-debugging-port={port}"),
-        ])
+        &args[..2],
+        &[
+            json!("--remote-debugging-address=127.0.0.1"),
+            json!(format!("--remote-debugging-port={port}")),
+        ]
     );
+    if cfg!(windows) {
+        assert_eq!(args.len(), 3);
+        let whitelist = args[2].as_str().unwrap();
+        assert!(whitelist.starts_with("--uxr-font-whitelist="));
+        assert!(whitelist.is_ascii());
+        assert!(!whitelist.ends_with('='));
+    } else {
+        assert_eq!(args.len(), 2);
+    }
     assert_eq!(captured["options"].get("geoip"), None);
     let again = fixture
         .launcher
@@ -227,15 +277,13 @@ async fn running_registry_waits_for_the_ready_handshake() {
         _ = tokio::time::sleep(Duration::from_millis(50)) => {},
     }
     assert!(!fixture.launcher.is_running_async(&fixture.profile.id).await);
-    assert!(
-        fixture
-            .pm
-            .get(&fixture.profile.id)
-            .unwrap()
-            .unwrap()
-            .last_opened_at
-            .is_none()
-    );
+    assert!(fixture
+        .pm
+        .get(&fixture.profile.id)
+        .unwrap()
+        .unwrap()
+        .last_opened_at
+        .is_none());
     launch.await.unwrap();
     fixture.launcher.close_all().await;
 }
@@ -261,15 +309,13 @@ async fn sdk_failure_never_marks_the_profile_running_or_opened() {
         .unwrap_err();
     assert!(error.to_string().contains("intentional fake SDK failure"));
     assert!(!fixture.launcher.is_running_async(&fixture.profile.id).await);
-    assert!(
-        fixture
-            .pm
-            .get(&fixture.profile.id)
-            .unwrap()
-            .unwrap()
-            .last_opened_at
-            .is_none()
-    );
+    assert!(fixture
+        .pm
+        .get(&fixture.profile.id)
+        .unwrap()
+        .unwrap()
+        .last_opened_at
+        .is_none());
 }
 
 #[tokio::test]

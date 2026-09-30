@@ -6,10 +6,12 @@
 
 pub mod activity;
 pub mod archive;
+pub mod business_accounts;
 pub mod companion;
 pub mod dialog;
 pub mod extensions;
 pub mod fingerprint;
+pub mod kuaishou_identity;
 pub mod profiles;
 pub mod proxy;
 pub mod settings;

@@ -6,6 +6,7 @@ import { ProfileTile, deriveTileState, type TileData, type TileState } from "./P
 import { ProfileTable } from "./ProfileTable";
 import { usePersistedState } from "../../lib/persisted";
 import { cn } from "../../lib/cn";
+import { KuaishouIdentityToolbar } from "./KuaishouIdentity";
 
 type ViewMode = "grid" | "list";
 
@@ -210,6 +211,8 @@ export function Constellation({
           </>
         )}
       </div>
+
+      <KuaishouIdentityToolbar />
 
       {/* Body — grid or list. `pt-3` keeps the running/AI glow from
           getting clipped against the top edge of the scroll container

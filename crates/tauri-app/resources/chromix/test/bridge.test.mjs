@@ -43,12 +43,15 @@ test('default persona stays SDK-native without legacy fingerprint/geoip defaults
   const options = prepareOptions(request());
   assert.equal(options.headless, false);
   assert.equal(options.userDataDir, '/tmp/chromix-test-profile');
-  assert.deepEqual(options.extensionPaths, ['/extension/default']);
+  assert.equal(Object.hasOwn(options, 'extensionPaths'), false);
   assert.deepEqual(options.proxy, request().proxy);
   for (const key of ['stealthArgs', 'geoip', 'timezone', 'locale', 'humanize', 'userAgent']) {
     assert.equal(Object.hasOwn(options, key), false);
   }
-  assert.deepEqual(options.args, ['--remote-debugging-address=127.0.0.1', '--remote-debugging-port=19222']);
+  assert.deepEqual(options.args, [
+    '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=19222',
+    '--load-extension=/extension/default', '--disable-extensions-except=/extension/default',
+  ]);
 });
 
 test('reserved flags fail in every effective argument and ignoreDefaultArgs layer', () => {

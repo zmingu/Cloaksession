@@ -43,6 +43,13 @@
 //! `companion_dir` are stored on the driver (from `AppSettings`) because
 //! `BrowserDriver::launch(&self, profile_id)` has no parameter for them.
 
+mod business;
+#[cfg(test)]
+mod business_tests;
+#[cfg(test)]
+mod shop_login_tests;
+mod identity;
+
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex as StdMutex};
@@ -51,8 +58,8 @@ use async_trait::async_trait;
 use cdp_driver::session::BrowserSession;
 use mcp_server::driver::BrowserDriver;
 use multizen_core::{
-    BrowserEngine, ChromixSettings, CreateProfileInput, LaunchedProfile, MultizenError, Profile, ProfileSummary,
-    Result, UpdateProfileInput,
+    BrowserEngine, ChromixSettings, CreateProfileInput, LaunchedProfile, MultizenError, Profile,
+    ProfileSummary, Result, UpdateProfileInput,
 };
 use serde::Serialize;
 use tauri::Emitter;
@@ -74,7 +81,11 @@ const CMD_CHANNEL_SIZE: usize = 64;
 /// safety timer, `closing` would start one (we don't currently emit a
 /// separate closing phase; the atomic `close()` path emits `closed`).
 #[derive(Clone, Debug, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum RunningStateChange {
     /// Emitted after a successful launch — the profile is now running.
     Launched { profile_id: String },
@@ -108,6 +119,7 @@ pub struct ChromiumStatus {
 
 /// Commands sent to the dedicated launcher thread.
 enum LauncherCmd {
+    Identity(identity::IdentityCmd),
     Launch {
         profile_id: String,
         binary: PathBuf,
@@ -121,6 +133,11 @@ enum LauncherCmd {
     Close {
         profile_id: String,
         resp: oneshot::Sender<Result<()>>,
+    },
+    ClosePrepared {
+        profile_id: String,
+        slot: Arc<crate::registry::SessionSlot>,
+        resp: oneshot::Sender<Result<bool>>,
     },
     /// Ask the launcher thread to shut down (runs `close_all` then exits).
     Shutdown,
@@ -142,7 +159,26 @@ enum LauncherCmd {
     UpdateProfile {
         id: String,
         patch: UpdateProfileInput,
+        engine: BrowserEngine,
+        chromix: ChromixSettings,
         resp: oneshot::Sender<Result<Profile>>,
+    },
+    BusinessAccountsList {
+        resp: oneshot::Sender<Result<Vec<multizen_core::BusinessAccount>>>,
+    },
+    BusinessProfileState {
+        profile_id: String,
+        resp: oneshot::Sender<Result<multizen_core::BusinessProfileState>>,
+    },
+    SaveBusinessAccount {
+        input: multizen_core::SaveBusinessAccountInput,
+        engine: BrowserEngine,
+        chromix: ChromixSettings,
+        resp: oneshot::Sender<Result<multizen_core::BusinessAccount>>,
+    },
+    UnbindBusinessAccount {
+        id: String,
+        resp: oneshot::Sender<Result<()>>,
     },
     DeleteProfile {
         id: String,
@@ -178,6 +214,7 @@ pub struct TauriBrowserDriver {
     /// `TauriBrowserDriver: Send + Sync` even though `BrowserLauncher`
     /// itself is `!Send + !Sync`.
     launcher_tx: mpsc::Sender<LauncherCmd>,
+    identity: Arc<identity::IdentityRuntime>,
     registry: Arc<ProfileRegistry>,
     engine: BrowserEngine,
     browser_binary: PathBuf,
@@ -221,12 +258,19 @@ impl TauriBrowserDriver {
         let (tx, rx) = mpsc::channel(CMD_CHANNEL_SIZE);
         let builder = std::thread::Builder::new().name("tauri-launcher".into());
         let profiles_root_for_thread = profiles_root.clone();
+        let registry_for_thread = registry.clone();
+        let identity = Arc::new(identity::IdentityRuntime::new(
+            db_path.with_file_name("kuaishou-avatars"),
+        ));
         let handle = builder
-            .spawn(move || launcher_thread_main(db_path, profiles_root_for_thread, rx))
+            .spawn(move || {
+                launcher_thread_main(db_path, profiles_root_for_thread, rx, registry_for_thread)
+            })
             .map_err(|e| MultizenError::Launch(format!("launcher thread spawn: {e}")))?;
         let _ = handle; // detached; exits on Shutdown or channel close
         Ok(Self {
             launcher_tx: tx,
+            identity,
             registry,
             engine,
             browser_binary,
@@ -294,7 +338,13 @@ impl TauriBrowserDriver {
     /// Best-effort graceful shutdown: tell the launcher thread to exit. The
     /// thread runs `close_all` on its `BrowserLauncher` before terminating.
     pub async fn shutdown(&self) {
-        let _ = self.launcher_tx.send(LauncherCmd::Shutdown).await;
+        self.identity.stop.cancel();
+        self.registry.clear().await;
+        let _ = tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            self.launcher_tx.send(LauncherCmd::Shutdown),
+        )
+        .await;
     }
 }
 
@@ -306,6 +356,7 @@ fn launcher_thread_main(
     db_path: PathBuf,
     profiles_root: PathBuf,
     mut rx: mpsc::Receiver<LauncherCmd>,
+    registry: Arc<ProfileRegistry>,
 ) {
     let pm = match profile_manager::ProfileManager::new(&db_path, &profiles_root) {
         Ok(p) => p,
@@ -323,7 +374,10 @@ fn launcher_thread_main(
     let pm_arc = Arc::new(pm);
     let launcher = browser_launcher::BrowserLauncher::new(pm_arc.clone());
 
-    let rt = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
+    let rt = match tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+    {
         Ok(r) => r,
         Err(e) => {
             tracing::error!(error = ?e, "launcher thread: runtime build failed");
@@ -331,7 +385,7 @@ fn launcher_thread_main(
         }
     };
     let local = tokio::task::LocalSet::new();
-    local.block_on(&rt, launcher_task(launcher, pm_arc, &mut rx));
+    local.block_on(&rt, launcher_task(launcher, pm_arc, &mut rx, registry));
 }
 
 /// Command loop run on the launcher thread's `LocalSet`. Owns the
@@ -343,9 +397,11 @@ async fn launcher_task(
     launcher: browser_launcher::BrowserLauncher,
     pm: Arc<profile_manager::ProfileManager>,
     rx: &mut mpsc::Receiver<LauncherCmd>,
+    registry: Arc<ProfileRegistry>,
 ) {
     while let Some(cmd) = rx.recv().await {
         match cmd {
+            LauncherCmd::Identity(cmd) => identity::handle(cmd, &pm, &registry, &launcher).await,
             LauncherCmd::Launch {
                 profile_id,
                 binary,
@@ -356,10 +412,15 @@ async fn launcher_task(
                 skip_download,
                 resp,
             } => {
-                let result = if engine == BrowserEngine::Chromix {
-                    async {
-                        let profile = pm.get(&profile_id)?
-                            .ok_or_else(|| MultizenError::NotFound(profile_id.clone()))?;
+                let result = async {
+                    let profile = pm
+                        .get(&profile_id)?
+                        .ok_or_else(|| MultizenError::NotFound(profile_id.clone()))?;
+                    // Shared UI + embedded MCP launch gate, before mark_opened, proxy or spawn.
+                    launcher
+                        .validate_business_directory(&profile, engine, &chromix, None)
+                        .await?;
+                    if engine == BrowserEngine::Chromix {
                         let config = chromix.with_profile_options(&profile.chromix_options);
                         launcher
                             .launch_with_chromix(
@@ -371,19 +432,57 @@ async fn launcher_task(
                                 skip_download,
                             )
                             .await
-                    }.await
-                } else {
-                    launcher
-                        .launch(&profile_id, &binary, engine, companion.as_deref())
-                        .await
-                };
+                    } else {
+                        launcher
+                            .launch(&profile_id, &binary, engine, companion.as_deref())
+                            .await
+                    }
+                }
+                .await;
+                if let Ok(launched) = &result {
+                    if let Ok(Some(profile)) = pm.get(&profile_id) {
+                        registry
+                            .prepare(
+                                &profile_id,
+                                &launched.cdp_endpoint,
+                                engine,
+                                &format!("{}:{}", launched.started_at, launched.pid),
+                                Some(crate::registry::NetworkSnapshot {
+                                    profile,
+                                    engine,
+                                    chromix,
+                                    environment_uncertain: std::env::vars_os().any(|(k, v)| {
+                                        let key = k.to_string_lossy().to_ascii_lowercase();
+                                        !v.is_empty()
+                                            && (key.contains("proxy") || key == "node_options")
+                                    }),
+                                }),
+                            )
+                            .await;
+                    }
+                }
                 let _ = resp.send(result);
             }
             LauncherCmd::Close { profile_id, resp } => {
+                registry.remove(&profile_id).await;
                 let result = launcher.close(&profile_id).await;
                 let _ = resp.send(result);
             }
+            LauncherCmd::ClosePrepared {
+                profile_id,
+                slot,
+                resp,
+            } => {
+                // Serialized with launch: stale attach failure must not close a replacement process.
+                let result = if registry.remove_current(&profile_id, &slot).await {
+                    launcher.close(&profile_id).await.map(|()| true)
+                } else {
+                    Ok(false)
+                };
+                let _ = resp.send(result);
+            }
             LauncherCmd::Shutdown => {
+                registry.clear().await;
                 launcher.close_all().await;
                 break;
             }
@@ -396,25 +495,72 @@ async fn launcher_task(
             LauncherCmd::CreateProfile { input, resp } => {
                 let _ = resp.send(pm.create(input));
             }
-            LauncherCmd::UpdateProfile { id, patch, resp } => {
-                let _ = resp.send(pm.update(&id, patch));
+            LauncherCmd::UpdateProfile {
+                id,
+                patch,
+                engine,
+                chromix,
+                resp,
+            } => {
+                let _ = resp.send(
+                    launcher
+                        .update_profile_guarded(&id, patch, engine, &chromix)
+                        .await,
+                );
+            }
+            LauncherCmd::BusinessAccountsList { resp } => {
+                let _ = resp.send(pm.business_accounts_list());
+            }
+            LauncherCmd::BusinessProfileState { profile_id, resp } => {
+                let _ = resp.send(pm.business_accounts_profile_state(&profile_id));
+            }
+            LauncherCmd::SaveBusinessAccount {
+                input,
+                engine,
+                chromix,
+                resp,
+            } => {
+                let _ = resp.send(
+                    launcher
+                        .save_business_account(input, engine, &chromix)
+                        .await,
+                );
+            }
+            LauncherCmd::UnbindBusinessAccount { id, resp } => {
+                let _ = resp.send(launcher.unbind_business_account(&id).await);
             }
             LauncherCmd::DeleteProfile { id, resp } => {
-                let _ = resp.send(pm.delete(&id));
+                // Do not drop a live cookie-scope reservation through IPC deletion.
+                let result = async {
+                    if pm.business_profile_scope(&id)?.is_some() {
+                        launcher.require_stopped(&id).await?;
+                    }
+                    pm.delete(&id)?;
+                    registry.remove(&id).await;
+                    Ok(())
+                }
+                .await;
+                let _ = resp.send(result);
             }
             LauncherCmd::InsertImported { profile, resp } => {
                 let _ = resp.send(pm.insert_imported(profile));
             }
             LauncherCmd::ListExtensions { id, resp } => {
-                let _ = resp.send(pm.get(&id).map(|opt| {
-                    opt.and_then(|p| p.extensions).unwrap_or_default()
-                }));
+                let _ = resp.send(
+                    pm.get(&id)
+                        .map(|opt| opt.and_then(|p| p.extensions).unwrap_or_default()),
+                );
             }
             LauncherCmd::SetExtensions { id, exts, resp } => {
-                let result = pm.update(&id, UpdateProfileInput {
-                    extensions: Some(exts),
-                    ..Default::default()
-                }).map(|p| p.extensions.unwrap_or_default());
+                let result = pm
+                    .update(
+                        &id,
+                        UpdateProfileInput {
+                            extensions: Some(exts),
+                            ..Default::default()
+                        },
+                    )
+                    .map(|p| p.extensions.unwrap_or_default());
                 let _ = resp.send(result);
             }
             LauncherCmd::StoreEntries { resp } => {
@@ -497,22 +643,44 @@ impl BrowserDriver for TauriBrowserDriver {
             }
         };
 
-        // Chromix owns a persistent SDK context; close it if the CDP attach fails.
+        let slot = self
+            .registry
+            .prepared_slot(
+                profile_id,
+                &format!("{}:{}", launched.started_at, launched.pid),
+            )
+            .await?;
+        // Chromix owns a persistent SDK context; close only this generation if attachment fails.
         let session = match self
             .registry
-            .get_or_connect(profile_id, &launched.cdp_endpoint, self.engine)
+            .connect_prepared(
+                profile_id,
+                &format!("{}:{}", launched.started_at, launched.pid),
+            )
             .await
         {
             Ok(session) => session,
             Err(e) => {
                 if self.engine == BrowserEngine::Chromix {
                     let (resp, receive) = oneshot::channel();
-                    if self.launcher_tx.send(LauncherCmd::Close {
-                        profile_id: profile_id.to_string(), resp,
-                    }).await.is_ok() {
-                        let _ = receive.await;
+                    if self
+                        .launcher_tx
+                        .send(LauncherCmd::ClosePrepared {
+                            profile_id: profile_id.to_string(),
+                            slot: slot.clone(),
+                            resp,
+                        })
+                        .await
+                        .is_ok()
+                    {
+                        if matches!(receive.await, Ok(Ok(true))) {
+                            self.registry
+                                .with_absent(profile_id, || {
+                                    self.running.lock().unwrap().remove(profile_id);
+                                })
+                                .await;
+                        }
                     }
-                    self.running.lock().unwrap().remove(profile_id);
                 }
                 self.emit(
                     "chromium:status",
@@ -534,9 +702,13 @@ impl BrowserDriver for TauriBrowserDriver {
             .get_profile(profile_id)
             .await?
             .ok_or_else(|| MultizenError::NotFound(profile_id.to_string()))?;
-        if let Err(e) =
-            cdp_driver::bootstrap::bootstrap_targets(session.as_ref(), &profile.fingerprint, self.engine, None)
-                .await
+        if let Err(e) = cdp_driver::bootstrap::bootstrap_targets(
+            session.as_ref(),
+            &profile.fingerprint,
+            self.engine,
+            None,
+        )
+        .await
         {
             self.emit(
                 "chromium:status",
@@ -549,24 +721,31 @@ impl BrowserDriver for TauriBrowserDriver {
             return Err(e);
         }
 
-        self.running.lock().unwrap().insert(profile_id.to_string());
-        // Success → notify frontend. `profiles:running-changed` carries the
-        // authoritative running state; `chromium:status` carries the
-        // lifecycle signal.
-        self.emit(
-            "profiles:running-changed",
-            &RunningStateChange::Launched {
-                profile_id: profile_id.to_string(),
-            },
-        );
-        self.emit(
-            "chromium:status",
-            &ChromiumStatus {
-                profile_id: profile_id.to_string(),
-                status: "started".into(),
-                error: None,
-            },
-        );
+        self.registry
+            .with_current(profile_id, &slot, || {
+                self.running.lock().unwrap().insert(profile_id.to_string());
+                // Success → notify frontend. `profiles:running-changed` carries the
+                // authoritative running state; `chromium:status` carries the
+                // lifecycle signal.
+                self.emit(
+                    "profiles:running-changed",
+                    &RunningStateChange::Launched {
+                        profile_id: profile_id.to_string(),
+                    },
+                );
+                self.emit(
+                    "chromium:status",
+                    &ChromiumStatus {
+                        profile_id: profile_id.to_string(),
+                        status: "started".into(),
+                        error: None,
+                    },
+                );
+            })
+            .await
+            .ok_or_else(|| {
+                MultizenError::Cdp("launch session was invalidated during bootstrap".into())
+            })?;
         Ok(launched)
     }
 
@@ -590,24 +769,28 @@ impl BrowserDriver for TauriBrowserDriver {
         resp_rx
             .await
             .map_err(|_| MultizenError::Mcp("launcher thread dropped response".into()))??;
-        self.running.lock().unwrap().remove(profile_id);
-        // Success → notify frontend that the profile is no longer running
-        // and the chromium process has stopped.
-        self.emit(
-            "profiles:running-changed",
-            &RunningStateChange::Closed {
-                profile_id: profile_id.to_string(),
-                reason: "user-close",
-            },
-        );
-        self.emit(
-            "chromium:status",
-            &ChromiumStatus {
-                profile_id: profile_id.to_string(),
-                status: "stopped".into(),
-                error: None,
-            },
-        );
+        self.registry
+            .with_absent(profile_id, || {
+                self.running.lock().unwrap().remove(profile_id);
+                // Success → notify frontend that the profile is no longer running
+                // and the chromium process has stopped.
+                self.emit(
+                    "profiles:running-changed",
+                    &RunningStateChange::Closed {
+                        profile_id: profile_id.to_string(),
+                        reason: "user-close",
+                    },
+                );
+                self.emit(
+                    "chromium:status",
+                    &ChromiumStatus {
+                        profile_id: profile_id.to_string(),
+                        status: "stopped".into(),
+                        error: None,
+                    },
+                );
+            })
+            .await;
         Ok(())
     }
 
@@ -655,7 +838,6 @@ impl BrowserDriver for TauriBrowserDriver {
     ) -> Result<serde_json::Value> {
         let session = self.require_session(profile_id).await?;
         session.cdp_send(method, params, session_id).await
-
     }
 }
 
@@ -731,16 +913,14 @@ impl TauriBrowserDriver {
             .map_err(|_| MultizenError::Mcp("launcher thread dropped response".into()))?
     }
 
-    pub async fn update_profile(
-        &self,
-        id: &str,
-        patch: UpdateProfileInput,
-    ) -> Result<Profile> {
+    pub async fn update_profile(&self, id: &str, patch: UpdateProfileInput) -> Result<Profile> {
         let (resp_tx, resp_rx) = oneshot::channel();
         self.launcher_tx
             .send(LauncherCmd::UpdateProfile {
                 id: id.to_string(),
                 patch,
+                engine: self.engine,
+                chromix: self.chromix.clone(),
                 resp: resp_tx,
             })
             .await
@@ -764,7 +944,10 @@ impl TauriBrowserDriver {
             .map_err(|_| MultizenError::Mcp("launcher thread dropped response".into()))?
     }
 
-    pub async fn insert_imported(&self, profile: multizen_core::Profile) -> Result<multizen_core::Profile> {
+    pub async fn insert_imported(
+        &self,
+        profile: multizen_core::Profile,
+    ) -> Result<multizen_core::Profile> {
         let (resp_tx, resp_rx) = oneshot::channel();
         self.launcher_tx
             .send(LauncherCmd::InsertImported {
@@ -824,11 +1007,7 @@ impl TauriBrowserDriver {
             .map_err(|_| MultizenError::Mcp("launcher thread dropped response".into()))?
     }
 
-    pub async fn set_proxy_country(
-        &self,
-        id: &str,
-        country: Option<String>,
-    ) -> Result<()> {
+    pub async fn set_proxy_country(&self, id: &str, country: Option<String>) -> Result<()> {
         let (resp_tx, resp_rx) = oneshot::channel();
         self.launcher_tx
             .send(LauncherCmd::SetProxyCountry {
@@ -841,5 +1020,11 @@ impl TauriBrowserDriver {
         resp_rx
             .await
             .map_err(|_| MultizenError::Mcp("launcher thread dropped response".into()))?
+    }
+}
+
+impl Drop for TauriBrowserDriver {
+    fn drop(&mut self) {
+        self.identity.stop.cancel();
     }
 }
