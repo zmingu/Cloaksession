@@ -580,6 +580,29 @@ impl TauriBrowserDriver {
         self.identity.stop.cancel();
     }
 
+    /// Fresh read-only re-check across every shop page of this session. Used by
+    /// write-capable callers right before they act: no page, no ID, or two pages
+    /// showing different accounts are all refusals, never an arbitrary pick.
+    pub(super) async fn current_kuaishou_account(
+        &self,
+        session: &cdp_driver::session::BrowserSession,
+        cancel: TaskCancel,
+    ) -> Result<String> {
+        let (detection, _) = extract::detect_with_avatar_target(session, cancel)
+            .await
+            .map_err(MultizenError::Mcp)?;
+        match detection {
+            extract::Detection::Found(page) => page
+                .platform_user_id
+                .ok_or_else(|| MultizenError::Mcp("当前小店页面未读出账号ID".into())),
+            extract::Detection::NoPage => Err(MultizenError::Mcp("当前没有已打开的小店页面".into())),
+            extract::Detection::NoId => Err(MultizenError::Mcp("当前小店页面未读出账号ID".into())),
+            extract::Detection::Conflict => {
+                Err(MultizenError::Mcp("多个小店页面显示不同账号，已拒绝".into()))
+            }
+        }
+    }
+
     /// One app-level poller, weak driver while idle. Each tick drops overflow instead of queueing it.
     pub fn start_kuaishou_identity_monitor(self: &Arc<Self>) {
         if self.identity.started.swap(true, Ordering::AcqRel) {
