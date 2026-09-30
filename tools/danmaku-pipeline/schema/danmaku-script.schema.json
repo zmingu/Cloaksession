@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cloaksession/tools/danmaku-pipeline/danmaku-script.schema.json",
+  "title": "DanmakuScript",
+  "description": "本地直播录像 → 分析主播念/回应弹幕 → 生成的定时弹幕脚本。上游由 ASR+LLM 管线产出，下游由发送端（jieger / Cloaksession 小号）按 send_at 定时真发。时间轴以视频起点为 0 秒。",
+  "type": "object",
+  "required": ["version", "meta", "events"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "契约版本，破坏性变更时递增主版本。"
+    },
+    "meta": { "$ref": "#/$defs/meta" },
+    "events": {
+      "type": "array",
+      "description": "弹幕事件列表，一条事件 = 一个账号发一条弹幕。建议按 send_at 升序排列。",
+      "items": { "$ref": "#/$defs/event" }
+    }
+  },
+  "$defs": {
+    "meta": {
+      "type": "object",
+      "required": ["platform", "video_duration_sec"],
+      "additionalProperties": true,
+      "properties": {
+        "platform": {
+          "type": "string",
+          "enum": ["kuaishou", "douyin", "shipinhao", "other"],
+          "description": "目标直播平台，当前落地平台为 kuaishou。"
+        },
+        "source_video": {
+          "type": "string",
+          "description": "源录像文件名或路径，仅溯源用。"
+        },
+        "video_duration_sec": {
+          "type": "number",
+          "minimum": 0,
+          "description": "录像总时长（秒），用于校验 send_at 不越界。"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "generated_at 的时区，如 Asia/Shanghai。"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "脚本生成时间（ISO 8601）。"
+        },
+        "generator": {
+          "type": "string",
+          "description": "生成工具及版本，如 danmaku-pipeline 0.1.0。"
+        },
+        "asr_model": {
+          "type": "string",
+          "description": "转写所用 ASR 模型标识，溯源用。"
+        },
+        "llm_model": {
+          "type": "string",
+          "description": "识别/还原弹幕所用 LLM 标识，溯源用。"
+        },
+        "default_lead_time_sec": {
+          "type": "number",
+          "minimum": 0,
+          "default": 5,
+          "description": "默认提前量：read 类事件 send_at = spoken_at - lead_time。模拟真实直播中弹幕先出现、主播后念。单条可用事件级 lead_time_sec 覆盖。"
+        },
+        "filler_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "description": "氛围弹幕(filler)相对保真弹幕(read)的数量比例，生成参数，溯源用。"
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "required": ["id", "type", "send_at", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "事件稳定唯一 ID，如 evt-0001。发送端可用于去重、断点续发、回执关联。"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["read", "filler"],
+          "description": "read=主播真念/回应过的弹幕（已还原原文）；filler=管线补充的氛围弹幕。"
+        },
+        "send_at": {
+          "type": "number",
+          "minimum": 0,
+          "description": "发送时刻，相对视频起点的秒数（保留毫秒精度）。发送端权威时间基准：重播 t=0 启动计时器后按此触发。"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "实际要发送的弹幕文本（已是最终成品，含 read 还原文本或 filler 生成文本）。"
+        },
+        "spoken_at": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "read 专用：主播在录像中念出该弹幕的时刻（秒）。filler 为 null 或省略。"
+        },
+        "lead_time_sec": {
+          "type": "number",
+          "minimum": 0,
+          "description": "read 专用：本条实际使用的提前量，满足 send_at ≈ spoken_at - lead_time_sec。未提供时视为使用 meta.default_lead_time_sec。"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "read 专用：LLM 对‘此处确在念弹幕且还原文本可信’的置信度。发送端可据阈值过滤。"
+        },
+        "source_text": {
+          "type": "string",
+          "description": "read 专用：主播这段话的 ASR 原始转写，供人工校对用。"
+        },
+        "account_hint": {
+          "type": "string",
+          "description": "账号分配提示。auto=发送端自由轮换；也可为稳定虚拟观众 ID（如 viewer-3），让同一虚拟观众发关联对话，由发送端映射到真实小号。不含真实账号信息。",
+          "default": "auto"
+        },
+        "persona": {
+          "type": "string",
+          "description": "可选人设提示，如 buyer/fan/newcomer，供发送端挑选合适小号。",
+          "enum": ["buyer", "fan", "newcomer", "neutral", "other"]
+        },
+        "note": {
+          "type": "string",
+          "description": "人工校对备注，发送端可忽略。"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "read" } } },
+          "then": {
+            "required": ["spoken_at"],
+            "properties": { "spoken_at": { "type": "number" } }
+          }
+        }
+      ]
+    }
+  }
+}

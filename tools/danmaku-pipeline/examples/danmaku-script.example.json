@@ -1,0 +1,59 @@
+{
+  "version": "1.0",
+  "meta": {
+    "platform": "kuaishou",
+    "source_video": "2026-09-28-live-record.mp4",
+    "video_duration_sec": 3600.0,
+    "timezone": "Asia/Shanghai",
+    "generated_at": "2026-09-30T21:00:00+08:00",
+    "generator": "danmaku-pipeline 0.1.0",
+    "asr_model": "whisper-cpp-large-v3",
+    "llm_model": "gpt-4o-mini",
+    "default_lead_time_sec": 5.0,
+    "filler_ratio": 0.5
+  },
+  "events": [
+    {
+      "id": "evt-0001",
+      "type": "read",
+      "send_at": 120.3,
+      "spoken_at": 125.3,
+      "lead_time_sec": 5.0,
+      "text": "这个多少钱",
+      "source_text": "有个宝宝在问这个多少钱哈，我说一下",
+      "confidence": 0.91,
+      "account_hint": "viewer-1",
+      "persona": "buyer",
+      "note": ""
+    },
+    {
+      "id": "evt-0002",
+      "type": "filler",
+      "send_at": 128.0,
+      "text": "求个链接",
+      "account_hint": "auto",
+      "persona": "buyer"
+    },
+    {
+      "id": "evt-0003",
+      "type": "read",
+      "send_at": 210.8,
+      "spoken_at": 214.8,
+      "lead_time_sec": 4.0,
+      "text": "是纯棉的吗",
+      "source_text": "对对对，这个面料是纯棉的，放心",
+      "confidence": 0.72,
+      "account_hint": "viewer-2",
+      "persona": "newcomer",
+      "note": "隐式回应还原，置信度中等，可人工确认"
+    },
+    {
+      "id": "evt-0004",
+      "type": "filler",
+      "send_at": 236.5,
+      "text": "主播讲得好细",
+      "account_hint": "auto",
+      "persona": "fan"
+    }
+  ]
+}
