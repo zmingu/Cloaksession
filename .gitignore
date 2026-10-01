@@ -5,11 +5,9 @@
 /.idea/
 /.vscode/
 
-# Trellis / Claude Code local config
-/.claude/
-/.pi/
-/.codex/
-/.agents/
+# Trellis / Claude Code / Codex / Pi platform configs (shared with team).
+# Only transient worktree storage stays local.
+/.claude/worktrees/
 
 # Planning docs
 /docs/
