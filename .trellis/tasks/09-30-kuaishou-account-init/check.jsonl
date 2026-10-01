@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/09-30-kuaishou-account-init/prd.md", "reason": "核对R1–R5与AC1–AC9，保留原产品决定"}
+{"file": ".trellis/tasks/09-30-kuaishou-account-init/implement.md", "reason": "分批验证命令、真实OCR和权限写验收门禁"}
+{"file": ".trellis/tasks/09-30-kuaishou-account-init/research/live-page-structure-2026-10-01.md", "reason": "防止读取隐藏Tab、误关智能生产或盲点确定"}
+{"file": ".trellis/spec/cdp-driver/backend/task-control.md", "reason": "不能将取消视作回滚，副作用重试先验证"}
+{"file": ".trellis/spec/tauri-app/backend/kuaishou-identity.md", "reason": "现有身份只读接口、业务冲突与会话保护不可退化"}
+{"file": ".trellis/spec/profile-manager/backend/kuaishou-identity.md", "reason": "档案存续与原连接事务边界"}

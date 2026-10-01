@@ -1,0 +1,7 @@
+{"file":".trellis/spec/cdp-driver/backend/task-control.md","reason":"TaskPage绑定锁等待取消与期限"}
+{"file":".trellis/spec/profile-manager/backend/business-accounts.md","reason":"独立手工表和scope持久契约"}
+{"file":".trellis/spec/profile-manager/backend/database-guidelines.md","reason":"SQLite迁移和专用线程"}
+{"file":".trellis/spec/multizen-core/backend/contracts.md","reason":"camelCase nullable固定合同"}
+{"file":".trellis/spec/tauri-app/backend/runtime.md","reason":"launcher命令和registry生命周期"}
+{"file":".trellis/spec/tauri-app/backend/ipc.md","reason":"Tauri注册与参数合同"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"跨层回查和历史状态"}

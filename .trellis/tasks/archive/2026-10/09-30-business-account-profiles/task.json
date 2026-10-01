@@ -1,0 +1,28 @@
+{
+  "id": "business-account-profiles",
+  "name": "business-account-profiles",
+  "title": "业务账号 Profile 关联与金牛独立环境",
+  "description": "第三批：业务账号登记、事务关联与持久scope、金牛有效目录隔离及停用校验；不登录、不导入旧数据。",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "multizen-core",
+  "priority": "P2",
+  "creator": "zmingu",
+  "assignee": "zmingu",
+  "createdAt": "2026-09-30",
+  "completedAt": "2026-10-01",
+  "branch": null,
+  "base_branch": null,
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "approval": "本次用户连续批准实施Rust/CDP第三批：账号登记、实际目录隔离、解绑持久scope；不Git、不登录、不OCR。"
+  }
+}

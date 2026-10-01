@@ -1,0 +1,3 @@
+{"file":".trellis/spec/cdp-driver/backend/sessions.md","reason":"Verify legacy/bound/task boundaries and no activation/fallback"}
+{"file":".trellis/tasks/09-30-rust-cdp-task-control/design.md","reason":"Cancellation deadlines, lease isolation, wire-only test limitations"}
+{"file":".trellis/tasks/09-30-rust-cdp-page-binding/review.md","reason":"158 passed baseline and retained Windows fixture fixes"}

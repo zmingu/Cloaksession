@@ -1,0 +1,131 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.19s
+     Running unittests src\lib.rs (target\debug\deps\cdp_driver-700749d4184e754c.exe)
+
+running 3 tests
+test task_page::tests::selector_states_and_json_escaping ... ok
+test task_page::tests::cancellation_is_sticky_and_wakes_all_clones ... ok
+test task_page::tests::weak_lock_table_reuses_live_locks_and_prunes_dead_targets ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\a11y.rs (target\debug\deps\a11y-55aecdfbafb6c082.exe)
+
+running 3 tests
+test keeps_named_button ... ok
+test respects_max_nodes ... ok
+test drops_ignored_node ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\cached_resource.rs (target\debug\deps\cached_resource-13eaafac1a75995f.exe)
+
+running 9 tests
+test reader::tests::exact_https_origin ... ok
+test reader::tests::aggregates_all_targets_without_arbitrary_account_selection ... ok
+test reader::tests::strict_decode_no_id_and_malformed ... ok
+test taint_or_missing_pixels_is_nonfatal_and_invalid_resources_never_dispatch ... ok
+test detection_preserves_source_target_without_extending_wire_dto ... ok
+test changed_identity_url_document_or_loading_discards_the_image ... ok
+test loaded_avatar_is_original_target_only_and_retains_task_lock ... ok
+test invalid_payload_size_and_loaded_dimensions_are_rejected ... ok
+test cancellation_and_deadline_do_not_fall_back_to_another_target ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.02s
+
+     Running tests\identity_browser.rs (target\debug\deps\identity_browser-b1ef1500887492f9.exe)
+
+running 4 tests
+test identity_in_disposable_chromium ... ignored, explicit IDENTITY_TEST_CHROMIUM required; launches only a new isolated browser
+test reader::tests::exact_https_origin ... ok
+test reader::tests::aggregates_all_targets_without_arbitrary_account_selection ... ok
+test reader::tests::strict_decode_no_id_and_malformed ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\integration.rs (target\debug\deps\integration-e1bc3616558daeb6.exe)
+
+running 1 test
+test navigate_and_extract ... ignored, requires a real CDP browser; set RUN_CDP_INTEGRATION=1
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\kuaishou_identity.rs (target\debug\deps\kuaishou_identity-df545874582f6057.exe)
+
+running 6 tests
+test reader::tests::aggregates_all_targets_without_arbitrary_account_selection ... ok
+test reader::tests::exact_https_origin ... ok
+test reader::tests::strict_decode_no_id_and_malformed ... ok
+test no_shop_no_id_and_js_error_are_distinct ... ok
+test identity_reads_each_bound_target_without_active_or_navigation_side_effects ... ok
+test moved_origin_cancel_and_task_lock_wait_are_errors_not_success ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
+
+     Running tests\page_binding.rs (target\debug\deps\page_binding-9b8e15d1a6b6ad90.exe)
+
+running 6 tests
+test task_page_creation_failure_does_not_change_active_or_retry ... ok
+test missing_and_closed_targets_never_fall_back ... ok
+test bound_navigation_deadline_does_not_redirect_to_active_page ... ok
+test task_page_creation_preserves_legacy_selection ... ok
+test two_bindings_stay_on_target_after_active_switch ... ok
+test bound_errors_propagate_and_legacy_input_policy_is_preserved ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.40s
+
+     Running tests\raw_cdp.rs (target\debug\deps\raw_cdp-6fe7d26cac377339.exe)
+
+running 1 test
+test session_module_exposes_raw_cdp_entrypoint ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\safe_cdp.rs (target\debug\deps\safe_cdp-1b4ddbeccdfa6eb8.exe)
+
+running 6 tests
+test cft_allows_all ... ok
+test cloak_allows_on_cft_engine ... ok
+test cloak_rejects_risky_domains ... ok
+test refcount_disable_only_when_reaches_zero ... ok
+test refcount_second_enable_returns_false ... ok
+test refcount_first_enable_returns_true ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\scripts.rs (target\debug\deps\scripts-1e0c677a98683057.exe)
+
+running 3 tests
+test webrtc_block_script_disables_rtp ... ok
+test preload_script_overrides_platform_and_webgl ... ok
+test webrtc_spoof_script_includes_ip ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\task_control.rs (target\debug\deps\task_control-66448d224ce711b5.exe)
+
+running 15 tests
+test aborting_owner_releases_lease_and_dropping_action_poison_prevents_reuse ... ok
+test bindings_share_one_queue_release_and_drop_unlock ... ok
+test pre_cancelled_and_zero_deadline_do_not_dispatch_any_action ... ok
+test cancellation_interrupts_selector_sleep_and_pending_evaluation ... ok
+test queued_target_is_revalidated_after_closure_and_failures_never_fallback ... ok
+test selector_js_cdp_payload_and_option_errors_fail_without_polling_again ... ok
+test cancelling_in_flight_input_does_not_dispatch_release_or_later_keys ... ok
+test direct_evaluate_cancel_retains_lock_until_release_and_dropped_queue_is_safe ... ok
+test cancellation_wins_when_lock_and_cancel_are_both_ready ... ok
+test different_targets_and_sessions_run_independently_with_real_wire_routing ... ok
+test selector_states_poll_scripted_observations_on_bound_target ... ok
+test queued_cancellation_and_timeout_do_not_acquire_or_steal_lock ... ok
+test all_controlled_operations_preserve_target_and_legacy_selection ... ok
+test selector_deadline_covers_sleep_and_slow_evaluate_and_poison_is_sticky ... ok
+test slow_evaluate_and_navigation_use_typed_whole_operation_deadlines ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s
+
+   Doc-tests cdp_driver
+
+running 1 test
+test crates\cdp-driver\src\task_page.rs - task_page::TaskPage (line 175) - compile fail ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+

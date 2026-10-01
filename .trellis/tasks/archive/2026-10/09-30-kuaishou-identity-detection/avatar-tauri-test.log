@@ -1,0 +1,41 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.35s
+     Running unittests src\lib.rs (target\debug\deps\tauri_app-18b2b4122bee1041.exe)
+
+running 34 tests
+test driver::identity::extract::tests::exact_https_origin ... ok
+test driver::identity::extract::tests::strict_decode_no_id_and_malformed ... ok
+test token::tests::rejects_non_hex ... ok
+test driver::identity::tests::cached_detected_requires_same_session_and_closed_keeps_history ... ok
+test driver::identity::tests::late_close_reply_does_not_clear_reopened_running_cache ... ok
+test driver::business_tests::commands_are_registered_in_actual_tauri_handler ... ok
+test driver::identity::avatar::tests::only_trusted_https_avatar_urls ... ok
+test driver::identity::avatar::tests::safe_keys_and_image_limits ... ok
+test driver::identity::extract::tests::aggregates_all_targets_without_arbitrary_account_selection ... ok
+test driver::identity::tests::monitor_is_once_only_and_does_not_keep_driver_alive ... ok
+test driver::identity::tests::running_events_have_exact_camel_case_payloads ... ok
+test driver::identity::tests::shared_gate_is_bounded_non_reentrant_and_releases_on_drop ... ok
+test token::tests::creates_new_token_when_missing ... ok
+test token::tests::generated_token_has_256_bits_entropy ... ok
+test commands::business_accounts::tests::command_errors_retain_cause_and_actionable_chinese_context ... ok
+test token::tests::regenerates_when_malformed ... ok
+test driver::identity::tests::tick_scheduling_drops_backlog_rotates_and_stops ... ok
+test registry::tests::same_generation_reuses_slot_and_remove_invalidates_commit ... ok
+test registry::tests::remove_cancels_inflight_attach_without_resurrection ... ok
+test driver::identity::avatar::tests::proxy_policy_uses_launch_snapshot_and_never_falls_back ... ok
+test driver::business_tests::driver_crud_preserves_unbound_records_and_nulls ... ok
+test driver::identity::tests::manual_closed_profile_never_launches_and_avatar_is_db_gated ... ok
+test token::tests::rejects_wrong_length ... ok
+test token::tests::reuses_existing_valid_token ... ok
+test driver::identity::avatar::tests::browser_content_uses_same_hash_cache_without_a_network_route ... ok
+test driver::identity::avatar::tests::cache_rejects_symlink_and_oversized_file ... ok
+test driver::identity::avatar::tests::cache_roundtrip_hash_and_tamper_rejection ... ok
+test driver::identity::avatar::tests::browser_base64_is_bounded_strict_and_raster_only ... ok
+test driver::business_tests::shared_launch_preflight_blocks_both_directions_before_any_spawn_or_mark_opened ... ok
+test driver::business_tests::active_unscoped_directory_snapshot_cannot_be_hidden_by_options_edit ... ok
+test driver::identity::tests::old_attach_failure_rollback_carries_original_slot ... ok
+test driver::identity::tests::launcher_persistence_discards_close_relaunch_and_expired_results ... ok
+test driver::identity::tests::launcher_rejects_old_generation_rollback_after_reopen ... ok
+test driver::business_tests::live_launcher_not_stale_ui_cache_controls_business_writes ... ok
+
+test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+

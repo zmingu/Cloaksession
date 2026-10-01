@@ -1,0 +1,94 @@
+{
+  ".trellis/spec/behavioral/backend/generators.md": {
+    "bytes": 2627,
+    "sha256": "b0a504f46ff97f79d138a8f8ebf5ada4ceace5faa70cbdc0099a3396ec47c061"
+  },
+  ".trellis/spec/behavioral/backend/index.md": {
+    "bytes": 1426,
+    "sha256": "3114cb12c904a4b5bd1c52fea63e61a194e4b790fa6dad371738a1a11669326c"
+  },
+  ".trellis/spec/browser-launcher/backend/chromix.md": {
+    "bytes": 4628,
+    "sha256": "3899b7c55292f683dfe9274f140dfec139c26b679e04e891d709531fd2204253"
+  },
+  ".trellis/spec/browser-launcher/backend/index.md": {
+    "bytes": 2078,
+    "sha256": "8b9366272b67a2c8fe7b0d6a71ef638b1c5cbbaa0ef983b6f87ccb1dc6473fbd"
+  },
+  ".trellis/spec/browser-launcher/backend/lifecycle.md": {
+    "bytes": 5506,
+    "sha256": "eb45e5b7f9223262fe839e2526d9c7b4bc9a818f62b14b14997ffd6d20c73f60"
+  },
+  ".trellis/spec/cdp-driver/backend/index.md": {
+    "bytes": 2053,
+    "sha256": "7a589a55c8ec277c172c1cb4fc1137dab2b9f375dadf4083d7a75efd11446cb0"
+  },
+  ".trellis/spec/cdp-driver/backend/sessions.md": {
+    "bytes": 5664,
+    "sha256": "c5272b98e5f80cd1c9c3130836b88f1733c82e19df26130541fd58c5bda89ac2"
+  },
+  ".trellis/spec/guides/code-reuse-thinking-guide.md": {
+    "bytes": 7381,
+    "sha256": "86fd10dc10916c00309714aa2275234f01b0ad40d21a485d43b3422e7ca79397"
+  },
+  ".trellis/spec/guides/cross-layer-thinking-guide.md": {
+    "bytes": 14979,
+    "sha256": "4c54130c02a7b8bc43f9a012e0837f798f43e2d137d6bc6d7498d2adb0bac3f4"
+  },
+  ".trellis/spec/guides/index.md": {
+    "bytes": 3680,
+    "sha256": "aa45e5d0f245aae0b34677b121f7d083620308b4b87cda929bd134c77d1f61fd"
+  },
+  ".trellis/spec/mcp-server/backend/index.md": {
+    "bytes": 2002,
+    "sha256": "f650979c93861ef17a2b4c1603d1be9cf01c674da520b0d831a8fed6713bfab5"
+  },
+  ".trellis/spec/mcp-server/backend/tools.md": {
+    "bytes": 5077,
+    "sha256": "2abaa5375c3ad34bb98555c9d11927a01e66dace968a9cfa7d36b6157ee61b2d"
+  },
+  ".trellis/spec/mcp-server/backend/transport-security.md": {
+    "bytes": 4373,
+    "sha256": "37cbcb49262c558f32f373069a5d33ff30b0fa539ad86570c867d3bd086e0bd1"
+  },
+  ".trellis/spec/multizen-core/backend/contracts.md": {
+    "bytes": 5358,
+    "sha256": "4c930dc84f572ac90b5b30f17956ecfed5b9f6c65b9565cff97efbd4e586ba10"
+  },
+  ".trellis/spec/multizen-core/backend/index.md": {
+    "bytes": 1735,
+    "sha256": "440f875ba19f57baa22435d8aaf7b6f53d0712d24376b0cbbb2d51e3063cd468"
+  },
+  ".trellis/spec/profile-manager/backend/database-guidelines.md": {
+    "bytes": 5004,
+    "sha256": "f1b199087573702d6186b0a52760998f4078883683d16467afe9889c56e0ede8"
+  },
+  ".trellis/spec/profile-manager/backend/index.md": {
+    "bytes": 1801,
+    "sha256": "0917366c52788ea2d674e21e83e34bab08b3f96437963723cbfb5ad22eef65bd"
+  },
+  ".trellis/spec/settings-store/backend/index.md": {
+    "bytes": 1505,
+    "sha256": "1889c52092c5eb4af96bf84a9fe144c6b69362419332f53e23d9396439e38e5a"
+  },
+  ".trellis/spec/settings-store/backend/persistence.md": {
+    "bytes": 3698,
+    "sha256": "187fc8cee1976803a96d33e2e61f78f3a0db9f700850772865dcbda366a25a4e"
+  },
+  ".trellis/spec/tauri-app/backend/index.md": {
+    "bytes": 1824,
+    "sha256": "08dc769d4174b2540bc803f83f8a4186f60d490977eb7d1cceff2a60c2d1e994"
+  },
+  ".trellis/spec/tauri-app/backend/ipc.md": {
+    "bytes": 6526,
+    "sha256": "33c33ec90b88c4b5be182b519af9deb8b3ebddd809228c822f3a0542d39ea70d"
+  },
+  ".trellis/spec/tauri-app/backend/resources.md": {
+    "bytes": 5740,
+    "sha256": "2b02586ab45af5791fdd6f2bdf777ccda562c30e1575e38435d28f52ea8a945d"
+  },
+  ".trellis/spec/tauri-app/backend/runtime.md": {
+    "bytes": 5396,
+    "sha256": "31458f05f3e86c26545fbb32f9d9b7bdec50ffb97bdc9305b7ee19d15cdc5c1b"
+  }
+}

@@ -1,0 +1,504 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.35s
+     Running unittests src\lib.rs (target\debug\deps\behavioral-c6d91e51edc27b19.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\keyboard.rs (target\debug\deps\keyboard-797d5d56477252a4.exe)
+
+running 4 tests
+test delays_are_reasonable_human_range ... ok
+test one_delay_per_char ... ok
+test deterministic_for_same_seed ... ok
+test space_and_punctuation_slow_down ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\mouse.rs (target\debug\deps\mouse-d127b54d6c348eb7.exe)
+
+running 4 tests
+test different_seeds_yield_different_paths ... ok
+test path_is_deterministic_for_same_seed ... ok
+test path_points_progress_monotonically_toward_target ... ok
+test path_starts_near_from_ends_at_to ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\scroll.rs (target\debug\deps\scroll-60f1963444482b9e.exe)
+
+running 3 tests
+test steps_sum_to_delta ... ok
+test deterministic ... ok
+test no_single_step_dominates ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\lib.rs (target\debug\deps\browser_launcher-90e60e695b2a506b.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\args.rs (target\debug\deps\args-73eb5be777c22d7c.exe)
+
+running 14 tests
+test cft_engine_preserves_custom_user_agent ... ok
+test chromix_args_do_not_inherit_cloak_fingerprint_or_proxy_policy ... ok
+test base_args_always_present ... ok
+test cloak_storage_quota_preserves_custom_values_in_bytes ... ok
+test cloak_engine_adds_fingerprint_flags ... ok
+test cft_engine_adds_user_agent_and_test_type ... ok
+test cloak_storage_quota_unset_or_zero_uses_engine_default ... ok
+test geo_coords_add_fingerprint_location_and_webrtc_ip ... ok
+test proxy_adds_bridge_url_and_dns_flags ... ok
+test cloak_engine_passes_custom_user_agent ... ok
+test cloak_fingerprint_args_include_gpu_and_storage ... ok
+test device_memory_api_value_clamps ... ok
+test fingerprint_seed_is_5_digit_numeric ... ok
+test cloak_default_storage_quota_is_two_gb ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\business_guard.rs (target\debug\deps\business_guard-411d147b361e6782.exe)
+
+running 5 tests
+test unbound_reservation_still_protects_directory_and_legacy_engine_roots ... ok
+test global_override_is_checked_with_actual_per_profile_shallow_merge ... ok
+test ordinary_profiles_keep_path_behavior_without_any_jinniu_scope ... ok
+test binding_conflict_and_patch_conflict_leave_database_unchanged ... ok
+test conflict_is_bidirectional_even_against_unscoped_profiles ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+     Running tests\chromix.rs (target\debug\deps\chromix-3f894858fcf65b44.exe)
+
+running 7 tests
+test fixture_import_handles_canonical_and_url_sensitive_paths ... ok
+test missing_runtime_and_legacy_launch_have_actionable_errors ... ok
+fake SDK log goes to stderr
+fake SDK log goes to stderr
+test persistent_launch_preserves_options_and_keeps_secrets_off_argv ... ok
+fake SDK log goes to stderr
+fake SDK log goes to stderr
+test sdk_failure_never_marks_the_profile_running_or_opened ... ok
+fake SDK log goes to stderr
+test cancelling_startup_closes_the_inflight_sdk_context ... ok
+test browser_exit_updates_liveness_and_override_profile_dir_is_respected ... ok
+test running_registry_waits_for_the_ready_handshake ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.40s
+
+     Running tests\data_dir.rs (target\debug\deps\data_dir-0a8632a0bf7b22f7.exe)
+
+running 5 tests
+test windows_case_slashes_extended_and_dotdot_are_same_identity ... ok
+test nearest_existing_parent_dotdot_and_component_boundaries ... ok
+test symlink_or_junction_alias_and_missing_suffix_are_resolved ... ok
+test default_and_real_shallow_merged_overrides ... ok
+test nested_and_raw_directory_overrides_are_not_silently_ignored ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests\driver.rs (target\debug\deps\driver-5d7d726fa335bfa3.exe)
+
+running 1 test
+test launch_and_close_round_trip ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\proxy_geo.rs (target\debug\deps\proxy_geo-73f28b642061e316.exe)
+
+running 5 tests
+test parse_drops_non_number_lat_lon ... ok
+test parse_handles_error_field ... ok
+test parse_rejects_missing_country ... ok
+test parse_rejects_missing_timezone ... ok
+test parse_valid_response ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\socks5_bridge.rs (target\debug\deps\socks5_bridge-af5b301da98d9bd1.exe)
+
+running 3 tests
+test bridge_rejects_unsupported_address_type ... ok
+test bridge_rejects_unsupported_command ... ok
+test bridge_accepts_greeting_and_replies_no_auth ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests\version.rs (target\debug\deps\version-b001cf12f70d8a63.exe)
+
+running 5 tests
+test clean_singleton_locks_removes_dead_pid_links ... ok
+test has_restorable_session_false_on_empty ... ok
+test has_restorable_session_true_with_sessions ... ok
+test ensure_session_restore_is_atomic ... ok
+test ensure_session_restore_writes_preferences ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\version_detect.rs (target\debug\deps\version_detect-f61c672791157ea7.exe)
+
+running 7 tests
+test parses_cft_version_line ... ok
+test preserves_explicit_custom_user_agent ... ok
+test parses_chrome_version_line ... ok
+test preserves_explicit_standard_chrome_user_agent_when_hints_do_not_match ... ok
+test returns_none_on_garbage ... ok
+test synchronizes_generated_chrome_version_without_starting_browser ... ok
+test resynchronizes_a_previously_managed_chrome_version ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\lib.rs (target\debug\deps\cdp_driver-e9a21adabe6d6026.exe)
+
+running 3 tests
+test task_page::tests::selector_states_and_json_escaping ... ok
+test task_page::tests::cancellation_is_sticky_and_wakes_all_clones ... ok
+test task_page::tests::weak_lock_table_reuses_live_locks_and_prunes_dead_targets ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\a11y.rs (target\debug\deps\a11y-f699b4953d159b28.exe)
+
+running 3 tests
+test respects_max_nodes ... ok
+test drops_ignored_node ... ok
+test keeps_named_button ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\integration.rs (target\debug\deps\integration-455b731f81b8b962.exe)
+
+running 1 test
+test navigate_and_extract ... ignored, requires a real CDP browser; set RUN_CDP_INTEGRATION=1
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\page_binding.rs (target\debug\deps\page_binding-4087940d4c2e70ef.exe)
+
+running 6 tests
+test task_page_creation_failure_does_not_change_active_or_retry ... ok
+test missing_and_closed_targets_never_fall_back ... ok
+test bound_navigation_deadline_does_not_redirect_to_active_page ... ok
+test task_page_creation_preserves_legacy_selection ... ok
+test two_bindings_stay_on_target_after_active_switch ... ok
+test bound_errors_propagate_and_legacy_input_policy_is_preserved ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.40s
+
+     Running tests\raw_cdp.rs (target\debug\deps\raw_cdp-a91c5c5f34360124.exe)
+
+running 1 test
+test session_module_exposes_raw_cdp_entrypoint ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\safe_cdp.rs (target\debug\deps\safe_cdp-6a1daa982cfb299c.exe)
+
+running 6 tests
+test cft_allows_all ... ok
+test cloak_allows_on_cft_engine ... ok
+test refcount_first_enable_returns_true ... ok
+test refcount_disable_only_when_reaches_zero ... ok
+test cloak_rejects_risky_domains ... ok
+test refcount_second_enable_returns_false ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\scripts.rs (target\debug\deps\scripts-dd61c2e94ada38e5.exe)
+
+running 3 tests
+test webrtc_spoof_script_includes_ip ... ok
+test preload_script_overrides_platform_and_webgl ... ok
+test webrtc_block_script_disables_rtp ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\task_control.rs (target\debug\deps\task_control-70633584fa6dcd18.exe)
+
+running 15 tests
+test pre_cancelled_and_zero_deadline_do_not_dispatch_any_action ... ok
+test cancellation_wins_when_lock_and_cancel_are_both_ready ... ok
+test direct_evaluate_cancel_retains_lock_until_release_and_dropped_queue_is_safe ... ok
+test bindings_share_one_queue_release_and_drop_unlock ... ok
+test aborting_owner_releases_lease_and_dropping_action_poison_prevents_reuse ... ok
+test selector_js_cdp_payload_and_option_errors_fail_without_polling_again ... ok
+test queued_target_is_revalidated_after_closure_and_failures_never_fallback ... ok
+test cancellation_interrupts_selector_sleep_and_pending_evaluation ... ok
+test cancelling_in_flight_input_does_not_dispatch_release_or_later_keys ... ok
+test different_targets_and_sessions_run_independently_with_real_wire_routing ... ok
+test selector_states_poll_scripted_observations_on_bound_target ... ok
+test queued_cancellation_and_timeout_do_not_acquire_or_steal_lock ... ok
+test all_controlled_operations_preserve_target_and_legacy_selection ... ok
+test slow_evaluate_and_navigation_use_typed_whole_operation_deadlines ... ok
+test selector_deadline_covers_sleep_and_slow_evaluate_and_poison_is_sticky ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
+
+     Running unittests src\lib.rs (target\debug\deps\mcp_server-77ad65244ffca8bc.exe)
+
+running 4 tests
+test token::tests::matches_same ... ok
+test token::tests::rejects_diff_len ... ok
+test token::tests::rejects_diff ... ok
+test token::tests::rejects_empty ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\activity.rs (target\debug\deps\activity-b9b297e995ac0c8e.exe)
+
+running 5 tests
+test sanitize_redacts_proxy_credentials ... ok
+test sanitize_redacts_cookie_values ... ok
+test sanitize_truncates_long_text ... ok
+test log_starts_and_finishes_event ... ok
+test log_caps_at_500 ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\catalog.rs (target\debug\deps\catalog-5cddc995b1503088.exe)
+
+running 1 test
+test raw_cdp_is_hidden_without_explicit_enablement ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\mock_driver.rs (target\debug\deps\mock_driver-8276b0ccb5559422.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\security.rs (target\debug\deps\security-4583b0f8c9d24783.exe)
+
+running 9 tests
+test allows_http_https ... ok
+test assert_safe_url_rejects_tab_obfuscated_file ... ok
+test assert_no_blocked_scheme_in_params_rejects_nested ... ok
+test cdp_allows_navigation ... ok
+test cdp_deny_io_read ... ok
+test blocks_file_scheme ... ok
+test normalize_strips_tab_newline ... ok
+test redacted_proxy_hides_credentials ... ok
+test normalize_strips_leading_control_chars ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\tools.rs (target\debug\deps\tools-f8be4dbe815f7177.exe)
+
+running 20 tests
+test error_json_maps_not_found ... ok
+test error_json_maps_launch_failed ... ok
+test cdp_send_disabled_by_default ... ok
+test click_type_extract_screenshot_run_when_running ... ok
+test cdp_send_blocks_blocked_scheme_in_params ... ok
+test set_cookies_runs ... ok
+test close_profile_works ... ok
+test navigate_calls_driver_and_logs ... ok
+test list_profiles_empty ... ok
+test new_tab_rejects_blocked_scheme ... ok
+test evaluate_js_returns_driver_result ... ok
+test cdp_send_denies_io_read ... ok
+test launch_profile_rejects_unknown ... ok
+test get_cookies_rejects_blocked_url ... ok
+test navigate_rejects_blocked_scheme ... ok
+test list_fingerprint_options_returns_catalogs ... ok
+test list_tabs_runs ... ok
+test navigate_rejects_not_running ... ok
+test create_and_list_and_delete_profile ... ok
+test wait_for_selector_times_out_with_mock ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.49s
+
+     Running tests\transport.rs (target\debug\deps\transport-64e9c5769d5c3e04.exe)
+
+running 6 tests
+test host_allowed_accepts_localhost ... ok
+test host_allowed_rejects_external ... ok
+test parse_bearer_extracts_token ... ok
+test parse_bearer_rejects_missing_prefix ... ok
+test json_rpc_tools_call_dispatches_to_backend ... ok
+test json_rpc_tools_list_returns_mcp_tools ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\lib.rs (target\debug\deps\multizen_core-c77e4378acafc5b7.exe)
+
+running 1 test
+test business::tests::wire_contract_defaults_and_explicit_nulls ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\lib.rs (target\debug\deps\profile_manager-473529345c76d66a.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\business_accounts.rs (target\debug\deps\business_accounts-19a98da3216407e4.exe)
+
+running 8 tests
+test original_schema_migrates_idempotently_and_has_foreign_keys_and_uniques ... ok
+test delete_profile_retains_account_and_cascades_scope ... ok
+test invalid_input_and_nonexistent_profile_leave_no_rows ... ok
+test unique_binding_id_kind_and_platform_errors_are_atomic ... ok
+test new_database_reopen_unbind_retains_cookie_root_and_scope ... ok
+test sql_failure_after_reservation_insert_rolls_back_everything ... ok
+test failed_rebind_update_rolls_back_new_scope_and_preserves_orphan ... ok
+test updates_clear_platform_id_without_replacing_record_and_preserve_created_at ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+
+     Running tests\fingerprint.rs (target\debug\deps\fingerprint-4b585104a70c66fe.exe)
+
+running 2 tests
+test default_is_windows_chrome_us ... ok
+test screen_and_webgl_populated ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\manager.rs (target\debug\deps\manager-5b853062fc938754.exe)
+
+running 17 tests
+test create_and_get_profile ... ok
+test chromix_options_inputs_reject_non_objects ... ok
+test create_legacy_partial_fingerprint_remains_compatible ... ok
+test list_returns_summary_with_running_false ... ok
+test insert_imported_collides_on_existing_id ... ok
+test delete_removes_row_and_data_dir ... ok
+test chromix_options_create_get_list_and_reopen_preserve_arbitrary_json ... ok
+test update_changes_name_and_clears_icon ... ok
+test create_full_fingerprint_json_round_trips_without_loss ... ok
+test mark_opened_sets_last_opened_at ... ok
+test update_persists_custom_user_agent ... ok
+test update_proxy_clears_proxy_country ... ok
+test chromix_options_optional_create_defaults_remain_compatible ... ok
+test old_schema_rows_default_to_empty_and_can_persist_chromix_options ... ok
+test chromix_options_update_replaces_preserves_omitted_and_clears_with_empty_object ... ok
+test old_profile_json_import_defaults_chromix_options_to_empty ... ok
+test chromix_options_profile_json_and_import_round_trip ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+     Running tests\migrate.rs (target\debug\deps\migrate-0b2a14d0590d2da4.exe)
+
+running 4 tests
+test adds_missing_columns_to_old_schema ... ok
+test creates_profiles_table_with_all_columns ... ok
+test is_idempotent ... ok
+test chromix_options_column_defaults_to_json_object_and_rejects_other_types ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\lib.rs (target\debug\deps\settings_store-b73ae003a816d046.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\chromix.rs (target\debug\deps\chromix-db944b1c20334ee0.exe)
+
+running 4 tests
+test profile_options_override_global_values_without_merging_arrays_or_objects ... ok
+test chromix_configuration_requires_objects_and_string_environment_values ... ok
+test old_settings_get_empty_chromix_configuration ... ok
+test chromix_options_survive_reload_without_losing_sdk_fields ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\store.rs (target\debug\deps\store-e7ee7e8504600ec5.exe)
+
+running 5 tests
+test load_returns_defaults_when_file_missing ... ok
+test load_recovers_from_corrupt_json ... ok
+test load_normalizes_invalid_browser_engine ... ok
+test load_clears_empty_browser_binary_path ... ok
+test update_persists_and_caches ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\lib.rs (target\debug\deps\tauri_app-18b2b4122bee1041.exe)
+
+running 12 tests
+test commands::business_accounts::tests::command_errors_retain_cause_and_actionable_chinese_context ... ok
+test token::tests::generated_token_has_256_bits_entropy ... ok
+test token::tests::rejects_non_hex ... ok
+test token::tests::rejects_wrong_length ... ok
+test driver::business_tests::commands_are_registered_in_actual_tauri_handler ... ok
+test token::tests::reuses_existing_valid_token ... ok
+test token::tests::creates_new_token_when_missing ... ok
+test token::tests::regenerates_when_malformed ... ok
+test driver::business_tests::driver_crud_preserves_unbound_records_and_nulls ... ok
+test driver::business_tests::active_unscoped_directory_snapshot_cannot_be_hidden_by_options_edit ... ok
+test driver::business_tests::shared_launch_preflight_blocks_both_directions_before_any_spawn_or_mark_opened ... ok
+test driver::business_tests::live_launcher_not_stale_ui_cache_controls_business_writes ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+     Running unittests src\main.rs (target\debug\deps\tauri_app-6c266a6dd9101638.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\registry_smoke.rs (target\debug\deps\registry_smoke-615d5ab6ba111a41.exe)
+
+running 4 tests
+test about_uses_released_app_version ... ok
+test registry_remove_is_noop_when_absent ... ok
+test registry_ids_empty_initially ... ok
+test registry_get_or_connect_missing_endpoint_errors_cleanly ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 49.91s
+
+   Doc-tests behavioral
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests browser_launcher
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cdp_driver
+
+running 1 test
+test crates\cdp-driver\src\task_page.rs - task_page::TaskPage (line 174) - compile fail ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+   Doc-tests mcp_server
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests multizen_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests profile_manager
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests settings_store
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tauri_app
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

@@ -1,0 +1,41 @@
+{
+  "id": "rust-cdp-page-binding",
+  "name": "rust-cdp-page-binding",
+  "title": "Rust CDP page binding",
+  "description": "Target-bound Rust page operations without changing legacy active-page tools",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": "cdp-driver",
+  "priority": "P2",
+  "creator": "zmingu",
+  "assignee": "zmingu",
+  "createdAt": "2026-09-30",
+  "completedAt": "2026-10-01",
+  "branch": null,
+  "base_branch": null,
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "crates/cdp-driver/src/session.rs",
+    "crates/cdp-driver/src/tools.rs",
+    "crates/cdp-driver/src/lib.rs",
+    "crates/cdp-driver/src/bound_page.rs",
+    "crates/cdp-driver/src/page_ops.rs",
+    "crates/cdp-driver/tests/page_binding.rs",
+    "crates/cdp-driver/Cargo.toml",
+    "Cargo.lock",
+    ".trellis/spec/cdp-driver/backend/index.md",
+    ".trellis/spec/cdp-driver/backend/sessions.md",
+    "crates/browser-launcher/tests/chromix.rs",
+    ".trellis/spec/browser-launcher/backend/chromix.md"
+  ],
+  "notes": "cdp-driver 19 passed/1 ignored、workspace check通过。复审追加Windows fileURL夹具修复和真实Node导入测试；完整workspace --no-fail-fast为157 passed/1 failed/2 ignored，唯一失败为既有chromix.rs userDataDir分隔符断言，未扩域修。未跑真实浏览器、未运行Git、全功能迁移未完成。详见results.md。",
+  "meta": {
+    "approval": "User approved Rust/CDP first batch: 行，开始做吧; no Git; retain Chromix launch bridge"
+  }
+}

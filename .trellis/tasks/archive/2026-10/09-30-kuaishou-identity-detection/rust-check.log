@@ -1,0 +1,8 @@
+    Checking multizen-core v0.1.0 (F:\Cloaksession\crates\multizen-core)
+    Checking profile-manager v0.1.0 (F:\Cloaksession\crates\profile-manager)
+    Checking settings-store v0.1.0 (F:\Cloaksession\crates\settings-store)
+    Checking browser-launcher v0.1.0 (F:\Cloaksession\crates\browser-launcher)
+    Checking cdp-driver v0.1.0 (F:\Cloaksession\crates\cdp-driver)
+    Checking mcp-server v0.1.0 (F:\Cloaksession\crates\mcp-server)
+    Checking tauri-app v1.2.0 (F:\Cloaksession\crates\tauri-app)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.43s

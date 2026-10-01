@@ -1,0 +1,206 @@
+{
+  ".trellis/spec/behavioral/backend/database-guidelines.md": {
+    "bytes": 776,
+    "sha256": "fa04a37014f16acc116e095d97ab02937cc06a0e120c4b96c3b5702f38fb06cb"
+  },
+  ".trellis/spec/behavioral/backend/directory-structure.md": {
+    "bytes": 777,
+    "sha256": "57edf3199e6baca66a782280a52083ef5d8b65ab3c6b436d7efd92410a3f94cc"
+  },
+  ".trellis/spec/behavioral/backend/error-handling.md": {
+    "bytes": 720,
+    "sha256": "f6b4145a8fcdfd8f0006bec6dd9c9b4a7fa69a7bd5f6e0c851dee5db39ea7273"
+  },
+  ".trellis/spec/behavioral/backend/index.md": {
+    "bytes": 1223,
+    "sha256": "e9bbbfbc8141430a8312438a4a360f8b51d9e3bb54c5f08c1a4ca7b51e7fa130"
+  },
+  ".trellis/spec/behavioral/backend/logging-guidelines.md": {
+    "bytes": 717,
+    "sha256": "03a0398c3480af11a5cecf68c025d505b0090f38ede899b78bd85d6ff97752c4"
+  },
+  ".trellis/spec/behavioral/backend/quality-guidelines.md": {
+    "bytes": 747,
+    "sha256": "262fa49d9c4bd29b8490edd0c11ddb8f7e23fd2eb4418c8a388e176aab550357"
+  },
+  ".trellis/spec/browser-launcher/backend/database-guidelines.md": {
+    "bytes": 776,
+    "sha256": "fa04a37014f16acc116e095d97ab02937cc06a0e120c4b96c3b5702f38fb06cb"
+  },
+  ".trellis/spec/browser-launcher/backend/directory-structure.md": {
+    "bytes": 777,
+    "sha256": "57edf3199e6baca66a782280a52083ef5d8b65ab3c6b436d7efd92410a3f94cc"
+  },
+  ".trellis/spec/browser-launcher/backend/error-handling.md": {
+    "bytes": 720,
+    "sha256": "f6b4145a8fcdfd8f0006bec6dd9c9b4a7fa69a7bd5f6e0c851dee5db39ea7273"
+  },
+  ".trellis/spec/browser-launcher/backend/index.md": {
+    "bytes": 1223,
+    "sha256": "e9bbbfbc8141430a8312438a4a360f8b51d9e3bb54c5f08c1a4ca7b51e7fa130"
+  },
+  ".trellis/spec/browser-launcher/backend/logging-guidelines.md": {
+    "bytes": 717,
+    "sha256": "03a0398c3480af11a5cecf68c025d505b0090f38ede899b78bd85d6ff97752c4"
+  },
+  ".trellis/spec/browser-launcher/backend/quality-guidelines.md": {
+    "bytes": 747,
+    "sha256": "262fa49d9c4bd29b8490edd0c11ddb8f7e23fd2eb4418c8a388e176aab550357"
+  },
+  ".trellis/spec/cdp-driver/backend/database-guidelines.md": {
+    "bytes": 776,
+    "sha256": "fa04a37014f16acc116e095d97ab02937cc06a0e120c4b96c3b5702f38fb06cb"
+  },
+  ".trellis/spec/cdp-driver/backend/directory-structure.md": {
+    "bytes": 777,
+    "sha256": "57edf3199e6baca66a782280a52083ef5d8b65ab3c6b436d7efd92410a3f94cc"
+  },
+  ".trellis/spec/cdp-driver/backend/error-handling.md": {
+    "bytes": 720,
+    "sha256": "f6b4145a8fcdfd8f0006bec6dd9c9b4a7fa69a7bd5f6e0c851dee5db39ea7273"
+  },
+  ".trellis/spec/cdp-driver/backend/index.md": {
+    "bytes": 1223,
+    "sha256": "e9bbbfbc8141430a8312438a4a360f8b51d9e3bb54c5f08c1a4ca7b51e7fa130"
+  },
+  ".trellis/spec/cdp-driver/backend/logging-guidelines.md": {
+    "bytes": 717,
+    "sha256": "03a0398c3480af11a5cecf68c025d505b0090f38ede899b78bd85d6ff97752c4"
+  },
+  ".trellis/spec/cdp-driver/backend/quality-guidelines.md": {
+    "bytes": 747,
+    "sha256": "262fa49d9c4bd29b8490edd0c11ddb8f7e23fd2eb4418c8a388e176aab550357"
+  },
+  ".trellis/spec/mcp-server/backend/database-guidelines.md": {
+    "bytes": 776,
+    "sha256": "fa04a37014f16acc116e095d97ab02937cc06a0e120c4b96c3b5702f38fb06cb"
+  },
+  ".trellis/spec/mcp-server/backend/directory-structure.md": {
+    "bytes": 777,
+    "sha256": "57edf3199e6baca66a782280a52083ef5d8b65ab3c6b436d7efd92410a3f94cc"
+  },
+  ".trellis/spec/mcp-server/backend/error-handling.md": {
+    "bytes": 720,
+    "sha256": "f6b4145a8fcdfd8f0006bec6dd9c9b4a7fa69a7bd5f6e0c851dee5db39ea7273"
+  },
+  ".trellis/spec/mcp-server/backend/index.md": {
+    "bytes": 1223,
+    "sha256": "e9bbbfbc8141430a8312438a4a360f8b51d9e3bb54c5f08c1a4ca7b51e7fa130"
+  },
+  ".trellis/spec/mcp-server/backend/logging-guidelines.md": {
+    "bytes": 717,
+    "sha256": "03a0398c3480af11a5cecf68c025d505b0090f38ede899b78bd85d6ff97752c4"
+  },
+  ".trellis/spec/mcp-server/backend/quality-guidelines.md": {
+    "bytes": 747,
+    "sha256": "262fa49d9c4bd29b8490edd0c11ddb8f7e23fd2eb4418c8a388e176aab550357"
+  },
+  ".trellis/spec/multizen-core/backend/database-guidelines.md": {
+    "bytes": 776,
+    "sha256": "fa04a37014f16acc116e095d97ab02937cc06a0e120c4b96c3b5702f38fb06cb"
+  },
+  ".trellis/spec/multizen-core/backend/directory-structure.md": {
+    "bytes": 777,
+    "sha256": "57edf3199e6baca66a782280a52083ef5d8b65ab3c6b436d7efd92410a3f94cc"
+  },
+  ".trellis/spec/multizen-core/backend/error-handling.md": {
+    "bytes": 720,
+    "sha256": "f6b4145a8fcdfd8f0006bec6dd9c9b4a7fa69a7bd5f6e0c851dee5db39ea7273"
+  },
+  ".trellis/spec/multizen-core/backend/index.md": {
+    "bytes": 1223,
+    "sha256": "e9bbbfbc8141430a8312438a4a360f8b51d9e3bb54c5f08c1a4ca7b51e7fa130"
+  },
+  ".trellis/spec/multizen-core/backend/logging-guidelines.md": {
+    "bytes": 717,
+    "sha256": "03a0398c3480af11a5cecf68c025d505b0090f38ede899b78bd85d6ff97752c4"
+  },
+  ".trellis/spec/multizen-core/backend/quality-guidelines.md": {
+    "bytes": 747,
+    "sha256": "262fa49d9c4bd29b8490edd0c11ddb8f7e23fd2eb4418c8a388e176aab550357"
+  },
+  ".trellis/spec/profile-manager/backend/database-guidelines.md": {
+    "bytes": 776,
+    "sha256": "fa04a37014f16acc116e095d97ab02937cc06a0e120c4b96c3b5702f38fb06cb"
+  },
+  ".trellis/spec/profile-manager/backend/directory-structure.md": {
+    "bytes": 777,
+    "sha256": "57edf3199e6baca66a782280a52083ef5d8b65ab3c6b436d7efd92410a3f94cc"
+  },
+  ".trellis/spec/profile-manager/backend/error-handling.md": {
+    "bytes": 720,
+    "sha256": "f6b4145a8fcdfd8f0006bec6dd9c9b4a7fa69a7bd5f6e0c851dee5db39ea7273"
+  },
+  ".trellis/spec/profile-manager/backend/index.md": {
+    "bytes": 1223,
+    "sha256": "e9bbbfbc8141430a8312438a4a360f8b51d9e3bb54c5f08c1a4ca7b51e7fa130"
+  },
+  ".trellis/spec/profile-manager/backend/logging-guidelines.md": {
+    "bytes": 717,
+    "sha256": "03a0398c3480af11a5cecf68c025d505b0090f38ede899b78bd85d6ff97752c4"
+  },
+  ".trellis/spec/profile-manager/backend/quality-guidelines.md": {
+    "bytes": 747,
+    "sha256": "262fa49d9c4bd29b8490edd0c11ddb8f7e23fd2eb4418c8a388e176aab550357"
+  },
+  ".trellis/spec/settings-store/backend/database-guidelines.md": {
+    "bytes": 776,
+    "sha256": "fa04a37014f16acc116e095d97ab02937cc06a0e120c4b96c3b5702f38fb06cb"
+  },
+  ".trellis/spec/settings-store/backend/directory-structure.md": {
+    "bytes": 777,
+    "sha256": "57edf3199e6baca66a782280a52083ef5d8b65ab3c6b436d7efd92410a3f94cc"
+  },
+  ".trellis/spec/settings-store/backend/error-handling.md": {
+    "bytes": 720,
+    "sha256": "f6b4145a8fcdfd8f0006bec6dd9c9b4a7fa69a7bd5f6e0c851dee5db39ea7273"
+  },
+  ".trellis/spec/settings-store/backend/index.md": {
+    "bytes": 1223,
+    "sha256": "e9bbbfbc8141430a8312438a4a360f8b51d9e3bb54c5f08c1a4ca7b51e7fa130"
+  },
+  ".trellis/spec/settings-store/backend/logging-guidelines.md": {
+    "bytes": 717,
+    "sha256": "03a0398c3480af11a5cecf68c025d505b0090f38ede899b78bd85d6ff97752c4"
+  },
+  ".trellis/spec/settings-store/backend/quality-guidelines.md": {
+    "bytes": 747,
+    "sha256": "262fa49d9c4bd29b8490edd0c11ddb8f7e23fd2eb4418c8a388e176aab550357"
+  },
+  ".trellis/spec/tauri-app/backend/database-guidelines.md": {
+    "bytes": 776,
+    "sha256": "fa04a37014f16acc116e095d97ab02937cc06a0e120c4b96c3b5702f38fb06cb"
+  },
+  ".trellis/spec/tauri-app/backend/directory-structure.md": {
+    "bytes": 777,
+    "sha256": "57edf3199e6baca66a782280a52083ef5d8b65ab3c6b436d7efd92410a3f94cc"
+  },
+  ".trellis/spec/tauri-app/backend/error-handling.md": {
+    "bytes": 720,
+    "sha256": "f6b4145a8fcdfd8f0006bec6dd9c9b4a7fa69a7bd5f6e0c851dee5db39ea7273"
+  },
+  ".trellis/spec/tauri-app/backend/index.md": {
+    "bytes": 1223,
+    "sha256": "e9bbbfbc8141430a8312438a4a360f8b51d9e3bb54c5f08c1a4ca7b51e7fa130"
+  },
+  ".trellis/spec/tauri-app/backend/logging-guidelines.md": {
+    "bytes": 717,
+    "sha256": "03a0398c3480af11a5cecf68c025d505b0090f38ede899b78bd85d6ff97752c4"
+  },
+  ".trellis/spec/tauri-app/backend/quality-guidelines.md": {
+    "bytes": 747,
+    "sha256": "262fa49d9c4bd29b8490edd0c11ddb8f7e23fd2eb4418c8a388e176aab550357"
+  },
+  ".trellis/spec/guides/code-reuse-thinking-guide.md": {
+    "bytes": 7381,
+    "sha256": "86fd10dc10916c00309714aa2275234f01b0ad40d21a485d43b3422e7ca79397"
+  },
+  ".trellis/spec/guides/cross-layer-thinking-guide.md": {
+    "bytes": 14979,
+    "sha256": "4c54130c02a7b8bc43f9a012e0837f798f43e2d137d6bc6d7498d2adb0bac3f4"
+  },
+  ".trellis/spec/guides/index.md": {
+    "bytes": 3680,
+    "sha256": "aa45e5d0f245aae0b34677b121f7d083620308b4b87cda929bd134c77d1f61fd"
+  }
+}

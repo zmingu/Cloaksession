@@ -1,0 +1,2 @@
+{"file":".trellis/spec/guides/index.md","reason":"Existing shared thinking guidance; package templates are the output, not authoritative input."}
+{"file":".trellis/tasks/00-bootstrap-guidelines/research/repository-baseline.md","reason":"Evidence map, source precedence, documentation drift, package boundaries, and local-only validation constraints."}

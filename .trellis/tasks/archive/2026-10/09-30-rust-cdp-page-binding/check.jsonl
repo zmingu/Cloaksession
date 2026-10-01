@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/cdp-driver/backend/sessions.md", "reason": "Session and legacy tool contracts"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Share page operations"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Preserve Tauri MCP callers"}
+{"file": ".trellis/tasks/09-30-rust-cdp-page-binding/research/binding-contract.md", "reason": "Confirmed Rust route and chromiumoxide behavior"}
+{"file": ".trellis/spec/browser-launcher/backend/chromix.md", "reason": "Review-authorized Windows test fixture file URL regression; production bridge unchanged"}

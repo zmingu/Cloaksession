@@ -7,16 +7,9 @@
 
 # Trellis / Claude Code local config
 /.claude/
-/.trellis/
 /.pi/
 /.codex/
 /.agents/
-/.snow/
-/crates/tauri-app/.snow/
-/.scratch/
-
-# Local Snow App plugins/userscripts (may reference private webhook config)
-/snow-plugins/
 
 # Planning docs
 /docs/

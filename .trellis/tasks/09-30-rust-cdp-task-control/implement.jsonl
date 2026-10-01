@@ -1,0 +1,3 @@
+{"file":".trellis/spec/cdp-driver/backend/sessions.md","reason":"Preserve fixed-target and legacy contracts"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"Reuse BoundPage and shared CDP fixture"}
+{"file":".trellis/tasks/09-30-rust-cdp-task-control/design.md","reason":"Approved minimal task-control boundary"}

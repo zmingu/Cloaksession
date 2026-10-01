@@ -1,0 +1,96 @@
+   Compiling browser-launcher v0.1.0 (F:\Cloaksession\crates\browser-launcher)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.92s
+     Running unittests src\lib.rs (target\debug\deps\behavioral-c6d91e51edc27b19.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\keyboard.rs (target\debug\deps\keyboard-797d5d56477252a4.exe)
+
+running 4 tests
+test delays_are_reasonable_human_range ... ok
+test space_and_punctuation_slow_down ... ok
+test one_delay_per_char ... ok
+test deterministic_for_same_seed ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\mouse.rs (target\debug\deps\mouse-d127b54d6c348eb7.exe)
+
+running 4 tests
+test different_seeds_yield_different_paths ... ok
+test path_is_deterministic_for_same_seed ... ok
+test path_points_progress_monotonically_toward_target ... ok
+test path_starts_near_from_ends_at_to ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\scroll.rs (target\debug\deps\scroll-60f1963444482b9e.exe)
+
+running 3 tests
+test deterministic ... ok
+test no_single_step_dominates ... ok
+test steps_sum_to_delta ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\lib.rs (target\debug\deps\browser_launcher-90e60e695b2a506b.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\args.rs (target\debug\deps\args-73eb5be777c22d7c.exe)
+
+running 14 tests
+test cft_engine_preserves_custom_user_agent ... ok
+test cft_engine_adds_user_agent_and_test_type ... ok
+test cloak_fingerprint_args_include_gpu_and_storage ... ok
+test base_args_always_present ... ok
+test cloak_engine_adds_fingerprint_flags ... ok
+test cloak_storage_quota_preserves_custom_values_in_bytes ... ok
+test device_memory_api_value_clamps ... ok
+test geo_coords_add_fingerprint_location_and_webrtc_ip ... ok
+test cloak_default_storage_quota_is_two_gb ... ok
+test cloak_storage_quota_unset_or_zero_uses_engine_default ... ok
+test cloak_engine_passes_custom_user_agent ... ok
+test fingerprint_seed_is_5_digit_numeric ... ok
+test chromix_args_do_not_inherit_cloak_fingerprint_or_proxy_policy ... ok
+test proxy_adds_bridge_url_and_dns_flags ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\chromix.rs (target\debug\deps\chromix-3f894858fcf65b44.exe)
+
+running 7 tests
+test fixture_import_handles_canonical_and_url_sensitive_paths ... ok
+test missing_runtime_and_legacy_launch_have_actionable_errors ... ok
+fake SDK log goes to stderr
+test sdk_failure_never_marks_the_profile_running_or_opened ... ok
+fake SDK log goes to stderr
+fake SDK log goes to stderr
+fake SDK log goes to stderr
+fake SDK log goes to stderr
+test cancelling_startup_closes_the_inflight_sdk_context ... ok
+test persistent_launch_preserves_options_and_keeps_secrets_off_argv ... FAILED
+test browser_exit_updates_liveness_and_override_profile_dir_is_respected ... ok
+test running_registry_waits_for_the_ready_handshake ... ok
+
+failures:
+
+---- persistent_launch_preserves_options_and_keeps_secrets_off_argv stdout ----
+
+thread 'persistent_launch_preserves_options_and_keeps_secrets_off_argv' (43072) panicked at crates\browser-launcher\tests\chromix.rs:205:5:
+assertion `left == right` failed
+  left: String("C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\.tmpkyErMz\\profiles\\d1880cb3-da10-42f7-85b6-d0e2c923d711\\engines\\chromix")
+ right: String("C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\.tmpkyErMz\\profiles\\d1880cb3-da10-42f7-85b6-d0e2c923d711\\engines/chromix")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    persistent_launch_preserves_options_and_keeps_secrets_off_argv
+
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.40s
+
+error: test failed, to rerun pass `-p browser-launcher --test chromix`
