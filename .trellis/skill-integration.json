@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "required_states": [
+    "no_task",
+    "planning",
+    "planning-inline",
+    "in_progress",
+    "in_progress-inline"
+  ],
+  "routes": [
+    {
+      "skill": "grilling",
+      "owner": "matt",
+      "mode": "automatic",
+      "phase": "planning",
+      "trigger": "stress-test a plan decision or idea via relentless interview",
+      "artifacts": [".trellis/tasks/<active>/prd.md", ".trellis/tasks/<active>/design.md"],
+      "gate": "before task.py start; deep form of Phase 1.1 not a second interview alongside trellis-brainstorm"
+    },
+    {
+      "skill": "grill-with-docs",
+      "owner": "matt",
+      "mode": "explicit",
+      "phase": "planning",
+      "trigger": "user requests a grilling session that also produces GLOSSARY and ADRs",
+      "artifacts": [".trellis/tasks/<active>/prd.md", ".trellis/tasks/<active>/design.md", ".trellis/tasks/<active>/GLOSSARY.md"],
+      "gate": "before task.py start"
+    },
+    {
+      "skill": "tdd",
+      "owner": "matt",
+      "mode": "automatic",
+      "phase": "implementation",
+      "trigger": "building features or fixing bugs test-first",
+      "artifacts": [".trellis/tasks/<active>/implement.md"],
+      "gate": "trellis-check before commit"
+    },
+    {
+      "skill": "diagnosing-bugs",
+      "owner": "matt",
+      "mode": "automatic",
+      "phase": "implementation",
+      "trigger": "hard bug or regression needing root cause before fix",
+      "artifacts": [".trellis/tasks/<active>/research/"],
+      "gate": "reproduce and confirm root cause before repair"
+    },
+    {
+      "skill": "ui",
+      "owner": "waza",
+      "mode": "automatic",
+      "phase": "implementation",
+      "trigger": "building or restyling UI pages components or typography",
+      "artifacts": [".trellis/tasks/<active>/design.md"],
+      "gate": "visual decision returns to design.md before implementation"
+    },
+    {
+      "skill": "code-review",
+      "owner": "matt",
+      "mode": "automatic",
+      "phase": "review",
+      "trigger": "high-risk diff or pre-merge or pre-release review",
+      "artifacts": [".trellis/tasks/<active>/review-record.md"],
+      "gate": "after trellis-check and before Phase 3.4 commit"
+    }
+  ],
+  "review_order": ["trellis-check", "code-review"],
+  "hook": {
+    "event": "UserPromptSubmit",
+    "command_contains": ["inject-workflow-state.py"],
+    "output_markers": ["workflow-state"]
+  }
+}

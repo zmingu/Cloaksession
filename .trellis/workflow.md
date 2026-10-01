@@ -205,6 +205,7 @@ Load `trellis-brainstorm`; stay in planning.
 Lightweight: `prd.md` can be enough. Complex: finish `prd.md`, `design.md`, and `implement.md`; ask for review before `task.py start`.
 Multi-deliverable scope: consider a parent task plus independently verifiable child tasks; dependencies must be written in child artifacts, not implied by tree position.
 Sub-agent mode: curate `implement.jsonl` and `check.jsonl` as spec/research manifests before start.
+Deep decision route (Matt, optional): for unresolved product/domain decisions, model-invoked `/grilling` or explicit `/grill-with-docs` (which also calls `domain-modeling`) produces `prd.md`/`design.md` plus `GLOSSARY.md`/ADR; use as the deep form of this step, not a second interview alongside `trellis-brainstorm`.
 [/workflow-state:planning]
 
 <!-- Per-turn breadcrumb: shown throughout Phase 1 when codex.dispatch_mode=inline.
@@ -239,6 +240,7 @@ On DeepSeek Harness, role instructions ship as collision-free `trellis-agent-imp
 Flow: `trellis-implement` -> `trellis-check` -> `trellis-update-spec` -> commit (Phase 3.4) -> `/trellis:finish-work`.
 Main-session default: dispatch implement/check sub-agents. Sub-agent self-exemption: if already running as `trellis-implement`, do NOT spawn another `trellis-implement` or `trellis-check`; if already running as `trellis-check`, do NOT spawn another `trellis-check` or `trellis-implement`. Dispatch is main session only.
 Dispatch prompt starts with `Active task: <task path from task.py current>`. Read context: jsonl entries -> `prd.md` -> `design.md if present` -> `implement.md if present`.
+Matt/Waza integrations (automatic, intent-matched, never replace Trellis ownership): test-first behavior/bug work -> `/tdd` (writes `implement.md`); hard bugs/regressions -> `/diagnosing-bugs` (root cause to `research/`, reproduce before fix); UI/visual build or restyle -> `/ui` (decision returns to `design.md`). Independent review: after `trellis-check` and before Phase 3.4 commit, optionally `/code-review` for high-risk diffs (writes `review-record.md`); it never replaces `trellis-check`. Review order: `trellis-check` -> `/code-review` -> `trellis-update-spec` -> commit.
 [/workflow-state:in_progress]
 
 <!-- Per-turn breadcrumb: shown while status='in_progress' when
@@ -299,6 +301,21 @@ When a user request matches one of these intents inside an active task, route fi
 - Repeated debugging -> `trellis-break-loop`; spec updates -> `trellis-update-spec`.
 
 [/codex-inline, Kilo, Antigravity, Devin]
+
+### Skill Routing
+
+Project-local Matt/Waza integrations. Most are automatic (model-invoked, intent-matched); `/grill-with-docs` is explicit (user-invoked). `/code-review` never replaces `trellis-check`; `/grilling` / `/grill-with-docs` are the deep form of Phase 1.1, not a second interview alongside `trellis-brainstorm`.
+
+| User intent | Action | Trellis handoff |
+|---|---|---|
+| Stress-test a plan or decision | `/grilling` (Matt) | Deep Phase 1.1 route; writes `prd.md`/`design.md`; before `task.py start` |
+| Deep interview with GLOSSARY + ADRs | `/grill-with-docs` (Matt, explicit) | Writes `prd.md`/`design.md` + `GLOSSARY.md`/ADR; before `task.py start` |
+| Test-first feature or bug work | `/tdd` (Matt) | Writes `implement.md`; `trellis-check` before commit |
+| Hard bug or regression | `/diagnosing-bugs` (Matt) | Root cause to `research/`; reproduce before fix |
+| Build or restyle UI / pages / components | `/ui` (Waza) | Decision returns to `design.md` |
+| High-risk diff or pre-merge review | `/code-review` (Matt) | After `trellis-check`, before Phase 3.4 commit; `review-record.md` |
+
+Review order: `trellis-check` first, then `/code-review` for selected risk, then `trellis-update-spec` and commit.
 
 ### Guardrails
 
