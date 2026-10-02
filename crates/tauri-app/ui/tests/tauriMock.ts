@@ -95,6 +95,11 @@ export async function installTauriMock(page: Page, initial: AppSettings = defaul
               return next;
             }
             case "kuaishou_identity_list": return []; // No observed identity in the base UI fixture.
+            case "kuaishou_subject_list": return { items: [], total: 0, offset: args.query.offset, limit: args.query.limit };
+            case "kuaishou_subject_detail": return null;
+            case "kuaishou_init_steps": return [];
+            case "kuaishou_ocr_availability": return { available: false, message: "本地测试未启用 OCR" };
+            // Write-capable initialization commands deliberately remain unhandled here.
             case "activity_recent": return [];
             case "update_status":
             case "update_check": return { kind: "idle" };

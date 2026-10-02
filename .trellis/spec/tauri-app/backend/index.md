@@ -6,6 +6,7 @@ Owns desktop startup/state, launcher-thread integration, IPC/events, embedded MC
 
 - [Runtime ownership and lifecycle](./runtime.md)
 - [Kuaishou read-only identity, polling and avatar contract](./kuaishou-identity.md)
+- [Kuaishou initialization, concurrency and archive contract](./kuaishou-initialization.md)
 - [IPC, events, and verification](./ipc.md)
 - [Archives, extensions, and updates](./resources.md)
 

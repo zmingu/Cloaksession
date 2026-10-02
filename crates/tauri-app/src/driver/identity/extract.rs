@@ -281,6 +281,39 @@ pub(super) async fn detect_with_avatar_target(
     session: &BrowserSession,
     cancel: TaskCancel,
 ) -> Result<(Detection, Option<String>), String> {
+    detect_targets(session, cancel, None).await
+}
+
+/// The supplied lease is read directly, never reacquired or omitted from identity
+/// verification. Every other shop target is still checked for conflicts/errors.
+/// This is initialization's live check while its shared profile reservation keeps
+/// the ordinary monitor from contending on the same cooperative TaskPage lock.
+pub(super) async fn verify_initialization_identity(
+    session: &BrowserSession,
+    owned: &mut cdp_driver::TaskPage<'_>,
+    expected: &str,
+    cancel: TaskCancel,
+) -> Result<(), String> {
+    let before = decode(owned.evaluate(EXTRACTOR, READ_WAIT).await.map_err(|_| "任务页身份读取失败".to_string())?)?;
+    let (peers, _) = detect_targets(session, cancel, Some(owned.target_id())).await?;
+    verify_owned_and_peers(&before, peers, expected)?;
+    let after = decode(owned.evaluate(EXTRACTOR, READ_WAIT).await.map_err(|_| "任务页身份回读失败".to_string())?)?;
+    if after.platform_user_id.as_deref() != Some(expected) { return Err("任务页账号已变化".into()); }
+    Ok(())
+}
+fn verify_owned_and_peers(owned: &PageIdentity, peers: Detection, expected: &str) -> Result<(), String> {
+    if owned.platform_user_id.as_deref() != Some(expected) { return Err("任务页账号已变化".into()); }
+    match peers {
+        Detection::NoPage | Detection::NoId => Ok(()), // owned page supplies the positive identity evidence
+        Detection::Found(peer) if peer.platform_user_id.as_deref() == Some(expected) => Ok(()),
+        _ => Err("其他小店页面身份冲突，已拒绝初始化".into()),
+    }
+}
+async fn detect_targets(
+    session: &BrowserSession,
+    cancel: TaskCancel,
+    already_leased: Option<&str>,
+) -> Result<(Detection, Option<String>), String> {
     let pages = session
         .browser
         .pages()
@@ -291,6 +324,7 @@ pub(super) async fn detect_with_avatar_target(
         if cancel.is_cancelled() {
             return Err("环境检测已取消".into());
         }
+        if already_leased == Some(page.target_id().as_ref()) { continue; }
         let url = page
             .url()
             .await
@@ -298,7 +332,7 @@ pub(super) async fn detect_with_avatar_target(
         if !url.as_deref().is_some_and(shop_url) {
             continue;
         }
-        if observations.len() >= 16 {
+        if observations.len() >= 16 - usize::from(already_leased.is_some()) {
             return Err("小店页面过多，无法在有界检测内确认身份".into());
         }
         let mut task = session
@@ -328,6 +362,16 @@ mod tests {
     use serde_json::json;
     fn page(id: Option<&str>) -> PageIdentity {
         decode(json!({"url":"https://s.kwaixiaodian.com/zone/home","platformUserId":id,"nickname":"N","avatarUrl":null})).unwrap()
+    }
+    #[test]
+    fn initialization_checks_owned_identity_and_all_peer_conflicts() {
+        let owned = page(Some("12345"));
+        assert!(verify_owned_and_peers(&owned, Detection::NoPage, "12345").is_ok());
+        assert!(verify_owned_and_peers(&owned, combine(vec![page(None), page(Some("12345"))]), "12345").is_ok());
+        assert!(verify_owned_and_peers(&owned, combine(vec![page(Some("23456"))]), "12345").is_err());
+        assert!(verify_owned_and_peers(&owned, combine(vec![page(Some("12345")), page(Some("23456"))]), "12345").is_err());
+        assert!(verify_owned_and_peers(&page(None), Detection::Found(owned.clone()), "12345").is_err());
+        assert!(verify_owned_and_peers(&page(Some("23456")), Detection::Found(owned), "12345").is_err());
     }
     #[test]
     fn exact_https_origin() {

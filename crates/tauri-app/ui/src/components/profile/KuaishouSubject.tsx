@@ -4,7 +4,7 @@ import { kuaishouSubject, canConfirm, subjectCopy, validationLabels, type Kuaish
 import { useKuaishouIdentity } from "../../lib/KuaishouIdentityProvider";
 
 const stateLabels = { pending: "待执行", running: "执行中", done: "已完成", failed: "未完成" };
-const errorLabels: Record<string, string> = { "interrupted-needs-verification": "上次中断，需重新验证", "context-changed": "账号或会话已改变", "timed-out": "执行超时", "page-unsupported": "页面结构不支持", "attachment-unavailable": "照片不可用", "ocr-unavailable": "中文 OCR 不可用", "ocr-failed": "识别失败", "validation-failed": "自动校验未通过", "persistence-unverified": "平台保存尚未验证" };
+const errorLabels: Record<string, string> = { "interrupted-needs-verification": "上次中断，需重新验证", "context-changed": "账号或会话已改变", "timed-out": "执行超时", "page-unsupported": "页面结构不支持", "page-crashed": "浏览器页面已崩溃并重建", "attachment-unavailable": "照片不可用", "ocr-unavailable": "中文 OCR 不可用", "ocr-failed": "识别失败", "validation-failed": "自动校验未通过", "persistence-unverified": "平台保存尚未验证" };
 export function InitSteps({ steps }: { steps: KuaishouInitStepRecord[] }): JSX.Element {
   return <div aria-label="持久初始化状态" className="space-y-1">
     {(["subject", "slice"] as const).map(key => {
@@ -33,11 +33,19 @@ export function InitSummary({ platformUserId, observation }: { platformUserId: s
 function SubjectPhoto({ attachmentKey, index }: { attachmentKey: string; index: number }): JSX.Element {
   const [src, setSrc] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const request = useRef<{ key: string; promise: Promise<string> } | null>(null);
   useEffect(() => {
     let active = true;
     setSrc(null);
     setFailed(false);
-    void kuaishouSubject.attachment(attachmentKey).then(value => { if (active) setSrc(value); }, () => { if (active) setFailed(true); });
+    // StrictMode replays setup/cleanup on the same instance. Reuse the request,
+    // not its old subscription; the replay's subscription must receive the result.
+    // No global document cache: explicit refresh remounts this component via
+    // photoVersion, and closing the panel releases this instance and its promise.
+    if (!request.current || request.current.key !== attachmentKey) {
+      request.current = { key: attachmentKey, promise: kuaishouSubject.attachment(attachmentKey) };
+    }
+    void request.current.promise.then(value => { if (active) setSrc(value); }, () => { if (active) setFailed(true); });
     return () => { active = false; };
   }, [attachmentKey]);
   return <figure className="min-w-0 rounded-lg border border-white/10 p-2">
@@ -49,7 +57,7 @@ function SubjectPhoto({ attachmentKey, index }: { attachmentKey: string; index: 
 export function InitRetry({ profileId, disabled, onRetry }: { profileId: string; disabled: boolean; onRetry: () => Promise<void> }): JSX.Element {
   const identity = useKuaishouIdentity(profileId);
   return <div className="space-y-2 rounded-lg border border-amber-400/20 p-3">
-    <p className="text-xs text-amber-200">执行会读取主体资料，并关闭切片全自动发布的四项主权限（平台写操作）。当前版本不会自动执行，只在点击后运行一次；只做未完成项，不重置已完成项；后端重新核对当前账号和会话。</p>
+    <p className="text-xs text-amber-200">执行会读取主体资料，并关闭切片全自动发布的四项主权限（平台写操作）。检测到有效账号后，后台自动执行未完成项并在失败后有限重试；此按钮用于手动补做，不重置已完成项；后端重新核对当前账号和会话。</p>
     <Button disabled={disabled || !identity.current || !identity.running} onClick={() => void onRetry()}>执行 / 补做初始化</Button>
     {(!identity.current || !identity.running) && <p className="text-xs text-slate-400">需运行中的环境与新鲜身份；重新检测仅为只读检测。</p>}
   </div>;
@@ -63,6 +71,7 @@ export function SubjectPanel({ platformUserId, profileId }: { platformUserId: st
   const [card, setCard] = useState("");
   const [busy, setBusy] = useState(true);
   const [message, setMessage] = useState("");
+  const [photoVersion, setPhotoVersion] = useState(0);
   const [ocr, setOcr] = useState<{ available: boolean; message: string } | null>(null);
   const alive = useRef(false);
   const lock = useRef(false);
@@ -76,6 +85,7 @@ export function SubjectPanel({ platformUserId, profileId }: { platformUserId: st
     const [d, s] = await Promise.all([kuaishouSubject.detail(platformUserId), kuaishouSubject.steps(platformUserId)]);
     if (!alive.current || ticket !== version.current) return;
     setDetail(d); setSteps(s); setName(d?.archive.realName ?? ""); setCard(d?.archive.idCard ?? "");
+    setPhotoVersion(value => value + 1); // Explicit refresh retries failed reads of unchanged immutable keys.
   }
   useEffect(() => {
     alive.current = true;
@@ -129,7 +139,7 @@ export function SubjectPanel({ platformUserId, profileId }: { platformUserId: st
       <p data-testid="subject-review" className={a.reviewStatus === "confirmed" ? "text-emerald-300" : "text-amber-200"}>{a.reviewStatus === "confirmed" ? "已核对" : "待核对（未核对）"} · 版本 {a.revision}</p>
       <p>来源：{{ "main-tab": "主体信息明文", "talent-tab-plaintext": "达人主体明文", ocr: "本地 OCR" }[a.source]} · 更新 {a.updatedAt}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {a.attachments.map((attachment, index) => <SubjectPhoto key={`${platformUserId}:${attachment.key}`} attachmentKey={attachment.key} index={index} />)}
+        {a.attachments.map((attachment, index) => <SubjectPhoto key={`${platformUserId}:${attachment.key}:${photoVersion}`} attachmentKey={attachment.key} index={index} />)}
       </div>
       {!a.attachments.length && <p className="text-amber-200">尚无可用照片，不能确认。</p>}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -263,6 +263,10 @@ async fn serve(mut ws: WebSocketStream<TcpStream>, state: Arc<Mutex<State>>) {
                 .await;
                 response["result"] = json!({"success":true});
             }
+            "Target.getTargets" => {
+                response["result"] = json!({"targetInfos": pages.iter()
+                    .map(|(id, url)| info(id, url)).collect::<Vec<_>>()});
+            }
             "Page.getFrameTree" => {
                 response["result"] =
                     json!({"frameTree":{"frame":frame(target,&pages[target],"initial")}});

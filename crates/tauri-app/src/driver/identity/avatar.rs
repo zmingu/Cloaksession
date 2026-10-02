@@ -189,7 +189,7 @@ fn image_type(bytes: &[u8]) -> Option<(&'static str, &'static str)> {
 }
 fn decode_base64_image(content: &str) -> Option<Vec<u8>> {
     // Reject before decoding/allocation, including an encoded size rounded up to 4.
-    if content.is_empty() || content.len() > MAX_BYTES.div_ceil(3) * 4 || content.len() % 4 != 0 {
+    if content.is_empty() || content.len() > MAX_BYTES.div_ceil(3) * 4 || !content.len().is_multiple_of(4) {
         return None;
     }
     let padding = content.bytes().rev().take_while(|&b| b == b'=').count();

@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 import { TopBar } from "./components/screens/TopBar";
 import { LeftRail, type Section } from "./components/screens/LeftRail";
 import { Constellation } from "./components/profile/Constellation";
-import { ProfilesEmptyState } from "./components/profile/EmptyState";
 import { NewProfileSheet } from "./components/profile/NewProfileSheet";
 import { ProfileEditSheet } from "./components/profile/ProfileEditSheet";
 import type { Profile } from "./types";
@@ -414,10 +413,7 @@ export function App(): JSX.Element {
                   }}
                 />
               </Modal>
-              {profiles.length === 0 ? (
-                <ProfilesEmptyState onCreate={() => setShowSheet(true)} />
-              ) : (
-                <Constellation
+              <Constellation
                   profiles={profiles}
                   recentEvents={events}
                   closingIds={closingIds}
@@ -428,7 +424,6 @@ export function App(): JSX.Element {
                   onExport={(id) => setModal({ kind: "export-passphrase", profileId: id })}
                   onDelete={(id) => setModal({ kind: "delete-confirm", profileId: id })}
                 />
-              )}
             </>
           )}
 

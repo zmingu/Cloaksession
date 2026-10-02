@@ -687,15 +687,13 @@ impl BrowserDriver for TauriBrowserDriver {
                         })
                         .await
                         .is_ok()
-                    {
-                        if matches!(receive.await, Ok(Ok(true))) {
+                        && matches!(receive.await, Ok(Ok(true))) {
                             self.registry
                                 .with_absent(profile_id, || {
                                     self.running.lock().unwrap().remove(profile_id);
                                 })
                                 .await;
                         }
-                    }
                 }
                 self.emit(
                     "chromium:status",

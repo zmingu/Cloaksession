@@ -1,4 +1,71 @@
 use super::*;
+#[path = "../../../../cdp-driver/tests/common/mod.rs"]
+mod common;
+
+#[tokio::test]
+async fn initialization_reservation_skips_real_monitor_tick_and_busy_manual_read_never_saves_error() {
+    use crate::driver::business_tests::{fixture, launch_without_cdp};
+    use mcp_server::driver::BrowserDriver;
+    let (_temp, driver) = fixture(multizen_core::ChromixSettings::default());
+    let driver = Arc::new(driver);
+    let profile = driver.create_profile(multizen_core::CreateProfileInput {
+        name: "initialization contention fixture".into(), ..Default::default()
+    }).await.unwrap();
+    let launched = launch_without_cdp(&driver, &profile).await.unwrap();
+    let slot = driver.registry.prepared_slot(&profile.id, &format!("{}:{}", launched.started_at, launched.pid)).await.unwrap();
+    let (peer, session) = common::Peer::connect().await;
+    for target in ["a", "b"] {
+        session.bind_page(target).await.unwrap().navigate("https://s.kwaixiaodian.com/zone/home", 1000).await.unwrap();
+    }
+    let session = Arc::new(session);
+    slot.install_test_session(session.clone());
+    let mut snapshot = Snapshot::empty(&profile.id, Status::Detected);
+    snapshot.platform_user_id = Some("12345".into());
+    snapshot.checked_at = Some(chrono::Utc::now().to_rfc3339());
+    let expected = BusinessProfileState { account: None, scope: None };
+    driver.identity_request(|resp| IdentityCmd::Save {
+        data: Observation { snapshot, session_id: Some(slot.id.clone()), avatar_url: None },
+        expected, slot: slot.clone(), stop: driver.identity.stop.clone(), deadline: Instant::now() + COMMAND_WAIT, resp,
+    }).await.unwrap().unwrap();
+    let reservation = driver.identity.reserve_initialization(&profile.id).unwrap();
+    let mut owned = session.task_page("a", slot.cancel.clone(), Duration::from_secs(1)).await.unwrap();
+    peer.clear();
+    let mut cursor = 0;
+    // This is the same tick dispatcher called by the app monitor. A reserved candidate
+    // never starts the TaskPage detector or produces an Error observation.
+    let candidates = driver.registry.ids().await;
+    assert!(candidates.contains(&profile.id));
+    assert_eq!(driver.identity_monitor_tick(candidates, &mut cursor), 0);
+    assert_eq!(driver.identity.permits.available_permits(), MAX_CONCURRENT);
+    let other = driver.identity.enter("another-profile").unwrap();
+    drop(other);
+    let busy = driver.kuaishou_identity_detect(&profile.id).await;
+    assert_eq!(busy.status, Status::Unknown);
+    let persisted = driver.identity_request(|resp| IdentityCmd::Read { id: profile.id.clone(), resp }).await.unwrap().unwrap().2.unwrap();
+    assert_eq!(persisted.snapshot.status, Status::Detected);
+    assert_eq!(persisted.snapshot.platform_user_id.as_deref(), Some("12345"));
+    assert!(peer.commands().iter().all(|command| command["method"] != "Runtime.evaluate"));
+    let value = |id: &str| common::EvalReply::Value(serde_json::json!({
+        "url": "https://s.kwaixiaodian.com/zone/home", "platformUserId": id,
+        "nickname": null, "avatarUrl": null,
+    }));
+    peer.evaluations(vec![value("12345"), value("12345"), value("12345")]);
+    driver.validate_kuaishou_task_identity(&session, &mut owned, "12345", slot.cancel.clone()).await.unwrap();
+    let evaluations: Vec<_> = peer.commands().into_iter().filter(|command| command["method"] == "Runtime.evaluate").collect();
+    assert_eq!(evaluations.len(), 3); // held target, other target, held target again: no self-reacquisition
+    assert_eq!(evaluations[0]["sessionId"], evaluations[2]["sessionId"]);
+    assert_ne!(evaluations[0]["sessionId"], evaluations[1]["sessionId"]);
+    peer.evaluations(vec![value("12345"), value("23456")]);
+    assert!(driver.validate_kuaishou_task_identity(&session, &mut owned, "12345", slot.cancel.clone()).await.is_err());
+    peer.evaluations(vec![value("23456"), value("12345")]);
+    assert!(driver.validate_kuaishou_task_identity(&session, &mut owned, "12345", slot.cancel.clone()).await.is_err());
+    assert!(peer.commands().iter().all(|command| !matches!(command["method"].as_str(), Some("Page.navigate" | "Target.activateTarget" | "Target.createTarget"))));
+    drop(owned);
+    drop(reservation);
+    assert!(driver.identity.enter(&profile.id).is_some());
+    driver.close(&profile.id).await.unwrap();
+    driver.shutdown().await;
+}
 
 #[test]
 fn running_events_have_exact_camel_case_payloads() {
@@ -356,11 +423,12 @@ async fn monitor_is_once_only_and_does_not_keep_driver_alive() {
         )
         .unwrap(),
     );
-    driver.start_kuaishou_identity_monitor();
-    driver.start_kuaishou_identity_monitor();
+    driver.start_kuaishou_monitors();
+    driver.start_kuaishou_monitors();
     assert!(driver.identity.started.load(Ordering::Acquire));
     let weak = Arc::downgrade(&driver);
     let stop = driver.identity.stop.clone();
+    let init_stop = driver.account_init.stop.clone();
     drop(driver);
     tokio::time::timeout(Duration::from_secs(1), async {
         while weak.upgrade().is_some() {
@@ -370,7 +438,39 @@ async fn monitor_is_once_only_and_does_not_keep_driver_alive() {
     .await
     .unwrap();
     assert!(stop.is_cancelled());
+    assert!(init_stop.is_cancelled());
 }
+#[tokio::test]
+async fn pending_and_granted_initialization_do_not_consume_identity_worker_capacity() {
+    let runtime = Arc::new(IdentityRuntime::new(PathBuf::from("unused-test-cache")));
+    let detector = runtime.enter("a").unwrap();
+    let admission = runtime.reserve_initialization_wait("a");
+    tokio::pin!(admission);
+    poll_pending(admission.as_mut()).await;
+    assert_eq!(runtime.permits.available_permits(), MAX_CONCURRENT - 1);
+    drop(detector);
+    assert!(runtime.enter("a").is_none(), "detector must not overtake the fair waiter");
+    let initialized = tokio::time::timeout(Duration::from_secs(1), admission.as_mut()).await.unwrap().unwrap();
+    assert_eq!(runtime.permits.available_permits(), MAX_CONCURRENT);
+    let others: Vec<_> = ["b", "c", "d", "e"].into_iter().map(|id| runtime.enter(id).unwrap()).collect();
+    assert!(runtime.enter("overflow").is_none());
+    assert!(runtime.enter("a").is_none());
+    drop(others);
+    drop(initialized);
+    assert!(runtime.enter("a").is_some());
+}
+
+#[test]
+fn profile_admission_registry_uses_weak_ownership_and_prunes_idle_entries() {
+    let runtime = Arc::new(IdentityRuntime::new(PathBuf::from("unused-test-cache")));
+    let first = runtime.profile_lock("old");
+    let same = runtime.profile_lock("old");
+    assert!(Arc::ptr_eq(&first, &same));
+    drop(first); drop(same);
+    let _new = runtime.profile_lock("new");
+    assert_eq!(runtime.profile_locks.lock().unwrap().len(), 1);
+}
+
 #[test]
 fn shared_gate_is_bounded_non_reentrant_and_releases_on_drop() {
     let runtime = Arc::new(IdentityRuntime::new(PathBuf::from("unused-test-cache")));

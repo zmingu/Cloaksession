@@ -236,6 +236,7 @@ pub enum KuaishouInitErrorCode {
     ContextChanged,
     TimedOut,
     PageUnsupported,
+    PageCrashed,
     AttachmentUnavailable,
     OcrUnavailable,
     OcrFailed,

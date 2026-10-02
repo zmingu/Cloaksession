@@ -17,7 +17,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
+    Arc, Mutex, Weak,
 };
 use std::time::Duration;
 use tokio::sync::{oneshot, OwnedSemaphorePermit, Semaphore};
@@ -139,6 +139,9 @@ pub(super) struct IdentityRuntime {
     pub stop: TaskCancel,
     started: AtomicBool,
     active: Mutex<HashSet<String>>,
+    // Weak registry: granted permits and queued acquisitions own the live locks.
+    // Tokio's fair semaphore hands a released profile directly to an existing waiter.
+    profile_locks: Mutex<HashMap<String, Weak<Semaphore>>>,
     permits: Arc<Semaphore>,
     retry: Mutex<HashMap<String, Retry>>,
     cache: AvatarCache,
@@ -149,6 +152,7 @@ impl IdentityRuntime {
             stop: TaskCancel::new(),
             started: AtomicBool::new(false),
             active: Mutex::new(HashSet::new()),
+            profile_locks: Mutex::new(HashMap::new()),
             permits: Arc::new(Semaphore::new(MAX_CONCURRENT)),
             retry: Mutex::new(HashMap::new()),
             cache: AvatarCache::new(root),
@@ -164,24 +168,62 @@ impl IdentityRuntime {
         self.retry.lock().unwrap().retain(|id, _| ids.contains(id));
         ids.into_iter().filter_map(|id| self.enter(&id)).collect()
     }
+    fn profile_lock(&self, id: &str) -> Arc<Semaphore> {
+        let mut locks = self.profile_locks.lock().unwrap();
+        locks.retain(|_, lock| lock.strong_count() > 0);
+        if let Some(lock) = locks.get(id).and_then(Weak::upgrade) { return lock; }
+        let lock = Arc::new(Semaphore::new(1));
+        locks.insert(id.into(), Arc::downgrade(&lock));
+        lock
+    }
+    /// Immediate reservation for fixtures; production workers wait fairly below.
+    #[cfg(test)]
+    pub(in crate::driver) fn reserve_initialization(self: &Arc<Self>, id: &str) -> Option<InitializationReservation> {
+        if self.stop.is_cancelled() { return None; }
+        let permit = self.profile_lock(id).try_acquire_owned().ok()?;
+        if !self.active.lock().unwrap().insert(id.into()) { return None; }
+        Some(InitializationReservation { runtime: self.clone(), id: id.into(), _profile: permit })
+    }
+    /// Caller bounds/cancels this wait and reserves its own initialization capacity.
+    /// No global identity permit is consumed. Dropping the future removes its waiter.
+    pub(in crate::driver) async fn reserve_initialization_wait(self: &Arc<Self>, id: &str) -> Option<InitializationReservation> {
+        if self.stop.is_cancelled() { return None; }
+        let permit = self.profile_lock(id).acquire_owned().await.ok()?;
+        if self.stop.is_cancelled() || !self.active.lock().unwrap().insert(id.into()) { return None; }
+        Some(InitializationReservation { runtime: self.clone(), id: id.into(), _profile: permit })
+    }
+    #[cfg(test)]
+    pub(in crate::driver) fn test_hold_detection(self: &Arc<Self>, id: &str) -> Option<impl Send> { self.enter(id) }
     fn enter(self: &Arc<Self>, id: &str) -> Option<Gate> {
         if self.stop.is_cancelled() {
             return None;
         }
         let permit = self.permits.clone().try_acquire_owned().ok()?;
+        // Nonwaiting detection must not overtake a queued initializer on this profile.
+        let profile = self.profile_lock(id).try_acquire_owned().ok()?;
         if !self.active.lock().unwrap().insert(id.into()) {
             return None;
         }
         Some(Gate {
             runtime: self.clone(),
             id: id.into(),
+            _profile: profile,
             _permit: permit,
         })
     }
 }
+pub(in crate::driver) struct InitializationReservation {
+    runtime: Arc<IdentityRuntime>,
+    id: String,
+    _profile: OwnedSemaphorePermit,
+}
+impl Drop for InitializationReservation {
+    fn drop(&mut self) { self.runtime.active.lock().unwrap().remove(&self.id); }
+}
 struct Gate {
     runtime: Arc<IdentityRuntime>,
     id: String,
+    _profile: OwnedSemaphorePermit,
     _permit: OwnedSemaphorePermit,
 }
 impl Drop for Gate {
@@ -603,6 +645,31 @@ impl TauriBrowserDriver {
         }
     }
 
+    pub(super) async fn validate_kuaishou_task_identity(
+        &self,
+        session: &cdp_driver::session::BrowserSession,
+        owned: &mut cdp_driver::TaskPage<'_>,
+        expected: &str,
+        cancel: TaskCancel,
+    ) -> Result<()> {
+        tokio::time::timeout(Duration::from_secs(8), extract::verify_initialization_identity(session, owned, expected, cancel))
+            .await.map_err(|_| MultizenError::Mcp("初始化身份重验超时".into()))?
+            .map_err(MultizenError::Mcp)
+    }
+
+    fn identity_monitor_tick(self: &Arc<Self>, ids: Vec<String>, cursor: &mut usize) -> usize {
+        let gates = self.identity.schedule(ids, cursor);
+        let scheduled = gates.len();
+        for gate in gates {
+            let id = gate.id.clone();
+            let driver = self.clone();
+            tauri::async_runtime::spawn(async move {
+                let _ = tokio::time::timeout(Duration::from_secs(20), driver.identity_detect_guarded(&id, gate)).await;
+            });
+        }
+        scheduled
+    }
+
     /// One app-level poller, weak driver while idle. Each tick drops overflow instead of queueing it.
     pub fn start_kuaishou_identity_monitor(self: &Arc<Self>) {
         if self.identity.started.swap(true, Ordering::AcqRel) {
@@ -620,17 +687,7 @@ impl TauriBrowserDriver {
                     break;
                 };
                 let ids = tokio::select! { biased; _=stop.cancelled()=>break, result=tokio::time::timeout(COMMAND_WAIT,driver.registry.ids())=>match result { Ok(ids)=>ids,Err(_)=>continue } };
-                for gate in driver.identity.schedule(ids, &mut cursor) {
-                    let id = gate.id.clone();
-                    let driver = driver.clone();
-                    tauri::async_runtime::spawn(async move {
-                        let _ = tokio::time::timeout(
-                            Duration::from_secs(20),
-                            driver.identity_detect_guarded(&id, gate),
-                        )
-                        .await;
-                    });
-                }
+                driver.identity_monitor_tick(ids, &mut cursor);
             }
         });
     }

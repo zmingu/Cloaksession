@@ -1,5 +1,9 @@
 //! Typed launcher-thread bridge and local archive operations.
 mod attachments;
+mod cpu;
+mod diagnostics;
+mod lease;
+mod staging;
 mod runtime;
 mod page;
 use super::{LauncherCmd, TauriBrowserDriver};
@@ -85,7 +89,7 @@ impl TauriBrowserDriver {
         for attachment in attachments {
             let (actual, bytes) = self.account_init.cache.read(&attachment.key, deadline).await.map_err(error)?;
             if actual != *attachment { return Err(error("证件附件版本变化")); }
-            match local_ocr::recognize(bytes, deadline).await {
+            match cpu::retry_busy(deadline, || local_ocr::recognize(bytes.clone(), deadline)).await {
                 Ok(output) => { names.extend(output.candidates.names); cards.extend(output.candidates.id_numbers); }
                 Err(local_ocr::OcrError::EmptyRecognition) => {},
                 Err(_) => return Err(error("本地OCR不可用或识别失败，请检查系统中文资源")),

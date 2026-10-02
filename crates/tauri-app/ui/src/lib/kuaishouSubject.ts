@@ -17,7 +17,7 @@ export interface KuaishouSubjectSummary {
   source: SubjectSource; reviewStatus: SubjectReviewStatus; revision: number; updatedAt: string; profiles: KuaishouArchiveProfile[];
 }
 export interface KuaishouSubjectPage { items: KuaishouSubjectSummary[]; total: number; offset: number; limit: number }
-export type KuaishouInitErrorCode = "interrupted-needs-verification" | "context-changed" | "timed-out" | "page-unsupported" | "attachment-unavailable" | "ocr-unavailable" | "ocr-failed" | "validation-failed" | "persistence-unverified";
+export type KuaishouInitErrorCode = "interrupted-needs-verification" | "context-changed" | "timed-out" | "page-unsupported" | "page-crashed" | "attachment-unavailable" | "ocr-unavailable" | "ocr-failed" | "validation-failed" | "persistence-unverified";
 export interface KuaishouInitStepRecord { platformUserId: string; step: "subject" | "slice"; state: "pending" | "running" | "done" | "failed"; attempts: number; nextRetryAt: string | null; lastErrorCode: KuaishouInitErrorCode | null; completedAt: string | null; updatedAt: string }
 export interface KuaishouSubjectDetail { archive: KuaishouSubjectArchive; nickname: string | null; avatarKey: string | null; profiles: KuaishouArchiveProfile[]; steps: KuaishouInitStepRecord[] }
 
@@ -35,6 +35,7 @@ function archive(v: unknown, id: string): KuaishouSubjectArchive {
     || !object(v.validation) || !Object.keys(validationLabels).every(k => ["passed", "failed", "unavailable"].includes(String((v.validation as Record<string, unknown>)[k])))
     || !Array.isArray(v.attachments) || v.attachments.length > 8 || !v.attachments.every(a => object(a) && text(a.key) && /^[a-f0-9]{64}\.(png|jpg|webp)$/.test(a.key) && text(a.sha256) && text(a.mimeType) && [a.byteLen, a.width, a.height].every(integer))
     || !nullable(v.sourceProfileId) || !text(v.createdAt) || !text(v.updatedAt) || !nullable(v.confirmedAt)) throw new Error("主体档案响应无效，请刷新");
+  // SAFETY: every field above is validated (types, enum membership, attachment shape); the runtime object now matches KuaishouSubjectArchive.
   return v as unknown as KuaishouSubjectArchive;
 }
 function steps(v: unknown, id: string): KuaishouInitStepRecord[] {
@@ -52,6 +53,7 @@ export const kuaishouSubject = {
   list: async (search: string, offset: number, limit = 10): Promise<KuaishouSubjectPage> => {
     const v = await invoke<unknown>("kuaishou_subject_list", { query: { search, offset, limit } });
     if (!object(v) || !integer(v.total) || v.offset !== offset || v.limit !== limit || !Array.isArray(v.items) || !v.items.every(s => object(s) && text(s.platformUserId) && text(s.realName) && text(s.maskedIdCard) && nullable(s.nickname) && nullable(s.avatarKey) && source(s.source) && review(s.reviewStatus) && integer(s.revision) && text(s.updatedAt) && association(s.profiles))) throw new Error("档案列表响应无效");
+    // SAFETY: total/offset/limit and every item field are validated above; the value matches KuaishouSubjectPage.
     return v as unknown as KuaishouSubjectPage;
   },
   detail: async (platformUserId: string): Promise<KuaishouSubjectDetail | null> => {

@@ -36,7 +36,9 @@ test("detected cards and rows preserve the profile emoji; details copy only ID a
   await openDetails(page);
   await page.screenshot({ path: testInfo.outputPath("identity-detail.png"), animations: "disabled" });
   await expect(page.getByRole("dialog")).toHaveCount(1);
-  await expect(detail(page)).toContainText("本批未实现主体资料、OCR 或初始化");
+  await expect(detail(page)).toContainText("后台自动补做");
+  await expect(detail(page)).toContainText("下方按钮用于手动补做");
+  await expect(detail(page).getByTestId("subject-panel")).toContainText("暂无主体档案");
   await expect(detail(page)).toContainText("Rust 后台");
   await expect(detail(page)).toContainText("2026-09-30T08:00:00Z");
   await detail(page).getByRole("button", { name: "复制快手ID", exact: true }).click();

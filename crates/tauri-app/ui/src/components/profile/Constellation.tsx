@@ -7,6 +7,8 @@ import { ProfileTable } from "./ProfileTable";
 import { usePersistedState } from "../../lib/persisted";
 import { cn } from "../../lib/cn";
 import { KuaishouIdentityToolbar } from "./KuaishouIdentity";
+import { SubjectArchives } from "./SubjectArchives";
+import { ProfilesEmptyState } from "./EmptyState";
 
 type ViewMode = "grid" | "list";
 
@@ -55,6 +57,7 @@ export function Constellation({
   onExport,
   onDelete,
 }: Props): JSX.Element {
+  const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterChip["id"]>("all");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [viewMode, setViewMode] = usePersistedState<ViewMode>("profilesView", "grid");
@@ -84,9 +87,10 @@ export function Constellation({
     return tileData.filter((t) => {
       if (filter !== "all" && t.state !== filter) return false;
       if (activeTag && !t.tags.includes(activeTag)) return false;
+      if (search.trim() && ![t.name, t.id, ...t.tags].some(value => value.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))) return false;
       return true;
     });
-  }, [tileData, filter, activeTag]);
+  }, [tileData, filter, activeTag, search]);
 
   const aiCount = counts.ai;
 
@@ -212,13 +216,18 @@ export function Constellation({
         )}
       </div>
 
+      <div className="px-6 pb-3">
+        <input aria-label="搜索环境与账号档案" placeholder="搜索环境、姓名、快手ID或身份证号" maxLength={128}
+          value={search} onChange={event => setSearch(event.target.value)} autoComplete="off"
+          className="w-full rounded-lg border border-white/10 bg-white/5 p-2 text-sm text-slate-200" />
+      </div>
       <KuaishouIdentityToolbar />
 
       {/* Body — grid or list. `pt-3` keeps the running/AI glow from
           getting clipped against the top edge of the scroll container
           (box-shadow extends ~32px outside the tile). */}
       <div className="flex-1 overflow-auto px-6 pb-6 pt-3">
-        {filtered.length === 0 ? (
+        {profiles.length === 0 ? <ProfilesEmptyState onCreate={onCreate} /> : filtered.length === 0 ? (
           <div className="text-sm text-slate-500 py-12 text-center">
             No profiles match the current filter.
           </div>
@@ -253,6 +262,8 @@ export function Constellation({
             ))}
           </div>
         )}
+        <SubjectArchives key={search.trim()} search={search.trim()}
+          profilesRevision={JSON.stringify(profiles.map(profile => [profile.id, profile.name]))} />
       </div>
     </div>
   );

@@ -29,6 +29,10 @@ impl SessionSlot {
     pub fn session(&self) -> Option<Arc<BrowserSession>> {
         self.session.get().cloned()
     }
+    #[cfg(test)]
+    pub(crate) fn install_test_session(&self, session: Arc<BrowserSession>) {
+        assert!(self.session.set(session).is_ok(), "fixture slot already initialized");
+    }
 }
 
 pub struct ProfileRegistry {

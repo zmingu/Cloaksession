@@ -331,11 +331,9 @@ pub fn run() {
             // Wire the driver's `AppHandle` so launch/close can emit
             // `profiles:running-changed` / `chromium:status` push events.
             state.driver.set_app(app.handle().clone());
-            state.driver.start_kuaishou_identity_monitor();
-            // The account-init monitor (`start_kuaishou_init_monitor`) is deliberately
-            // NOT started: it performs platform writes (slice permission toggles) whose
-            // save semantics are not yet verified on a real account. Initialization
-            // only runs from the explicit `kuaishou_init_retry` command for now.
+            // Identity starts first; initialization only claims eligible unfinished
+            // steps after fresh account/session/scope checks. Both start once.
+            state.driver.start_kuaishou_monitors();
 
             // Spawn a background task that bridges `ActivityLog`'s broadcast
             // stream to the Tauri frontend via `activity:event`. Every
