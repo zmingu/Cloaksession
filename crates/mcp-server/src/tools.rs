@@ -368,6 +368,7 @@ pub async fn create_profile(
             extensions: None,
             full_fingerprint: None,
             chromix_options: None,
+            group: None,
         };
         let profile = pm.create(input)?;
         let fingerprint_summary = serde_json::json!({
@@ -440,6 +441,7 @@ pub async fn update_profile(
             fingerprint,
             chromix_options: None,
             extensions: None,
+            group: None,
         };
         let profile = pm.update(&args.profile_id, patch)?;
         Ok(serde_json::json!({

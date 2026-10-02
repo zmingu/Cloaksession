@@ -101,7 +101,7 @@ function Body({ status }: { status: ChromiumStatus }): JSX.Element {
   if (status.kind === "missing") {
     return (
       <div className="flex items-center gap-2 text-[12px] text-slate-400">
-        <Loader2 size={14} className="animate-spin text-purple-400" />
+        <Loader2 size={14} className="animate-spin text-accent-foreground" />
         Preparing download…
       </div>
     );
@@ -110,7 +110,7 @@ function Body({ status }: { status: ChromiumStatus }): JSX.Element {
   if (status.kind === "fetching-manifest") {
     return (
       <div className="flex items-center gap-2 text-[12px] text-slate-400">
-        <Loader2 size={14} className="animate-spin text-purple-400" />
+        <Loader2 size={14} className="animate-spin text-accent-foreground" />
         Resolving latest stable version…
       </div>
     );
@@ -119,7 +119,7 @@ function Body({ status }: { status: ChromiumStatus }): JSX.Element {
   if (status.kind === "extracting") {
     return (
       <div className="flex items-center gap-2 text-[12px] text-slate-400">
-        <Loader2 size={14} className="animate-spin text-purple-400" />
+        <Loader2 size={14} className="animate-spin text-accent-foreground" />
         Unpacking and verifying signature…
       </div>
     );
@@ -140,7 +140,7 @@ function Body({ status }: { status: ChromiumStatus }): JSX.Element {
             className="absolute inset-y-0 left-0 transition-[width] duration-200"
             style={{
               width: `${pct}%`,
-              background: "linear-gradient(90deg, #6366f1, #a855f7, #ec4899)",
+              background: "var(--primary)",
             }}
           />
         </div>
@@ -157,7 +157,7 @@ function Body({ status }: { status: ChromiumStatus }): JSX.Element {
   if (status.kind === "verifying") {
     return (
       <div className="flex items-center gap-2 text-[12px] text-slate-400">
-        <Loader2 size={14} className="animate-spin text-purple-400" />
+        <Loader2 size={14} className="animate-spin text-accent-foreground" />
         Verifying SHA-256 checksum…
       </div>
     );

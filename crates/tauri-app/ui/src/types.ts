@@ -135,6 +135,7 @@ export interface Profile {
   updatedAt: string;
   lastOpenedAt?: string | null;
   proxyCountry?: string | null;
+  group: string | null;
 }
 
 export interface ProfileSummary {
@@ -148,6 +149,12 @@ export interface ProfileSummary {
   timezone?: string | null;
   proxyCountry?: string | null;
   device?: DeviceFamily | null;
+  group: string | null;
+}
+
+export interface ProfileGroup {
+  name: string | null;
+  count: number;
 }
 
 export interface PartialFingerprintInput {
@@ -164,6 +171,7 @@ export interface CreateProfileInput {
   icon?: string;
   startUrl?: string;
   searchProvider?: string;
+  group?: string | null;
   proxy?: ProxyConfig;
   /** Full UI fingerprint, or the legacy partial MCP-compatible patch. */
   fingerprint?: FingerprintConfig | PartialFingerprintInput;
@@ -178,6 +186,7 @@ export interface UpdateProfileInput {
   icon?: string | null;
   startUrl?: string | null;
   searchProvider?: string | null;
+  group?: string | null;
   proxy?: ProxyConfig | null;
   /** Whole-replace — the UI always holds a complete FingerprintConfig. */
   fingerprint?: FingerprintConfig;

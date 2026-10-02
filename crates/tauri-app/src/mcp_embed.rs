@@ -167,6 +167,7 @@ impl TauriMcpDispatcher {
                     fingerprint,
                     chromix_options: None,
                     extensions: None,
+                    group: None,
                 };
                 let profile = self.driver.update_profile(&args.profile_id, patch).await?;
                 Ok(json!({

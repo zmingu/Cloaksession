@@ -1,0 +1,28 @@
+{
+  "id": "donut-ui-reskin",
+  "name": "donut-ui-reskin",
+  "title": "Donut-style UI reskin and sidebar layout",
+  "description": "Port Donut Browser's monochrome design-token system, surface-material, scroll-fade and labeled group sidebar into Cloaksession; replace purple brand color and switch font to Fusion-JetBrainsMapleMono",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "zmingu",
+  "assignee": "zmingu",
+  "createdAt": "2026-10-02",
+  "completedAt": null,
+  "branch": "feat/donut-ui-reskin",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "commit": "2c386d6"
+  }
+}

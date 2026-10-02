@@ -152,7 +152,7 @@ export function ChromixSettingsEditor({ value = DEFAULTS, onSave }: Props): JSX.
           {errors.nodePath && <ErrorMessage id="chromix-node-error" message={errors.nodePath} />}
         </div>
         <details className="mz-panel min-w-0 p-3">
-          <summary className="cursor-pointer text-[12px] text-purple-300">Global fingerprint parameters</summary>
+          <summary className="cursor-pointer text-[12px] text-muted-foreground">Global fingerprint parameters</summary>
           <div className="mt-3">
             {structuredOptions ? (
               <ChromixFingerprintForm options={structuredOptions} onChange={(next) => {
@@ -228,12 +228,12 @@ export function ChromixSettingsEditor({ value = DEFAULTS, onSave }: Props): JSX.
           debugging arguments, including --remote-debugging-port, --remote-debugging-address and
           --remote-debugging-pipe. Do not override them in args, launchOptions or contextOptions.
         </p>
-        <a href={SDK_README} target="_blank" rel="noopener noreferrer" className="inline-block text-purple-400 hover:text-purple-300">
+        <a href={SDK_README} target="_blank" rel="noopener noreferrer" className="inline-block text-accent-foreground hover:text-foreground">
           Official Chromix Node SDK README ↗
         </a>
       </div>
       <details className="mz-panel p-3 text-[12px] min-w-0">
-        <summary className="cursor-pointer text-purple-300">Complete SDK JSON examples</summary>
+        <summary className="cursor-pointer text-muted-foreground">Complete SDK JSON examples</summary>
         <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
           Reference examples, not defaults or a field whitelist. Replace paths, credentials and persona
           values before use. Omit userDataDir to keep Cloaksession’s per-profile storage; an explicit

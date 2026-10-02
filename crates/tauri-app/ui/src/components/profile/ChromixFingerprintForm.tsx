@@ -24,7 +24,7 @@ type Props = ChromixFingerprintFormProps;
 const controlClass = "w-full min-w-0 rounded-lg bg-white/[0.03] px-2.5 py-2 mono text-[12px] text-slate-200 outline-none focus:bg-white/[0.05] disabled:opacity-50";
 const controlStyle = { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" };
 const optionStyle = { background: "#12131a", color: "#e2e8f0" };
-const smallButtonClass = "rounded px-2 py-1 text-[11px] text-purple-300 hover:bg-white/[0.05] disabled:opacity-40";
+const smallButtonClass = "rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-white/[0.05] disabled:opacity-40";
 
 export function ChromixFingerprintForm({ options, onChange }: Props): JSX.Element {
   const id = useId();
@@ -47,7 +47,7 @@ export function ChromixFingerprintForm({ options, onChange }: Props): JSX.Elemen
           This is the public source contract, not proof that an installed binary supports it. Use a matching rebuilt browser and SDK.
           Raw aliases retain SDK precedence; editing one parameter never clears its other aliases or unrelated settings.
         </p>
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-purple-300">
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
           <a href={`${source}/${CHROMIX_FINGERPRINT_SOURCE.flags}`} target="_blank" rel="noopener noreferrer">Public flags ↗</a>
           <a href={`${source}/${CHROMIX_FINGERPRINT_SOURCE.sdk}`} target="_blank" rel="noopener noreferrer">Node SDK ↗</a>
           <a href={`${source}/${CHROMIX_FINGERPRINT_SOURCE.backend}`} target="_blank" rel="noopener noreferrer">Backend policy ↗</a>
@@ -166,7 +166,7 @@ function FingerprintField({ field, options, onChange, disabled }: Props & { fiel
         </>
       )}
       <p id={`${id}-help`} className="text-[10px] leading-relaxed text-slate-500">{field.description}</p>
-      {rawTarget && <p className="text-[10px] text-purple-300/80">Editing the raw alias. Public aliases are preserved and can be selected separately.</p>}
+      {rawTarget && <p className="text-[10px] text-muted-foreground/80">Editing the raw alias. Public aliases are preserved and can be selected separately.</p>}
       {state.count > 1 && <p className="text-[10px] text-amber-200/80">{state.count} occurrences. The last stored value is shown; editing replaces every occurrence of this exact name with one argument.</p>}
       {error && <p id={`${id}-error`} className="text-[10px] leading-relaxed text-amber-200" role="status">{error}</p>}
     </div>
@@ -198,7 +198,7 @@ function RawArgsEditor({ options, onChange }: Props): JSX.Element {
 
   return (
     <details className="mz-panel min-w-0 p-3">
-      <summary className="cursor-pointer text-[12px] text-purple-300">Raw options.args — one flag per line</summary>
+      <summary className="cursor-pointer text-[12px] text-muted-foreground">Raw options.args — one flag per line</summary>
       <p id={`${id}-help`} className="my-2 text-[11px] leading-relaxed text-slate-500">
         Complete options.args array, including unknown flags and duplicates. Use --key=value (spaces inside the value are literal);
         no shell splitting or automatic alias cleanup. Apply updates options only; the outer Save still persists it.

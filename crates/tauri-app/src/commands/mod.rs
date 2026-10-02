@@ -11,6 +11,7 @@ pub mod companion;
 pub mod dialog;
 pub mod extensions;
 pub mod fingerprint;
+pub mod groups;
 pub mod kuaishou_identity;
 pub mod kuaishou_init;
 pub mod profiles;

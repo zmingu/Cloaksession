@@ -81,7 +81,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
           width: 600,
           height: 600,
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(168,85,247,0.10), transparent 70%)",
+          background: "radial-gradient(circle, color-mix(in oklab, var(--primary) 10%, transparent), transparent 70%)",
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
@@ -217,7 +217,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
                 width: i === step ? 22 : 6,
                 height: 6,
                 borderRadius: 3,
-                background: i === step ? "linear-gradient(90deg, #a855f7, #ec4899)" : "rgba(255,255,255,0.08)",
+                background: i === step ? "var(--primary)" : "rgba(255,255,255,0.08)",
                 transition: "width 240ms cubic-bezier(0.2,0.8,0.2,1)",
               }}
             />

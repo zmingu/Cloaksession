@@ -53,6 +53,7 @@ fn base_profile() -> Profile {
         updated_at: "2026-01-01T00:00:00Z".into(),
         last_opened_at: None,
         proxy_country: None,
+        group: None,
     }
 }
 

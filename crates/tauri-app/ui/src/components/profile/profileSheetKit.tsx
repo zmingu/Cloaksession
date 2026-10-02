@@ -47,9 +47,9 @@ export function SectionRail({
             onClick={() => onSelect(id)}
             className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] text-left transition-colors"
             style={{
-              background: active ? "rgba(168,85,247,0.14)" : "transparent",
-              color: active ? "#e9d5ff" : "#94a3b8",
-              boxShadow: active ? "inset 0 0 0 1px rgba(168,85,247,0.22)" : undefined,
+              background: active ? "var(--accent)" : "transparent",
+              color: active ? "var(--accent-foreground)" : "#94a3b8",
+              boxShadow: active ? "inset 0 0 0 1px var(--ring)" : undefined,
             }}
           >
             <Icon size={15} strokeWidth={1.75} className="shrink-0" />

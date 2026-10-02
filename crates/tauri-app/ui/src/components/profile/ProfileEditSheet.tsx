@@ -31,6 +31,8 @@ interface FormState {
   name: string;
   notes: string;
   tagsRaw: string;
+  /** Group name ("" = ungrouped). Local string; toPatch maps empty -> null (clear). */
+  group: string;
   /** Custom emoji avatar; undefined = auto (classifier-derived default). */
   icon: string | undefined;
   /** Start page ("" = app default). */
@@ -46,10 +48,12 @@ interface FormState {
 }
 
 function toForm(p: Profile): FormState {
+  const group = p.group ?? "";
   return {
     name: p.name,
     notes: p.notes ?? "",
     tagsRaw: p.tags.join(", "),
+    group,
     icon: p.icon ?? undefined,
     startUrl: p.startUrl ?? "",
     proxyEnabled: !!p.proxy,
@@ -84,6 +88,7 @@ function toPatch(f: FormState): UpdateProfileInput {
     name: f.name.trim(),
     notes: f.notes || undefined,
     tags: f.tagsRaw.split(",").map((s) => s.trim()).filter(Boolean),
+    group: f.group.trim() || null, // null clears the group (matches icon/startUrl)
     icon: f.icon ?? null, // null clears a custom icon (revert to derived default)
     startUrl: f.startUrl.trim() || null, // null → app default start page
     proxy,
@@ -237,6 +242,13 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
                 </Field>
               </div>
             </div>
+            <Field label="Group">
+              <Input
+                value={form.group}
+                onChange={(v) => update("group", v)}
+                placeholder="optional — e.g. sales"
+              />
+            </Field>
             <Field label="Notes">
               <Textarea value={form.notes} onChange={(v) => update("notes", v)} rows={3} />
             </Field>
@@ -256,7 +268,7 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
                 type="checkbox"
                 checked={form.proxyEnabled}
                 onChange={(e) => update("proxyEnabled", e.target.checked)}
-                className="w-3.5 h-3.5 rounded accent-purple-500"
+                className="w-3.5 h-3.5 rounded accent-[var(--accent)]"
               />
               Use proxy
             </label>

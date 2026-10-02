@@ -44,11 +44,11 @@ export function LeftRail({ active, onChange, onCmdK }: Props): JSX.Element {
             onClick={() => onChange(it.id)}
             className={cn(
               "w-9 h-9 rounded-[10px] flex items-center justify-center transition-colors",
-              isActive ? "text-purple-300" : "text-slate-500 hover:text-slate-200 hover:bg-white/5",
+              isActive ? "text-accent-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent",
             )}
             style={{
-              background: isActive ? "rgba(168,85,247,0.12)" : undefined,
-              boxShadow: isActive ? "inset 0 0 0 1px rgba(168,85,247,0.25)" : undefined,
+              background: isActive ? "var(--accent)" : undefined,
+              boxShadow: isActive ? "inset 0 0 0 1px var(--ring)" : undefined,
             }}
           >
             <Icon size={16} strokeWidth={1.5} />

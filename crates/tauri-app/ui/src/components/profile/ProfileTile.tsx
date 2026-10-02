@@ -32,7 +32,7 @@ export interface TileData extends ProfileSummary {
 const RING_BY_STATE: Record<TileState, string> = {
   idle: "rgba(255,255,255,0.05)",
   running: "rgba(16,185,129,0.30)",
-  ai: "rgba(168,85,247,0.30)",
+  ai: "var(--warning)",
   error: "rgba(239,68,68,0.30)",
 };
 
@@ -45,7 +45,7 @@ const RING_BY_STATE: Record<TileState, string> = {
 const GLOW_BY_STATE: Record<TileState, string> = {
   idle: "0 0 0 0 rgba(0,0,0,0)",
   running: "0 0 32px rgba(16,185,129,0.18)",
-  ai: "0 0 32px rgba(168,85,247,0.18)",
+  ai: "0 0 32px var(--warning)",
   error: "0 0 32px rgba(239,68,68,0.15)",
 };
 
@@ -349,17 +349,17 @@ function ContextLine({ profile }: { profile: TileData }): JSX.Element | null {
       <div
         className="flex items-center gap-2 px-2.5 py-2 rounded-lg"
         style={{
-          background: "rgba(168,85,247,0.06)",
-          boxShadow: "inset 0 0 0 1px rgba(168,85,247,0.12)",
+          background: "var(--accent)",
+          boxShadow: "inset 0 0 0 1px var(--ring)",
         }}
       >
-        <Zap size={12} className="text-purple-400" />
-        <span className="mono text-[11px] text-purple-200 truncate flex-1">
-          <span className="text-purple-400">multizen.</span>
+        <Zap size={12} className="text-warning" />
+        <span className="mono text-[11px] text-accent-foreground truncate flex-1">
+          <span className="text-warning">multizen.</span>
           {profile.lastTool ?? "…"}
         </span>
         {profile.lastDuration && (
-          <span className="mono text-[10px] text-purple-300">{profile.lastDuration}</span>
+          <span className="mono text-[10px] text-muted-foreground">{profile.lastDuration}</span>
         )}
       </div>
     );
