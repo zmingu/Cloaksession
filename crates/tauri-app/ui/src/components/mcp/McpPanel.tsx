@@ -3,6 +3,7 @@ import { Check, Copy, Plug, Sparkles, Terminal } from "lucide-react";
 import type { ActivityEvent, ProfileSummary } from "../../types";
 import { Pill, Flag, ccFromTimezone } from "../atoms";
 import { formatTime } from "../../lib/relativeTime";
+import { useScrollFade } from "../../lib/useScrollFade";
 
 interface Props {
   events: ActivityEvent[];
@@ -21,9 +22,10 @@ interface Props {
 export function McpPanel({ events, profiles, mcpUrl, mcpToken }: Props): JSX.Element {
   const profilesById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
   const recent = useMemo(() => events.slice().reverse(), [events]);
+  const scrollRef = useScrollFade<HTMLDivElement>();
 
   return (
-    <div className="flex-1 overflow-auto" style={{ padding: "24px 32px" }}>
+    <div ref={scrollRef} className="flex-1 overflow-auto scroll-fade" style={{ padding: "24px 32px" }}>
       <div className="max-w-[960px] mx-auto">
         <div className="flex items-baseline gap-3 mb-1.5">
           <div className="text-lg font-bold tracking-tight text-slate-100">MCP</div>
@@ -152,6 +154,7 @@ function ConnectCard({
 
   return (
     <div
+      className="surface-material"
       style={{
         borderRadius: 18,
         background: "rgba(255,255,255,0.025)",
@@ -166,9 +169,9 @@ function ConnectCard({
             width: 30,
             height: 30,
             borderRadius: 9,
-            background: "rgba(168,85,247,0.12)",
-            color: "#c084fc",
-            boxShadow: "inset 0 0 0 1px rgba(168,85,247,0.22)",
+            background: "var(--accent)",
+            color: "var(--accent-foreground)",
+            boxShadow: "inset 0 0 0 1px var(--ring)",
           }}
         >
           <Plug size={15} strokeWidth={1.75} />
@@ -385,11 +388,11 @@ function CopyPromptButton({ prompt }: { prompt: string }): JSX.Element {
         borderRadius: 8,
         fontSize: 11,
         fontWeight: 600,
-        background: copied ? "rgba(16,185,129,0.14)" : "rgba(168,85,247,0.12)",
+        background: copied ? "rgba(16,185,129,0.14)" : "var(--accent)",
         boxShadow: copied
           ? "inset 0 0 0 1px rgba(16,185,129,0.3)"
-          : "inset 0 0 0 1px rgba(168,85,247,0.24)",
-        color: copied ? "#6ee7b7" : "#c084fc",
+          : "inset 0 0 0 1px var(--ring)",
+        color: copied ? "#6ee7b7" : "var(--accent-foreground)",
       }}
     >
       {copied ? <Check size={12} /> : <Sparkles size={12} />}
@@ -416,14 +419,14 @@ function PageRow({
       style={{
         padding: "12px 18px",
         borderBottom: isLast ? "none" : "1px solid rgba(255,255,255,0.04)",
-        background: event.status === "pending" ? "rgba(168,85,247,0.04)" : undefined,
+        background: event.status === "pending" ? "var(--accent)" : undefined,
       }}
     >
       <StatusPill status={event.status} />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
           <code className="mono text-[12px] font-semibold text-slate-100">
-            <span className="text-purple-400">multizen.</span>
+            <span className="text-[var(--accent-foreground)]">multizen.</span>
             {event.tool}
           </code>
           <span className="ml-auto mono text-[10px] text-slate-500">

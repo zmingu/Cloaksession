@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use multizen_core::{
-    CreateProfileInput, ExtensionConfig, MultizenError, Profile, ProfileSummary, Result,
+    CreateProfileInput, ExtensionConfig, GroupInfo, MultizenError, Profile, ProfileSummary, Result,
     UpdateProfileInput,
 };
 use rusqlite::{params, Connection};
@@ -42,7 +42,7 @@ impl ProfileManager {
     pub fn list(&self) -> Result<Vec<ProfileSummary>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, tags, last_opened_at, proxy, fingerprint, proxy_country, icon,
-                    chromix_options
+                    chromix_options, \"group\"
              FROM profiles ORDER BY updated_at DESC",
         )?;
         let rows = stmt.query_map([], |r| {
@@ -63,6 +63,7 @@ impl ProfileManager {
                 icon: r.get(7)?,
                 start_url: None,
                 search_provider: None,
+                group: r.get(9)?,
             })
         })?;
         let mut out = Vec::new();
@@ -83,6 +84,7 @@ impl ProfileManager {
                 timezone: Some(fingerprint.timezone.clone()),
                 proxy_country: row.proxy_country,
                 device: Some(fingerprint.device),
+                group: row.group,
                 chromix_options: serde_json::from_str(&row.chromix_options)?,
             });
         }
@@ -93,7 +95,7 @@ impl ProfileManager {
         let row = self.conn.query_row(
             "SELECT id, name, notes, tags, proxy, fingerprint, data_dir,
                     created_at, updated_at, last_opened_at, proxy_country,
-                    extensions, icon, start_url, search_provider, chromix_options
+                    extensions, icon, start_url, search_provider, chromix_options, \"group\"
              FROM profiles WHERE id = ?",
             params![id],
             |r| {
@@ -114,6 +116,7 @@ impl ProfileManager {
                     start_url: r.get(13)?,
                     search_provider: r.get(14)?,
                     chromix_options: r.get(15)?,
+                    group: r.get(16)?,
                 })
             },
         );
@@ -165,6 +168,7 @@ impl ProfileManager {
             updated_at: now,
             last_opened_at: None,
             proxy_country: None,
+            group: input.group,
         };
         self.insert_row(&profile)?;
         Ok(profile)
@@ -183,8 +187,8 @@ impl ProfileManager {
         self.conn.execute(
             "INSERT INTO profiles
              (id, name, notes, tags, proxy, fingerprint, extensions, icon,
-              start_url, search_provider, data_dir, created_at, updated_at, chromix_options)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              start_url, search_provider, data_dir, created_at, updated_at, chromix_options, \"group\")
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 profile.id,
                 profile.name,
@@ -208,6 +212,7 @@ impl ProfileManager {
                 profile.created_at,
                 profile.updated_at,
                 serde_json::to_string(&profile.chromix_options)?,
+                profile.group,
             ],
         )?;
         Ok(())
@@ -252,6 +257,11 @@ impl ProfileManager {
             Some(Some(v)) => Some(v),
             None => existing.search_provider,
         };
+        merged.group = match patch.group {
+            Some(None) => None,
+            Some(Some(v)) => Some(v),
+            None => existing.group,
+        };
         merged.updated_at = now;
         if proxy_changed {
             merged.proxy_country = None;
@@ -271,7 +281,7 @@ impl ProfileManager {
             "UPDATE profiles SET
                name = ?, notes = ?, tags = ?, proxy = ?, fingerprint = ?,
                extensions = ?, icon = ?, start_url = ?, search_provider = ?,
-               updated_at = ?, proxy_country = ?, chromix_options = ?
+               updated_at = ?, proxy_country = ?, chromix_options = ?, \"group\" = ?
              WHERE id = ?",
             params![
                 merged.name,
@@ -294,6 +304,7 @@ impl ProfileManager {
                 merged.updated_at,
                 merged.proxy_country,
                 serde_json::to_string(&merged.chromix_options)?,
+                merged.group,
                 id,
             ],
         )?;
@@ -350,5 +361,40 @@ impl ProfileManager {
             }
         }
         Ok(out)
+    }
+
+    /// List distinct groups with their member counts. Profiles with a NULL
+    /// group are aggregated under a `None` name.
+    pub fn list_groups(&self) -> Result<Vec<GroupInfo>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT \"group\", COUNT(*) FROM profiles GROUP BY \"group\"")?;
+        let rows = stmt.query_map([], |r| {
+            Ok(GroupInfo {
+                name: r.get::<_, Option<String>>(0)?,
+                count: r.get::<_, i64>(1)?,
+            })
+        })?;
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(row?);
+        }
+        Ok(out)
+    }
+
+    /// Set the `group` of a single profile. `None` clears it.
+    pub fn set_profile_group(&self, id: &str, group: Option<String>) -> Result<()> {
+        self.conn.execute(
+            "UPDATE profiles SET \"group\" = ? WHERE id = ?",
+            params![group, id],
+        )?;
+        Ok(())
+    }
+
+    /// Remove a group by clearing the `group` column of every profile in it.
+    pub fn delete_group(&self, name: &str) -> Result<()> {
+        self.conn
+            .execute("UPDATE profiles SET \"group\" = NULL WHERE \"group\" = ?", params![name])?;
+        Ok(())
     }
 }

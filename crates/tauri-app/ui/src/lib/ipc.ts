@@ -32,6 +32,7 @@ import type {
   FingerprintConfig,
   LaunchedProfile,
   Profile,
+  ProfileGroup,
   ProfileId,
   ProfileSummary,
   ProxyConfig,
@@ -128,6 +129,33 @@ export const profiles = {
       { passphrase },
     ),
 };
+
+/**
+ * `profiles_list_groups` → `ProfileGroup[]`. Named groups plus an
+ * "Ungrouped" entry (name == null) with profile counts, for the sidebar.
+ */
+export function profilesListGroups(): Promise<ProfileGroup[]> {
+  return invoke<ProfileGroup[]>("profiles_list_groups");
+}
+
+/**
+ * `profiles_set_profile_group` → `()`. Assigns a profile to a group;
+ * pass `null` to clear the assignment.
+ */
+export function profilesSetProfileGroup(
+  id: ProfileId,
+  group: string | null,
+): Promise<void> {
+  return invoke<void>("profiles_set_profile_group", { id, group });
+}
+
+/**
+ * `profiles_delete_group` → `()`. Removes the group label from all
+ * profiles in that group (the profiles themselves are kept).
+ */
+export function profilesDeleteGroup(name: string): Promise<void> {
+  return invoke<void>("profiles_delete_group", { name });
+}
 
 // ---------------------------------------------------------------------------
 // Settings

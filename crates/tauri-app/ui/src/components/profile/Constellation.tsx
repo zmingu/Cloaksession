@@ -5,6 +5,7 @@ import { Kbd } from "../atoms";
 import { ProfileTile, deriveTileState, type TileData, type TileState } from "./ProfileTile";
 import { ProfileTable } from "./ProfileTable";
 import { usePersistedState } from "../../lib/persisted";
+import { useScrollFade } from "../../lib/useScrollFade";
 import { cn } from "../../lib/cn";
 import { KuaishouIdentityToolbar } from "./KuaishouIdentity";
 import { SubjectArchives } from "./SubjectArchives";
@@ -27,15 +28,53 @@ const FILTERS: FilterChip[] = [
 ];
 
 const DOT_COLOR: Record<TileState, string> = {
-  running: "#34d399",
-  ai: "#c084fc",
-  error: "#f87171",
-  idle: "#94a3b8",
+  running: "var(--success)",
+  ai: "var(--warning)",
+  error: "var(--destructive)",
+  idle: "var(--muted-foreground)",
 };
+
+export type GroupFilter = "all" | "ungrouped" | string;
+
+export interface GroupEntry {
+  name: string | null;
+  count: number;
+}
+
+function GroupTab({
+  label,
+  count,
+  active,
+  onSelect,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onSelect: () => void;
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "flex items-center gap-1.5 px-2.5 py-[5px] rounded-lg text-[12px] font-medium transition-colors border border-border",
+        active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-slate-300",
+      )}
+    >
+      {label}
+      <span className="mono text-[10px] opacity-70">{count}</span>
+    </button>
+  );
+}
 
 interface Props {
   profiles: ProfileSummary[];
   recentEvents: ActivityEvent[];
+  /** Controlled group filter. */
+  groupFilter: GroupFilter;
+  onGroupFilterChange: (group: GroupFilter) => void;
+  /** Named groups with profile counts (from profiles_list_groups). */
+  groups: GroupEntry[];
   /** Profiles in the terminating phase (winding down, not yet exited). */
   closingIds?: Set<string>;
   onSelect: (id: string) => void;
@@ -50,6 +89,9 @@ export function Constellation({
   profiles,
   recentEvents,
   closingIds,
+  groupFilter,
+  onGroupFilterChange,
+  groups,
   onSelect,
   onCreate,
   onLaunch,
@@ -61,6 +103,7 @@ export function Constellation({
   const [filter, setFilter] = useState<FilterChip["id"]>("all");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [viewMode, setViewMode] = usePersistedState<ViewMode>("profilesView", "grid");
+  const scrollRef = useScrollFade<HTMLDivElement>();
 
   const tileData: TileData[] = useMemo(
     () =>
@@ -83,14 +126,25 @@ export function Constellation({
     return Array.from(set).slice(0, 12);
   }, [profiles]);
 
+  const ungroupedCount = useMemo(
+    () => tileData.filter((t) => t.group == null).length,
+    [tileData],
+  );
+
   const filtered = useMemo(() => {
     return tileData.filter((t) => {
+      const group = t.group;
+      if (groupFilter === "ungrouped") {
+        if (group != null) return false;
+      } else if (groupFilter !== "all") {
+        if (group !== groupFilter) return false;
+      }
       if (filter !== "all" && t.state !== filter) return false;
       if (activeTag && !t.tags.includes(activeTag)) return false;
       if (search.trim() && ![t.name, t.id, ...t.tags].some(value => value.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))) return false;
       return true;
     });
-  }, [tileData, filter, activeTag, search]);
+  }, [tileData, filter, activeTag, search, groupFilter]);
 
   const aiCount = counts.ai;
 
@@ -155,6 +209,33 @@ export function Constellation({
         </button>
       </div>
 
+      {/* Group tabs row */}
+      <div className="flex items-center gap-1.5 px-6 pb-2 flex-wrap">
+        <GroupTab
+          label="All"
+          count={tileData.length}
+          active={groupFilter === "all"}
+          onSelect={() => onGroupFilterChange("all")}
+        />
+        {groups
+          .filter((g) => g.name != null)
+          .map((g) => (
+            <GroupTab
+              key={g.name}
+              label={g.name as string}
+              count={g.count}
+              active={groupFilter === g.name}
+              onSelect={() => onGroupFilterChange(g.name as string)}
+            />
+          ))}
+        <GroupTab
+          label="Ungrouped"
+          count={ungroupedCount}
+          active={groupFilter === "ungrouped"}
+          onSelect={() => onGroupFilterChange("ungrouped")}
+        />
+      </div>
+
       {/* Filter row */}
       <div className="flex items-center gap-1.5 px-6 pb-3.5 flex-wrap">
         {FILTERS.map((c) => {
@@ -199,12 +280,12 @@ export function Constellation({
                   onClick={() => setActiveTag(isActive ? null : t)}
                   className={cn(
                     "mz-pill mono cursor-pointer transition-colors",
-                    isActive ? "text-purple-300" : "text-slate-500 hover:text-slate-300",
+                    isActive ? "text-accent-foreground" : "text-slate-500 hover:text-slate-300",
                   )}
                   style={{
-                    background: isActive ? "rgba(168,85,247,0.10)" : "rgba(255,255,255,0.03)",
+                    background: isActive ? "var(--accent)" : "rgba(255,255,255,0.03)",
                     boxShadow: isActive
-                      ? "inset 0 0 0 1px rgba(168,85,247,0.25)"
+                      ? "inset 0 0 0 1px var(--ring)"
                       : "inset 0 0 0 1px rgba(255,255,255,0.05)",
                   }}
                 >
@@ -226,7 +307,7 @@ export function Constellation({
       {/* Body — grid or list. `pt-3` keeps the running/AI glow from
           getting clipped against the top edge of the scroll container
           (box-shadow extends ~32px outside the tile). */}
-      <div className="flex-1 overflow-auto px-6 pb-6 pt-3">
+      <div ref={scrollRef} className="flex-1 overflow-auto scroll-fade px-6 pb-6 pt-3">
         {profiles.length === 0 ? <ProfilesEmptyState onCreate={onCreate} /> : filtered.length === 0 ? (
           <div className="text-sm text-slate-500 py-12 text-center">
             No profiles match the current filter.

@@ -24,6 +24,7 @@ fn create_and_get_profile() {
         fingerprint: None,
         chromix_options: None,
         extensions: None,
+        group: None,
         full_fingerprint: None,
     };
     let p = mgr.create(input).unwrap();

@@ -139,6 +139,14 @@ pub struct Profile {
     pub updated_at: String,
     pub last_opened_at: Option<String>,
     pub proxy_country: Option<String>,
+    pub group: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupInfo {
+    pub name: Option<String>,
+    pub count: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -154,6 +162,7 @@ pub struct ProfileSummary {
     pub timezone: Option<String>,
     pub proxy_country: Option<String>,
     pub device: Option<DeviceFamily>,
+    pub group: Option<String>,
     #[serde(default)]
     pub chromix_options: Map<String, Value>,
 }
@@ -171,6 +180,7 @@ pub struct CreateProfileInput {
     pub fingerprint: Option<PartialFingerprintInput>,
     pub chromix_options: Option<Map<String, Value>>,
     pub extensions: Option<Vec<ExtensionConfig>>,
+    pub group: Option<String>,
     /// A complete fingerprint supplied by the Tauri UI. This is intentionally
     /// omitted from the serialized core contract; custom deserialization
     /// accepts it from the same `fingerprint` JSON field without changing the
@@ -197,6 +207,8 @@ impl<'de> Deserialize<'de> for CreateProfileInput {
             #[serde(default)]
             chromix_options: Option<Map<String, Value>>,
             extensions: Option<Vec<ExtensionConfig>>,
+            #[serde(default)]
+            group: Option<String>,
         }
 
         let wire = Wire::deserialize(deserializer)?;
@@ -224,6 +236,7 @@ impl<'de> Deserialize<'de> for CreateProfileInput {
             fingerprint,
             chromix_options: wire.chromix_options,
             extensions: wire.extensions,
+            group: wire.group,
             full_fingerprint,
         })
     }
@@ -262,6 +275,8 @@ pub struct UpdateProfileInput {
     #[serde(default)]
     pub chromix_options: Option<Map<String, Value>>,
     pub extensions: Option<Vec<ExtensionConfig>>,
+    /// None=keep, Some(None)=clear, Some(Some)=set.
+    pub group: Option<Option<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

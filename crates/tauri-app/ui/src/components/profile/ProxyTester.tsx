@@ -51,10 +51,10 @@ export function ProxyTester({ proxy, profileId, onProbed }: Props): JSX.Element 
         type="button"
         onClick={() => void test()}
         disabled={busy}
-        className="inline-flex items-center gap-1.5 text-[11px] text-purple-300 hover:text-purple-200 transition-colors px-3 py-1.5 rounded-lg disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 text-[11px] text-accent-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg disabled:opacity-50"
         style={{
-          background: "rgba(168,85,247,0.08)",
-          boxShadow: "inset 0 0 0 1px rgba(168,85,247,0.25)",
+          background: "var(--accent)",
+          boxShadow: "inset 0 0 0 1px var(--ring)",
         }}
       >
         {busy ? <Loader2 size={11} className="animate-spin" /> : <Globe2 size={11} />}

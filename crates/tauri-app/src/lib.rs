@@ -39,6 +39,9 @@ use crate::commands::{
         fingerprint_devices, fingerprint_generate, fingerprint_locale_for_country,
         fingerprint_locales, fingerprint_reconcile,
     },
+    groups::{
+        profiles_delete_group, profiles_list_groups, profiles_set_profile_group,
+    },
     kuaishou_identity::{
         kuaishou_identity_avatar, kuaishou_identity_detect, kuaishou_identity_list,
     },
@@ -486,6 +489,9 @@ pub fn run() {
             profiles_delete,
             profiles_launch,
             profiles_close,
+            profiles_list_groups,
+            profiles_set_profile_group,
+            profiles_delete_group,
             // archive
             profiles_export_archive,
             profiles_import_archive,

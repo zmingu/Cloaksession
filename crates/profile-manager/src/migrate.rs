@@ -22,6 +22,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
     add_column_if_missing(conn, "icon", "TEXT")?;
     add_column_if_missing(conn, "start_url", "TEXT")?;
     add_column_if_missing(conn, "search_provider", "TEXT")?;
+    add_column_if_missing(conn, "group", "TEXT")?;
     add_column_if_missing(
         conn,
         "chromix_options",
@@ -40,8 +41,9 @@ fn add_column_if_missing(conn: &Connection, col: &str, definition: &str) -> Resu
         .filter_map(|r| r.ok())
         .collect();
     if !cols.iter().any(|c| c == col) {
+        // Quote the column name so reserved words like "group" are accepted.
         conn.execute_batch(&format!(
-            "ALTER TABLE profiles ADD COLUMN {col} {definition}"
+            "ALTER TABLE profiles ADD COLUMN \"{col}\" {definition}"
         ))?;
     }
     Ok(())

@@ -13,7 +13,7 @@ interface Props {
 export function TopBar({ totalCount, runningCount, mcpUrl, onCmdK, onSettings }: Props): JSX.Element {
   return (
     <div
-      className="drag-region flex items-center gap-3.5 relative flex-shrink-0"
+      className="drag-region flex items-center gap-3.5 relative flex-shrink-0 surface-material"
       style={{
         height: 44,
         padding: "0 14px",

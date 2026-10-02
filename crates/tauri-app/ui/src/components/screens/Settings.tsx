@@ -17,6 +17,7 @@ import {
 import { Pill } from "../atoms";
 import { ChromixSettingsEditor } from "./ChromixSettingsEditor";
 import { relativeTime } from "../../lib/relativeTime";
+import { useScrollFade } from "../../lib/useScrollFade";
 import type { AppSettings, SystemInfo, UpdateStatus } from "../../types";
 
 interface Props {
@@ -32,6 +33,7 @@ export function Settings({ onImport }: Props): JSX.Element {
   const [tokenShown, setTokenShown] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
   const [lastChecked, setLastChecked] = useState<number>(0);
+  const scrollRef = useScrollFade<HTMLDivElement>();
 
   useEffect(() => {
     let unlisten = (): void => {};
@@ -95,7 +97,7 @@ export function Settings({ onImport }: Props): JSX.Element {
   }
 
   return (
-    <div role="region" aria-label="Settings" className="flex-1 min-w-0 overflow-auto px-3 py-5 sm:px-8 sm:py-6">
+    <div ref={scrollRef} role="region" aria-label="Settings" className="flex-1 min-w-0 overflow-auto scroll-fade px-3 py-5 sm:px-8 sm:py-6">
       <div className="max-w-[720px] mx-auto">
         <div className="text-lg font-bold tracking-tight text-slate-100 mb-1.5">Settings</div>
         <div className="text-[13px] text-slate-500 mb-5">
@@ -131,7 +133,7 @@ export function Settings({ onImport }: Props): JSX.Element {
                 <button
                   type="button"
                   onClick={copyMcpUrl}
-                  className="text-purple-400 hover:text-purple-300 transition-colors"
+                  className="text-[var(--accent-foreground)] hover:opacity-80 transition-colors"
                   aria-label="Copy URL"
                 >
                   {copied ? <Check size={13} /> : <Copy size={13} />}
@@ -170,7 +172,7 @@ export function Settings({ onImport }: Props): JSX.Element {
                 <button
                   type="button"
                   onClick={copyMcpToken}
-                  className="text-purple-400 hover:text-purple-300 transition-colors"
+                  className="text-[var(--accent-foreground)] hover:opacity-80 transition-colors"
                   aria-label="Copy token"
                 >
                   {tokenCopied ? <Check size={13} /> : <Copy size={13} />}
@@ -184,7 +186,7 @@ export function Settings({ onImport }: Props): JSX.Element {
               type="checkbox"
               checked={settings.mcpHttpEnabled}
               onChange={(e) => void patch({ mcpHttpEnabled: e.target.checked })}
-              className="w-3.5 h-3.5 rounded accent-purple-500"
+              className="w-3.5 h-3.5 rounded accent-[var(--ring)]"
             />
             Auto-start MCP HTTP transport on app launch
           </label>
@@ -207,9 +209,9 @@ export function Settings({ onImport }: Props): JSX.Element {
                   className="text-left p-3 rounded-lg transition-colors"
                   style={{
                     boxShadow: selected
-                      ? "inset 0 0 0 1px rgba(168,85,247,0.45)"
+                      ? "inset 0 0 0 1px var(--ring)"
                       : "inset 0 0 0 1px rgba(255,255,255,0.07)",
-                    background: selected ? "rgba(168,85,247,0.08)" : "rgba(255,255,255,0.025)",
+                    background: selected ? "var(--accent)" : "rgba(255,255,255,0.025)",
                   }}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -284,7 +286,7 @@ export function Settings({ onImport }: Props): JSX.Element {
               type="checkbox"
               checked={settings.skipBrowserDownload ?? false}
               onChange={(e) => void patch({ skipBrowserDownload: e.target.checked })}
-              className="w-3.5 h-3.5 rounded accent-purple-500"
+              className="w-3.5 h-3.5 rounded accent-[var(--ring)]"
             />
             {settings.browserEngine === "chromix"
               ? "Skip Chromix SDK auto-download (use a local or SDK-cached binary)"
@@ -353,7 +355,7 @@ export function Settings({ onImport }: Props): JSX.Element {
               type="checkbox"
               checked={settings.autoUpdate}
               onChange={(e) => void patch({ autoUpdate: e.target.checked })}
-              className="w-3.5 h-3.5 rounded accent-purple-500"
+              className="w-3.5 h-3.5 rounded accent-[var(--ring)]"
             />
             Automatically check for updates
           </label>
@@ -369,7 +371,7 @@ export function Settings({ onImport }: Props): JSX.Element {
               type="checkbox"
               checked={settings.usageReporting}
               onChange={(e) => void patch({ usageReporting: e.target.checked })}
-              className="w-3.5 h-3.5 rounded accent-purple-500"
+              className="w-3.5 h-3.5 rounded accent-[var(--ring)]"
             />
             Send an anonymous daily heartbeat
           </label>
@@ -458,9 +460,9 @@ function Row({
           width: 36,
           height: 36,
           borderRadius: 10,
-          background: "rgba(168,85,247,0.10)",
-          boxShadow: "inset 0 0 0 1px rgba(168,85,247,0.18)",
-          color: "#c084fc",
+          background: "var(--accent)",
+          boxShadow: "inset 0 0 0 1px var(--ring)",
+          color: "var(--accent-foreground)",
         }}
       >
         {icon}

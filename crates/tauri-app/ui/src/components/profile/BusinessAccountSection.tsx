@@ -190,7 +190,7 @@ function AccountEditor({ profileId, active }: Props): JSX.Element {
         <p className="text-slate-500">本分区需单独保存；切换分区保留草稿，关闭编辑页会丢弃未保存的登记修改。</p>
       </div>
 
-      {busy && <p role="status" className="flex items-center gap-2 text-purple-300"><Loader2 size={14} className="animate-spin" />{busy === "loading" ? "正在加载账号登记…" : busy === "saving" ? "正在保存账号登记…" : "正在解绑账号…"}</p>}
+      {busy && <p role="status" className="flex items-center gap-2 text-accent-foreground"><Loader2 size={14} className="animate-spin" />{busy === "loading" ? "正在加载账号登记…" : busy === "saving" ? "正在保存账号登记…" : "正在解绑账号…"}</p>}
       {error && <p role="alert" className="break-words text-red-300">{error}</p>}
       {message && <p role="status" className="text-emerald-300">{message}</p>}
       <div className="flex flex-wrap items-center gap-2">

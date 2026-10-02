@@ -208,6 +208,18 @@ enum LauncherCmd {
         country: Option<String>,
         resp: oneshot::Sender<Result<()>>,
     },
+    ListGroups {
+        resp: oneshot::Sender<Result<Vec<multizen_core::GroupInfo>>>,
+    },
+    SetProfileGroup {
+        id: String,
+        group: Option<String>,
+        resp: oneshot::Sender<Result<()>>,
+    },
+    DeleteGroup {
+        name: String,
+        resp: oneshot::Sender<Result<()>>,
+    },
 }
 
 pub struct TauriBrowserDriver {
@@ -593,6 +605,15 @@ async fn launcher_task(
             }
             LauncherCmd::SetProxyCountry { id, country, resp } => {
                 let _ = resp.send(pm.set_proxy_country(&id, country.as_deref()));
+            }
+            LauncherCmd::ListGroups { resp } => {
+                let _ = resp.send(pm.list_groups());
+            }
+            LauncherCmd::SetProfileGroup { id, group, resp } => {
+                let _ = resp.send(pm.set_profile_group(&id, group));
+            }
+            LauncherCmd::DeleteGroup { name, resp } => {
+                let _ = resp.send(pm.delete_group(&name));
             }
         }
     }
@@ -1026,6 +1047,46 @@ impl TauriBrowserDriver {
             .send(LauncherCmd::SetProxyCountry {
                 id: id.to_string(),
                 country,
+                resp: resp_tx,
+            })
+            .await
+            .map_err(|_| MultizenError::Mcp("launcher thread closed".into()))?;
+        resp_rx
+            .await
+            .map_err(|_| MultizenError::Mcp("launcher thread dropped response".into()))?
+    }
+
+    pub async fn list_groups(&self) -> Result<Vec<multizen_core::GroupInfo>> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        self.launcher_tx
+            .send(LauncherCmd::ListGroups { resp: resp_tx })
+            .await
+            .map_err(|_| MultizenError::Mcp("launcher thread closed".into()))?;
+        resp_rx
+            .await
+            .map_err(|_| MultizenError::Mcp("launcher thread dropped response".into()))?
+    }
+
+    pub async fn set_profile_group(&self, id: &str, group: Option<String>) -> Result<()> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        self.launcher_tx
+            .send(LauncherCmd::SetProfileGroup {
+                id: id.to_string(),
+                group,
+                resp: resp_tx,
+            })
+            .await
+            .map_err(|_| MultizenError::Mcp("launcher thread closed".into()))?;
+        resp_rx
+            .await
+            .map_err(|_| MultizenError::Mcp("launcher thread dropped response".into()))?
+    }
+
+    pub async fn delete_group(&self, name: &str) -> Result<()> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        self.launcher_tx
+            .send(LauncherCmd::DeleteGroup {
+                name: name.to_string(),
                 resp: resp_tx,
             })
             .await

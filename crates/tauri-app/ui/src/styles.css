@@ -1,10 +1,138 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Monaco, monospace;
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", monospace;
 }
 
+:root,
+.dark {
+  color-scheme: dark;
+  --background: #070707;
+  --foreground: #ffffff;
+  --card: #0e0e0e;
+  --card-foreground: #e4e4e4;
+  --popover: #0e0e0e;
+  --popover-foreground: #e4e4e4;
+  --primary: #ffffff;
+  --primary-foreground: #070707;
+  --secondary: #161616;
+  --secondary-foreground: #e4e4e4;
+  --muted: #161616;
+  --muted-foreground: #a0a0a0;
+  --accent: #1f1f1f;
+  --accent-foreground: #ffffff;
+  --destructive: #ec6a5e;
+  --destructive-foreground: #070707;
+  --success: #61c554;
+  --success-foreground: #070707;
+  --warning: #f4be4f;
+  --warning-foreground: #070707;
+  --border: rgba(255, 255, 255, 0.06);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #6b6b6b;
+  --chart-1: #ffffff;
+  --chart-2: #a0a0a0;
+  --chart-3: #6b6b6b;
+  --chart-4: #4a4a4a;
+  --chart-5: #2f2f2f;
+  --sidebar: #0e0e0e;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #070707;
+  --sidebar-accent: #1f1f1f;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-ring: #6b6b6b;
+  --radius: 0.625rem;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/fonts/geist-sans-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/fonts/geist-sans-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/fonts/geist-sans-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/fonts/geist-sans-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist-mono-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist-mono-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist-mono-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
 @layer base {
   html,
   body,
@@ -12,22 +140,21 @@
     height: 100%;
   }
   body {
-    background: #0a0b0f;
-    color: #f1f5f9;
+    background: var(--background);
+    color: var(--foreground);
     font-family: var(--font-sans);
-    font-feature-settings: "ss01", "ss02", "cv01";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow: hidden;
   }
   :focus-visible {
-    outline: 2px solid rgba(168, 85, 247, 0.4);
+    outline: 2px solid var(--ring);
     outline-offset: 2px;
     border-radius: 4px;
   }
   ::selection {
-    background: rgba(168, 85, 247, 0.5);
-    color: white;
+    background: color-mix(in oklab, var(--foreground) 30%, transparent);
+    color: var(--background);
   }
   ::-webkit-scrollbar {
     width: 10px;
@@ -39,7 +166,7 @@
   ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
-    border: 2px solid #0a0b0f;
+    border: 2px solid var(--background);
   }
   ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.1);
@@ -93,7 +220,7 @@
   padding: 1px 5px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.06);
-  color: #94a3b8;
+  color: var(--muted-foreground);
   box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.3);
 }
 
@@ -108,23 +235,23 @@
   filter: brightness(1.06);
 }
 .mz-button:hover:not(:disabled)[data-variant="secondary"] {
-  background: rgba(255, 255, 255, 0.07) !important;
+  background: color-mix(in oklab, var(--foreground) 7%, transparent) !important;
 }
 .mz-button:hover:not(:disabled)[data-variant="ghost"] {
-  background: rgba(255, 255, 255, 0.04) !important;
-  color: #cbd5e1 !important;
+  background: color-mix(in oklab, var(--foreground) 4%, transparent) !important;
+  color: var(--foreground) !important;
 }
 .mz-button:hover:not(:disabled)[data-variant="accent"] {
-  background: rgba(168, 85, 247, 0.16) !important;
+  background: var(--accent) !important;
 }
 .mz-button:hover:not(:disabled)[data-variant="success"] {
-  background: rgba(16, 185, 129, 0.16) !important;
+  background: color-mix(in oklab, var(--success) 16%, transparent) !important;
 }
 .mz-button:hover:not(:disabled)[data-variant="warning"] {
-  background: rgba(245, 158, 11, 0.16) !important;
+  background: color-mix(in oklab, var(--warning) 16%, transparent) !important;
 }
 .mz-button:hover:not(:disabled)[data-variant="danger"] {
-  background: rgba(239, 68, 68, 0.14) !important;
+  background: color-mix(in oklab, var(--destructive) 14%, transparent) !important;
 }
 .mz-button:active:not(:disabled) {
   transform: scale(0.97);
@@ -133,53 +260,51 @@
 /* Legacy classes kept until call sites migrate to <Button> — same look as
    primary / secondary / ghost variants so we can swap incrementally. */
 .btn-brand {
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
-  color: white;
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-weight: 600;
   border: 0;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow:
-    0 6px 20px -6px rgba(168, 85, 247, 0.45),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.15);
-  transition: all 150ms ease-out;
+  box-shadow: inset 0 0 0 1px var(--border);
+  transition: all 150ms var(--ease-out);
 }
 .btn-brand:hover { filter: brightness(1.06); }
 .btn-brand:active { transform: scale(0.97); }
 .btn-brand:disabled { opacity: 0.5; pointer-events: none; }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.04);
-  color: #cbd5e1;
+  background: color-mix(in oklab, var(--foreground) 4%, transparent);
+  color: var(--foreground);
   font-weight: 500;
   border: 0;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-  transition: all 150ms ease-out;
+  box-shadow: inset 0 0 0 1px var(--border);
+  transition: all 150ms var(--ease-out);
 }
-.btn-secondary:hover { background: rgba(255, 255, 255, 0.07); }
+.btn-secondary:hover { background: color-mix(in oklab, var(--foreground) 7%, transparent); }
 .btn-secondary:active { transform: scale(0.97); }
 
 .btn-ghost {
   background: transparent;
-  color: #94a3b8;
+  color: var(--muted-foreground);
   font-weight: 500;
   border: 0;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-  transition: all 150ms ease-out;
+  box-shadow: inset 0 0 0 1px var(--border);
+  transition: all 150ms var(--ease-out);
 }
 .btn-ghost:hover {
-  color: #cbd5e1;
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--foreground);
+  background: color-mix(in oklab, var(--foreground) 4%, transparent);
 }
 .btn-ghost:active { transform: scale(0.97); }
 
@@ -291,4 +416,53 @@
   width: 18px;
   height: 13px;
   vertical-align: -2px;
+}
+
+/* Donut-style material surfaces and mask-based edge fades. */
+.surface-material {
+  background: color-mix(in oklab, var(--background) 85%, transparent);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+}
+.surface-material-popover {
+  background: color-mix(in oklab, var(--popover) 88%, transparent);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+}
+.surface-material-card {
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+}
+.scroll-fade {
+  scrollbar-width: thin;
+  mask-image: linear-gradient(to bottom, transparent 0, black 20px, black calc(100% - 20px), transparent 100%);
+  mask-mode: alpha;
+}
+.scroll-fade[data-fade-top="false"] {
+  mask-image: linear-gradient(to bottom, black 0, black calc(100% - 20px), transparent 100%);
+}
+.scroll-fade[data-fade-bottom="false"] {
+  mask-image: linear-gradient(to bottom, transparent 0, black 20px, black 100%);
+}
+.scroll-fade[data-fade-top="false"][data-fade-bottom="false"] {
+  mask-image: none;
+}
+.scroll-fade-x {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  mask-image: linear-gradient(to right, transparent 0, black 20px, black calc(100% - 20px), transparent 100%);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .surface-material { background: var(--background); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .surface-material-popover { background: var(--popover); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .surface-material-card { background: var(--card); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

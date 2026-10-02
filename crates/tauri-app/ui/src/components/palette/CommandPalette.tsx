@@ -62,7 +62,7 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
       {
         id: "create",
         icon: <Plus size={14} strokeWidth={1.5} />,
-        title: q ? <>Create new profile · "<span className="mono text-purple-300">{query}</span>"</> : "Create new profile",
+        title: q ? <>Create new profile · "<span className="mono text-[var(--accent-foreground)]">{query}</span>"</> : "Create new profile",
         kbd: <Kbd>⌘ N</Kbd>,
         group: "Actions",
         action: { kind: "create" },
@@ -160,6 +160,7 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
       }}
     >
       <div
+        className="surface-material"
         style={{
           width: 600,
           borderRadius: 16,
@@ -176,7 +177,7 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
           className="flex items-center gap-3 px-[18px] py-3.5"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
         >
-          <Command size={16} className="text-purple-400" strokeWidth={1.5} />
+          <Command size={16} className="text-[var(--accent-foreground)]" strokeWidth={1.5} />
           <input
             ref={inputRef}
             value={query}
@@ -217,11 +218,11 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
                     className="w-full flex items-center gap-3 text-left"
                     style={{
                       padding: "9px 18px",
-                      background: isActive ? "rgba(168,85,247,0.10)" : "transparent",
-                      boxShadow: isActive ? "inset 2px 0 0 #a855f7" : undefined,
+                      background: isActive ? "var(--accent)" : "transparent",
+                      boxShadow: isActive ? "inset 2px 0 0 var(--ring)" : undefined,
                       border: 0,
                       cursor: "pointer",
-                      color: isActive ? "#c084fc" : "#64748b",
+                      color: isActive ? "var(--accent-foreground)" : "#64748b",
                     }}
                   >
                     {row.icon}

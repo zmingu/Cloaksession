@@ -56,6 +56,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
   const [section, setSection] = useState<SectionId>("general");
   const [name, setName] = useState("");
   const [tagsRaw, setTagsRaw] = useState("");
+  const [group, setGroup] = useState("");
   const [icon, setIcon] = useState<string | undefined>(undefined);
   const [startUrl, setStartUrl] = useState(DEFAULT_START_URL);
   const [proxy, setProxy] = useState<DraftProxy>(EMPTY_PROXY);
@@ -86,6 +87,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
     const dirty =
       name.trim() !== "" ||
       tagsRaw.trim() !== "" ||
+      group.trim() !== "" ||
       icon !== undefined ||
       notes.trim() !== "" ||
       startUrl.trim() !== DEFAULT_START_URL ||
@@ -102,7 +104,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
       dirtyRef.current = dirty;
       onDirtyChange?.(dirty);
     }
-  }, [name, tagsRaw, icon, notes, startUrl, proxy, extensions, fingerprint, chromixOptions, onDirtyChange]);
+  }, [name, tagsRaw, group, icon, notes, startUrl, proxy, extensions, fingerprint, chromixOptions, onDirtyChange]);
 
   function buildProxy(): ProxyConfig | undefined {
     if (!proxy.enabled) return undefined;
@@ -153,9 +155,10 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
     setBusy(true);
     setError(null);
     try {
-      const created = await profiles.create({
+      const input = {
         name: name.trim(),
         tags: tagList,
+        group: group.trim() || null,
         icon,
         notes: notes.trim() || undefined,
         startUrl: startUrl.trim() || undefined,
@@ -163,7 +166,8 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
         fingerprint,
         chromixOptions,
         extensions: extensions.length > 0 ? extensions : undefined,
-      });
+      };
+      const created = await profiles.create(input);
       onCreated(created.id, autoLaunch);
     } catch (e) {
       setError((e as Error).message);
@@ -218,6 +222,13 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
                   </Field>
                 </div>
               </div>
+              <Field label="Group">
+                <Input
+                  value={group}
+                  onChange={setGroup}
+                  placeholder="optional — e.g. sales"
+                />
+              </Field>
               <Field label="Notes">
                 <textarea
                   value={notes}
@@ -245,7 +256,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
                   type="checkbox"
                   checked={proxy.enabled}
                   onChange={(e) => setProxy((p) => ({ ...p, enabled: e.target.checked }))}
-                  className="w-3.5 h-3.5 rounded accent-purple-500"
+                  className="w-3.5 h-3.5 rounded accent-[var(--accent)]"
                 />
                 Use proxy
               </label>

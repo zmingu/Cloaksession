@@ -1,11 +1,11 @@
-import { activity, chromium, profiles as profilesApi, system, onActivityEvent, onChromiumStatus, onExtensionInstalled, onProxyCountryUpdated, onRunningChanged } from "./lib/ipc";
+import { activity, chromium, profiles as profilesApi, profilesDeleteGroup, profilesListGroups, system, onActivityEvent, onChromiumStatus, onExtensionInstalled, onProxyCountryUpdated, onRunningChanged } from "./lib/ipc";
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 import { TopBar } from "./components/screens/TopBar";
-import { LeftRail, type Section } from "./components/screens/LeftRail";
-import { Constellation } from "./components/profile/Constellation";
+import { Sidebar, type Section } from "./components/screens/Sidebar";
+import { Constellation, type GroupFilter } from "./components/profile/Constellation";
 import { NewProfileSheet } from "./components/profile/NewProfileSheet";
 import { ProfileEditSheet } from "./components/profile/ProfileEditSheet";
-import type { Profile } from "./types";
+import type { Profile, ProfileGroup } from "./types";
 import { ActivityDrawer } from "./components/activity/ActivityDrawer";
 import { McpPanel } from "./components/mcp/McpPanel";
 import { Settings } from "./components/screens/Settings";
@@ -110,9 +110,24 @@ export function App(): JSX.Element {
     setProfiles(list);
   }, []);
 
+  // Named groups + "Ungrouped" counts, shown in the sidebar. Fetched on
+  // mount and after any create/edit/delete that can move group membership.
+  const [groups, setGroups] = useState<ProfileGroup[]>([]);
+  const [groupFilter, setGroupFilter] = useState<GroupFilter>("all");
+  const refreshGroups = useCallback(async () => {
+    try {
+      setGroups(await profilesListGroups());
+    } catch {
+      // Backend may not register the command in every build — degrade to
+      // an empty groups list rather than crashing the sidebar mount.
+      setGroups([]);
+    }
+  }, []);
+
   // Initial load + activity stream subscription
   useEffect(() => {
     void refresh();
+    void refreshGroups();
     void system.info().then(setInfo);
     void activity.recent().then(setEvents);
 
@@ -202,7 +217,7 @@ export function App(): JSX.Element {
       closingTimers.current.forEach((t) => window.clearTimeout(t));
       closingTimers.current.clear();
     };
-  }, [refresh]);
+  }, [refresh, refreshGroups]);
 
   // Keyboard shortcuts: ⌘K palette, ⌘N new profile, ⌘1/2/, sections,
   // ⌘⇧A drawer, esc closes overlays.
@@ -260,6 +275,19 @@ export function App(): JSX.Element {
     await profilesApi.create({ name, tags });
     dismissOnboarding();
     await refresh();
+    void refreshGroups();
+  }
+
+  async function deleteGroup(name: string): Promise<void> {
+    try {
+      await profilesDeleteGroup(name);
+    } catch (e) {
+      const msg = typeof e === "string" ? e : (e as Error).message ?? String(e);
+      showToast(`Delete group failed: ${msg}`);
+      return;
+    }
+    if (groupFilter === name) setGroupFilter("all");
+    await Promise.all([refresh(), refreshGroups()]);
   }
 
   async function launchProfile(id: string): Promise<void> {
@@ -292,6 +320,7 @@ export function App(): JSX.Element {
       return;
     }
     await refresh();
+    void refreshGroups();
   }
 
   async function exportProfile(profileId: string, passphrase: string): Promise<void> {
@@ -315,6 +344,7 @@ export function App(): JSX.Element {
     await profilesApi.delete(id);
     if (selectedId === id) setSelectedId(null);
     await refresh();
+    void refreshGroups();
   }
 
   function handleCommand(a: CommandAction): void {
@@ -364,7 +394,15 @@ export function App(): JSX.Element {
       <UpdateBanner suppressed={!chromiumReady} />
 
       <div className="flex-1 flex min-h-0">
-        <LeftRail active={section} onChange={setSection} onCmdK={() => setPaletteOpen(true)} />
+        <Sidebar
+          active={section}
+          onChange={setSection}
+          onCmdK={() => setPaletteOpen(true)}
+          groups={groups}
+          groupFilter={groupFilter}
+          onGroupFilterChange={setGroupFilter}
+          onDeleteGroup={deleteGroup}
+        />
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
           {false && (
@@ -407,6 +445,7 @@ export function App(): JSX.Element {
                     setShowSheet(false);
                     setSheetDirty(false);
                     await refresh();
+                    void refreshGroups();
                     if (autoLaunch) {
                       await launchProfile(id);
                     }
@@ -417,6 +456,9 @@ export function App(): JSX.Element {
                   profiles={profiles}
                   recentEvents={events}
                   closingIds={closingIds}
+                  groupFilter={groupFilter}
+                  onGroupFilterChange={setGroupFilter}
+                  groups={groups}
                   onSelect={openEditFor}
                   onCreate={() => setShowSheet(true)}
                   onLaunch={launchProfile}
@@ -452,10 +494,11 @@ export function App(): JSX.Element {
         onClose={() => {
           setEditingProfile(null);
           void refresh();
+          void refreshGroups();
         }}
       >
         {editingProfile && (
-          <ProfileEditSheet profile={editingProfile} onSaved={() => void refresh()} />
+          <ProfileEditSheet profile={editingProfile} onSaved={() => { void refresh(); void refreshGroups(); }} />
         )}
       </Modal>
 
@@ -523,12 +566,10 @@ export function App(): JSX.Element {
 
       {toast && (
         <div
-          className="fixed right-6 px-4 py-3 rounded-lg text-sm"
+          className="fixed right-6 px-4 py-3 rounded-lg text-sm surface-material"
           style={{
             bottom: 56,
-            background: "rgba(15,16,22,0.92)",
-            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08), 0 20px 60px rgba(0,0,0,0.5)",
-            backdropFilter: "blur(20px)",
+            boxShadow: "inset 0 0 0 1px var(--border), 0 20px 60px rgba(0,0,0,0.5)",
             animation: "mz-slide-up 200ms ease-out",
           }}
         >

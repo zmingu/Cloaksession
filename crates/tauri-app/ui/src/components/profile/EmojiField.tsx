@@ -90,7 +90,7 @@ export function EmojiField({
               }}
               className={
                 value === undefined
-                  ? "text-[10px] font-semibold text-purple-300"
+                  ? "text-[10px] font-semibold text-accent-foreground"
                   : "text-[10px] font-semibold text-slate-400 hover:text-slate-200 transition-colors"
               }
               title={`Auto — classifier picks ${derived}`}

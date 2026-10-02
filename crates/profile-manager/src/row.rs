@@ -18,6 +18,7 @@ pub struct ProfileRow {
     pub icon: Option<String>,
     pub start_url: Option<String>,
     pub search_provider: Option<String>,
+    pub group: Option<String>,
 }
 
 pub fn row_to_profile(row: ProfileRow) -> Profile {
@@ -51,6 +52,7 @@ pub fn row_to_profile(row: ProfileRow) -> Profile {
         updated_at: row.updated_at,
         last_opened_at: row.last_opened_at,
         proxy_country: row.proxy_country,
+        group: row.group,
     }
 }
 
