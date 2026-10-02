@@ -3,7 +3,7 @@
   "name": "kuaishou-account-init",
   "title": "快手小店账号初始化二开",
   "description": "快手小店扫码登录后自动初始化：获取账号ID头像、获取主体资料含OCR兜底、首次关闭切片全自动发布权限",
-"status": "in_progress",
+  "status": "completed",
   "dev_type": null,
   "scope": null,
   "package": "multizen-core",
@@ -11,8 +11,8 @@
   "creator": "zmingu",
   "assignee": "zmingu",
   "createdAt": "2026-09-30",
-  "completedAt": null,
-  "branch": null,
+  "completedAt": "2026-10-02",
+  "branch": "main",
   "base_branch": "main",
   "worktree_path": null,
   "commit": null,
@@ -21,6 +21,6 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "",
+  "notes": "2026-10-02: Chromix151 live four-enabled to four-disabled transition and reload persistence verified. Fixed delayed entry, header-icon close, 未开启 zero header, 去设置 entry, proven-missing owned-page recovery. Chromix seam/lifecycle tests passed. Automatic monitor enabled with bounded fair profile admission; starvation RED-to-GREEN and review passed. Latest dev restarted. Native automatic flow after user login still pending; no full acceptance/archive. See research/chromix-live-diagnosis.md.",
   "meta": {}
 }

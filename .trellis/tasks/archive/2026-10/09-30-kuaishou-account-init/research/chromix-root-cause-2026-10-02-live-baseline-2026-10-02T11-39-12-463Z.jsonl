@@ -1,0 +1,5 @@
+{"time":"2026-10-02T11:39:12.464Z","mode":"live","cohort":"baseline","event":"run","node":"v24.21.0","cycles":3,"loginSeconds":300,"artifact":"chromix-root-cause-2026-10-02-live-baseline-2026-10-02T11-39-12-463Z.jsonl"}
+{"time":"2026-10-02T11:39:12.900Z","mode":"live","cohort":"baseline","event":"failure","code":"OWNERSHIP_UNVERIFIED"}
+{"time":"2026-10-02T11:39:12.900Z","mode":"live","cohort":"baseline","event":"result","verdict":"OWNERSHIP_UNVERIFIED","completedCycles":0,"requestedCycles":3,"targetsWithCrashEvent":0,"targetsWithThreeNoReplies":0,"crashReportingLines":0}
+{"time":"2026-10-02T11:39:12.992Z","mode":"live","cohort":"baseline","event":"owned-bridge-exit","code":0,"duringCleanup":true}
+{"time":"2026-10-02T11:39:13.001Z","mode":"live","cohort":"baseline","event":"cleanup","disposableProfileRemoved":true}

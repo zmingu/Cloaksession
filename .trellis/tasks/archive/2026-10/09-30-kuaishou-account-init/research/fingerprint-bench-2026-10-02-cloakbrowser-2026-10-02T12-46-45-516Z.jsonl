@@ -1,0 +1,2 @@
+{"time":"2026-10-02T12:46:45.517Z","engine":"cloakbrowser","seed":"123456789","event":"run","node":"v24.21.0","artifact":"fingerprint-bench-2026-10-02-cloakbrowser-2026-10-02T12-46-45-516Z.jsonl"}
+{"time":"2026-10-02T12:46:45.746Z","engine":"cloakbrowser","seed":"123456789","event":"failure","code":"Sent before connected."}
