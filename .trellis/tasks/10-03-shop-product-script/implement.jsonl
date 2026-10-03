@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/cdp-driver/backend/index.md", "reason": "TaskPage/BrowserSession 契约，浏览器操作基础"}
+{"file": ".trellis/spec/cdp-driver/backend/task-control.md", "reason": "TaskPage cooperative lease/cancel/timeout，业务 task 复用此层"}
+{"file": ".trellis/spec/tauri-app/backend/ipc.md", "reason": "Tauri IPC command/prerequisite 验证表"}
+{"file": ".trellis/tasks/10-03-jieger-business-migration/prd.md", "reason": "父任务迁移地图与跨子任务验收标准"}

@@ -1,0 +1,10 @@
+{"file": ".trellis/spec/cdp-driver/backend/index.md", "reason": "TaskPage/BrowserSession 契约入口，所有业务子任务的浏览器操作基础"}
+{"file": ".trellis/spec/cdp-driver/backend/task-control.md", "reason": "TaskPage cooperative lease/cancel/timeout 矩阵，业务 task 复用此层而非另起封装"}
+{"file": ".trellis/spec/cdp-driver/backend/sessions.md", "reason": "BrowserSession 生命周期与 target 绑定，connect/login 原语重写依据"}
+{"file": ".trellis/spec/profile-manager/backend/business-accounts.md", "reason": "business_accounts scope=jinniu|kuaishou 持久化，账户/Profile 隔离边界"}
+{"file": ".trellis/spec/browser-launcher/backend/business-isolation.md", "reason": "金牛独立 Profile 与小店隔离约束"}
+{"file": ".trellis/spec/tauri-app/backend/ipc.md", "reason": "Tauri IPC command/prerequisite 验证表，新业务命令必须遵守"}
+{"file": ".trellis/spec/tauri-app/backend/kuaishou-initialization.md", "reason": "account_init 并发与 archive 契约，sub-account/直播 task 的前置页面拥有权参考"}
+{"file": ".trellis/spec/tauri-app/backend/index.md", "reason": "tauri-app 后端指南入口，IPC/事件/资源/启动顺序"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "业务 task 跨 driver/IPC/前端多层数据流核对"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "避免在各子任务重复实现 connect/login 原语"}

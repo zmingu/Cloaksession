@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/cdp-driver/backend/task-control.md", "reason": "核对业务 task 是否正确复用 TaskPage lease/cancel，无重复封装"}
+{"file": ".trellis/spec/profile-manager/backend/business-accounts.md", "reason": "核对账户/Profile 隔离与 scope 未被破坏"}
+{"file": ".trellis/spec/tauri-app/backend/ipc.md", "reason": "核对新命令注册与 prerequisite 表一致"}
+{"file": ".trellis/spec/tauri-app/backend/index.md", "reason": "tauri-app 质量检查清单"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "跨层数据流一致性检查"}
