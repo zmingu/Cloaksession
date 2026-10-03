@@ -353,3 +353,28 @@ export type UpdateStatus =
   | { kind: "no-update" }
   | { kind: "up-to-date" }
   | { kind: "error"; message: string };
+
+// ---------------------------------------------------------------------------
+// Bind creator (jinniu authorize) — crates/tauri-app/src/driver/bind_creator.rs
+// ---------------------------------------------------------------------------
+
+/** One creator-authorize row (jieger `AuthorizeItem`, camelCase over IPC). */
+export interface AuthorizeItem {
+  userId: string;
+  userName: string;
+  status: string;
+  authorizeTime: string;
+}
+
+/** List result (jieger `AuthorizeListResult`). */
+export interface AuthorizeListResult {
+  ok: boolean;
+  data: AuthorizeItem[];
+  error?: string;
+}
+
+/** Bind result (jieger `BindCreatorResult`). */
+export interface BindCreatorResult {
+  ok: boolean;
+  error?: string;
+}

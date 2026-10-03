@@ -26,6 +26,9 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   ActivityEvent,
   AppSettings,
+  AuthorizeItem,
+  AuthorizeListResult,
+  BindCreatorResult,
   CreateProfileInput,
   ExtensionConfig,
   ExtensionInstalledEvent,
@@ -366,6 +369,50 @@ export const update = {
   download: (version: string): Promise<void> =>
     invoke<void>("update_download", { version }),
 };
+
+// ---------------------------------------------------------------------------
+// Bind creator — jinniu creator authorize (jieger bindCreator port).
+//
+// `profileId` resolves the live browser session; `jinniuId` is the jieger
+// business key persisted in `jinniu_authorize_records`. `accountId` is the
+// optional `__accountId__` sub-account context (forces `homeType=new`).
+// ---------------------------------------------------------------------------
+
+export const bindCreator = {
+  /** `bind_creator_get_authorize_list` → persisted records, no browser. */
+  list: (jinniuId: string): Promise<AuthorizeListResult> =>
+    invoke<AuthorizeListResult>("bind_creator_get_authorize_list", { jinniuId }),
+
+  /** `bind_creator_sync_authorize_list` → scrape `.ant-table` then persist. */
+  sync: (profileId: string, jinniuId: string, accountId?: string): Promise<AuthorizeListResult> =>
+    invoke<AuthorizeListResult>("bind_creator_sync_authorize_list", {
+      profileId,
+      jinniuId,
+      accountId: accountId ?? null,
+    }),
+
+  /**
+   * `bind_creator_start_authorize` → full bind flow. `skipConfirm` selects
+   * the creator without submitting (dry-run); otherwise the agreement is
+   * checked and the request is confirmed.
+   */
+  authorize: (
+    profileId: string,
+    jinniuId: string,
+    kuaishouId: string,
+    skipConfirm?: boolean,
+    accountId?: string,
+  ): Promise<BindCreatorResult> =>
+    invoke<BindCreatorResult>("bind_creator_start_authorize", {
+      profileId,
+      jinniuId,
+      kuaishouId,
+      skipConfirm: skipConfirm ?? null,
+      accountId: accountId ?? null,
+    }),
+};
+
+export type { AuthorizeItem };
 
 // ---------------------------------------------------------------------------
 // Push event listeners (colon-delimited event names from Rust `emit`)

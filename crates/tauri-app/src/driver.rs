@@ -43,13 +43,29 @@
 //! `companion_dir` are stored on the driver (from `AppSettings`) because
 //! `BrowserDriver::launch(&self, profile_id)` has no parameter for them.
 
+pub(crate) mod auto_message;
+pub mod auto_reply;
 mod business;
+pub(crate) mod live_launch;
+pub(crate) mod live_room_monitor;
+pub use sub_account::SubAccountLoginResult;
+pub(crate) mod scene_play;
+pub mod bind_creator;
+pub(crate) mod huibo_live;
+pub(crate) mod shop_helper;
+pub use bind_creator::{AuthorizeItem, AuthorizeListResult, BindCreatorResult};
+pub mod jinniu_promote;
+pub mod shop_product_script;
+mod sub_account;
 #[cfg(test)]
 mod business_tests;
 #[cfg(test)]
 mod shop_login_tests;
 mod identity;
 mod account_init;
+mod mate_login;
+
+pub use mate_login::{MateLoginStage, MateLoginState, MateLoginUser};
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -182,6 +198,14 @@ enum LauncherCmd {
         id: String,
         resp: oneshot::Sender<Result<()>>,
     },
+    RecordInteraction {
+        input: profile_manager::RecordInteractionInput,
+        resp: oneshot::Sender<Result<profile_manager::SubAccountInteraction>>,
+    },
+    ListInteractions {
+        account_id: String,
+        resp: oneshot::Sender<Result<Vec<profile_manager::SubAccountInteraction>>>,
+    },
     DeleteProfile {
         id: String,
         resp: oneshot::Sender<Result<()>>,
@@ -220,6 +244,52 @@ enum LauncherCmd {
         name: String,
         resp: oneshot::Sender<Result<()>>,
     },
+    BindCreator {
+        operation: Box<dyn FnOnce(&profile_manager::ProfileManager) + Send>,
+    },
+    Scene(scene_play::SceneCmd),
+    // --- Shop product scripts (jieger 商品话术库) ---------------------------
+    // Storage primitives live in profile-manager; playback stays in
+    // `driver/shop_product_script.rs`. Routed here like other manager ops
+    // because the pm Connection lives on this thread.
+    ShopProductScriptsList {
+        resp: oneshot::Sender<Result<Vec<profile_manager::ShopProductScript>>>,
+    },
+    ShopProductScriptGet {
+        id: String,
+        resp: oneshot::Sender<Result<Option<profile_manager::ShopProductScriptDetail>>>,
+    },
+    ShopProductScriptCreate {
+        input: profile_manager::CreateShopProductScriptInput,
+        resp: oneshot::Sender<Result<profile_manager::ShopProductScript>>,
+    },
+    ShopProductScriptUpdate {
+        id: String,
+        patch: profile_manager::UpdateShopProductScriptInput,
+        resp: oneshot::Sender<Result<profile_manager::ShopProductScript>>,
+    },
+    ShopProductScriptDelete {
+        id: String,
+        resp: oneshot::Sender<Result<()>>,
+    },
+    ShopProductScriptAddLine {
+        input: profile_manager::AddShopProductScriptLineInput,
+        resp: oneshot::Sender<Result<profile_manager::ShopProductScriptLine>>,
+    },
+    ShopProductScriptUpdateLine {
+        id: String,
+        patch: profile_manager::UpdateShopProductScriptLineInput,
+        resp: oneshot::Sender<Result<profile_manager::ShopProductScriptLine>>,
+    },
+    ShopProductScriptDeleteLine {
+        id: String,
+        resp: oneshot::Sender<Result<()>>,
+    },
+    ShopProductScriptReorderLines {
+        script_id: String,
+        ordered_ids: Vec<String>,
+        resp: oneshot::Sender<Result<Vec<profile_manager::ShopProductScriptLine>>>,
+    },
 }
 
 pub struct TauriBrowserDriver {
@@ -230,6 +300,8 @@ pub struct TauriBrowserDriver {
     launcher_tx: mpsc::Sender<LauncherCmd>,
     identity: Arc<identity::IdentityRuntime>,
     account_init: Arc<account_init::InitRuntime>,
+    mate_login: Arc<mate_login::MateLoginRuntime>,
+    sub_account: Arc<sub_account::SubAccountRuntime>,
     registry: Arc<ProfileRegistry>,
     engine: BrowserEngine,
     browser_binary: PathBuf,
@@ -290,6 +362,8 @@ impl TauriBrowserDriver {
             launcher_tx: tx,
             identity,
             account_init,
+            mate_login: Arc::new(mate_login::MateLoginRuntime::new()),
+            sub_account: Arc::new(sub_account::SubAccountRuntime::new()),
             registry,
             engine,
             browser_binary,
@@ -338,6 +412,7 @@ impl TauriBrowserDriver {
     /// call before or after the driver is `manage`d; the field is a
     /// `StdMutex<Option<_>>` and emits no-op when `None` (e.g. unit tests).
     pub fn set_app(&self, app: tauri::AppHandle) {
+        self.mate_login.set_app(app.clone());
         *self.app.lock().unwrap() = Some(app);
     }
 
@@ -359,6 +434,8 @@ impl TauriBrowserDriver {
     pub async fn shutdown(&self) {
         self.identity.stop.cancel();
         self.account_init.stop.cancel();
+        self.mate_login.cancel_all();
+        self.sub_account.stop.cancel();
         self.registry.clear().await;
         let _ = tokio::time::timeout(
             std::time::Duration::from_secs(2),
@@ -556,6 +633,12 @@ async fn launcher_task(
             LauncherCmd::UnbindBusinessAccount { id, resp } => {
                 let _ = resp.send(launcher.unbind_business_account(&id).await);
             }
+            LauncherCmd::RecordInteraction { input, resp } => {
+                let _ = resp.send(pm.record_interaction(&input));
+            }
+            LauncherCmd::ListInteractions { account_id, resp } => {
+                let _ = resp.send(pm.list_interactions(None, Some(account_id.as_str()), 500, 0));
+            }
             LauncherCmd::DeleteProfile { id, resp } => {
                 // Do not drop a live cookie-scope reservation through IPC deletion.
                 let result = async {
@@ -614,6 +697,41 @@ async fn launcher_task(
             }
             LauncherCmd::DeleteGroup { name, resp } => {
                 let _ = resp.send(pm.delete_group(&name));
+            }
+            LauncherCmd::BindCreator { operation } => {
+                operation(&pm);
+            }
+            LauncherCmd::Scene(cmd) => scene_play::handle(cmd, &pm).await,
+            LauncherCmd::ShopProductScriptsList { resp } => {
+                let _ = resp.send(pm.shop_product_scripts_list());
+            }
+            LauncherCmd::ShopProductScriptGet { id, resp } => {
+                let _ = resp.send(pm.shop_product_script_get(&id));
+            }
+            LauncherCmd::ShopProductScriptCreate { input, resp } => {
+                let _ = resp.send(pm.shop_product_script_create(input));
+            }
+            LauncherCmd::ShopProductScriptUpdate { id, patch, resp } => {
+                let _ = resp.send(pm.shop_product_script_update(&id, patch));
+            }
+            LauncherCmd::ShopProductScriptDelete { id, resp } => {
+                let _ = resp.send(pm.shop_product_script_delete(&id));
+            }
+            LauncherCmd::ShopProductScriptAddLine { input, resp } => {
+                let _ = resp.send(pm.shop_product_script_add_line(input));
+            }
+            LauncherCmd::ShopProductScriptUpdateLine { id, patch, resp } => {
+                let _ = resp.send(pm.shop_product_script_update_line(&id, patch));
+            }
+            LauncherCmd::ShopProductScriptDeleteLine { id, resp } => {
+                let _ = resp.send(pm.shop_product_script_delete_line(&id));
+            }
+            LauncherCmd::ShopProductScriptReorderLines {
+                script_id,
+                ordered_ids,
+                resp,
+            } => {
+                let _ = resp.send(pm.shop_product_script_reorder_lines(&script_id, ordered_ids));
             }
         }
     }
@@ -1101,5 +1219,6 @@ impl Drop for TauriBrowserDriver {
     fn drop(&mut self) {
         self.identity.stop.cancel();
         self.account_init.stop.cancel();
+        self.sub_account.stop.cancel();
     }
 }

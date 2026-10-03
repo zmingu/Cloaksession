@@ -8,6 +8,14 @@ pub mod driver;
 pub mod mcp_embed;
 pub mod registry;
 pub mod token;
+// Declared here (not in `driver.rs`) so `driver.rs` stays untouched:
+// the file still lives at `driver/comment_listener.rs`.
+#[path = "driver/comment_listener.rs"]
+pub mod comment_listener;
+/// jieger 自动弹品移植。不经 `driver.rs` 挂载（`#[path]` 直指文件），
+/// 避免触碰并行工作流归属的 `driver.rs`；对外路径为 `crate::auto_popup`。
+#[path = "driver/auto_popup.rs"]
+pub mod auto_popup;
 
 pub use driver::TauriBrowserDriver;
 pub use registry::ProfileRegistry;
@@ -24,9 +32,25 @@ use tokio::sync::Mutex;
 use crate::commands::{
     activity::activity_recent,
     archive::{profiles_export_archive, profiles_import_archive},
+    auto_message::{auto_message_start, auto_message_status, auto_message_stop},
+    bind_creator::{
+        bind_creator_get_authorize_list, bind_creator_start_authorize,
+        bind_creator_sync_authorize_list,
+    },
+    auto_popup::{
+        auto_popup_explain_once, auto_popup_goods, auto_popup_register_shortcuts,
+        auto_popup_scan, auto_popup_start, auto_popup_status, auto_popup_stop,
+        auto_popup_trigger_shortcut, auto_popup_unregister_shortcuts, auto_popup_update_config,
+    },
+    auto_reply::{auto_reply_history, auto_reply_preview, auto_reply_record},
     business_accounts::{
         business_accounts_list, business_accounts_profile_state, business_accounts_save,
         business_accounts_unbind,
+    },
+    comment_listener::{
+        comment_events_history, comment_events_next, comment_events_recent,
+        comment_listener_start, comment_listener_status, comment_listener_status_all,
+        comment_listener_stop,
     },
     dialog::{dialog_pick_browser_binary, dialog_pick_directory},
     extensions::{
@@ -42,6 +66,8 @@ use crate::commands::{
     groups::{
         profiles_delete_group, profiles_list_groups, profiles_set_profile_group,
     },
+    huibo_live::{cancel_huibo_task, get_huibo_video_list, get_shop_live_state, start_huibo_live},
+    kuaishou_auth::{ensure_kuaishou_auth, kuaishou_connect, kuaishou_login},
     kuaishou_identity::{
         kuaishou_identity_avatar, kuaishou_identity_detect, kuaishou_identity_list,
     },
@@ -50,12 +76,42 @@ use crate::commands::{
         kuaishou_subject_attachment, kuaishou_subject_confirm, kuaishou_subject_correct,
         kuaishou_subject_detail, kuaishou_subject_list, kuaishou_subject_reocr,
     },
+    mate_login::{mate_login_cancel, mate_login_start, mate_login_state},
+    jinniu_promote::{
+        jinniu_promote_apply_phase1, jinniu_promote_apply_phase2, jinniu_promote_live_users,
+        jinniu_promote_open_store_create, jinniu_promote_select_live_user, jinniu_promote_submit,
+    },
+    live_launch::{
+        live_launch_credentials, live_launch_heartbeat_start, live_launch_heartbeat_stop,
+        live_launch_prerequisites, live_launch_status, live_launch_stream_start,
+        live_launch_stream_stop,
+    },
+    live_room_monitor::{
+        get_live_room_monitor_state, start_live_room_monitor, stop_live_room_monitor,
+    },
     profiles::{
         profiles_close, profiles_create, profiles_delete, profiles_get, profiles_launch,
         profiles_list, profiles_update,
     },
     proxy::proxy_detect_geo,
+    scene_play::{
+        scene_add_line, scene_create, scene_delete, scene_delete_line, scene_get, scene_list,
+        scene_play, scene_reorder_lines, scene_stop, scene_update, scene_update_line,
+    },
     settings::{settings_get, settings_update},
+    shop_helper::{
+        shop_helper_add_to_cart, shop_helper_read_goods, shop_helper_remove_from_cart,
+        shop_helper_switch_tab,
+    },
+    shop_product_script::{
+        shop_product_script_add_line, shop_product_script_create, shop_product_script_delete,
+        shop_product_script_delete_line, shop_product_script_get, shop_product_script_reorder_lines,
+        shop_product_script_update, shop_product_script_update_line, shop_product_scripts_list,
+    },
+    sub_account::{
+        batch_login_sub_accounts, list_sub_accounts, save_sub_account, sub_account_enter_live_room,
+        sub_account_interactions, sub_account_login, sub_account_send_danmaku, unbind_sub_account,
+    },
     system::system_info,
     update::{update_check, update_download, update_install, update_last_checked, update_status},
 };
@@ -72,6 +128,12 @@ pub struct AppState {
     pub activity: Arc<ActivityLog>,
     pub mcp_token: Mutex<Option<String>>,
     pub update: std::sync::Mutex<crate::commands::update::UpdateState>,
+    /// profiles.db path, for commands that need short-lived direct
+    /// `ProfileManager` access (auto_reply history/record). The
+    /// authoritative manager still lives on the launcher thread.
+    pub db_path: PathBuf,
+    /// profiles root dir, paired with `db_path` for the above.
+    pub profiles_root: PathBuf,
 }
 
 /// Resolve the on-disk paths for `profiles.db`, `profiles/`, and
@@ -186,8 +248,8 @@ fn build_app_state(app: &tauri::AppHandle) -> (AppState, PathBuf) {
 
     let registry = Arc::new(ProfileRegistry::new());
     let driver = TauriBrowserDriver::start(
-        db_path,
-        profiles_root,
+        db_path.clone(),
+        profiles_root.clone(),
         extensions_root,
         registry,
         engine,
@@ -207,6 +269,8 @@ fn build_app_state(app: &tauri::AppHandle) -> (AppState, PathBuf) {
         activity: Arc::new(ActivityLog::new()),
         mcp_token: Mutex::new(None),
         update: std::sync::Mutex::new(crate::commands::update::UpdateState::default()),
+        db_path,
+        profiles_root,
     };
     (state, data_dir)
 }
@@ -336,7 +400,9 @@ pub fn run() {
             state.driver.set_app(app.handle().clone());
             // Identity starts first; initialization only claims eligible unfinished
             // steps after fresh account/session/scope checks. Both start once.
+            // The sub-account login poller is read-only and independent.
             state.driver.start_kuaishou_monitors();
+            state.driver.start_sub_account_login_monitor();
 
             // Spawn a background task that bridges `ActivityLog`'s broadcast
             // stream to the Tauri frontend via `activity:event`. Every
@@ -367,6 +433,41 @@ pub fn run() {
                             }
                             Err(tokio::sync::broadcast::error::RecvError::Closed) => {
                                 tracing::info!("activity:event bridge: sender closed; exiting");
+                                break;
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Bridge auto-popup run events (`Started/Stopped/Explained/…`) to
+            // the frontend via `auto-popup:event`. Same best-effort pattern
+            // as the activity bridge above: lag is logged and resynced,
+            // close ends the task. Command-level snapshots use the separate
+            // `auto-popup:state` event emitted directly by each command.
+            {
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let mut rx = crate::auto_popup::subscribe();
+                    tracing::info!("auto-popup:event bridge task started");
+                    loop {
+                        match rx.recv().await {
+                            Ok(event) => {
+                                if let Err(e) = app_handle.emit("auto-popup:event", &event) {
+                                    tracing::warn!(
+                                        error = %e,
+                                        "emit auto-popup:event failed"
+                                    );
+                                }
+                            }
+                            Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                                tracing::warn!(
+                                    skipped = n,
+                                    "auto-popup:event bridge lagged; resyncing"
+                                );
+                            }
+                            Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                                tracing::info!("auto-popup:event bridge: sender closed; exiting");
                                 break;
                             }
                         }
@@ -463,14 +564,37 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // jieger keyword auto-reply
+            auto_reply_preview,
+            auto_reply_history,
+            auto_reply_record,
             // business metadata (never a login command)
             business_accounts_list,
             business_accounts_profile_state,
             business_accounts_save,
             business_accounts_unbind,
+            bind_creator_get_authorize_list,
+            bind_creator_sync_authorize_list,
+            bind_creator_start_authorize,
+            // auto-message timeline (主播互动时间轴弹幕)
+            auto_message_start,
+            auto_message_stop,
+            auto_message_status,
+            // live comment listener (jieger)
+            comment_listener_start,
+            comment_listener_stop,
+            comment_listener_status,
+            comment_listener_status_all,
+            comment_events_recent,
+            comment_events_history,
+            comment_events_next,
             kuaishou_identity_list,
             kuaishou_identity_detect,
             kuaishou_identity_avatar,
+            // kuaishou platform auth primitives (connect / login / ensure)
+            kuaishou_connect,
+            kuaishou_login,
+            ensure_kuaishou_auth,
             // kuaishou subject archive + account initialization
             kuaishou_subject_list,
             kuaishou_subject_detail,
@@ -481,6 +605,60 @@ pub fn run() {
             kuaishou_init_steps,
             kuaishou_init_retry,
             kuaishou_ocr_availability,
+            // jinniu promote (F1 live-user switch + plan-build F5/F6/F7)
+            jinniu_promote_open_store_create,
+            jinniu_promote_live_users,
+            jinniu_promote_select_live_user,
+            jinniu_promote_apply_phase1,
+            jinniu_promote_apply_phase2,
+            jinniu_promote_submit,
+            // viewer sub-accounts (小号): CRUD + batch login + room + danmaku
+            save_sub_account,
+            list_sub_accounts,
+            unbind_sub_account,
+            sub_account_login,
+            batch_login_sub_accounts,
+            sub_account_enter_live_room,
+            sub_account_send_danmaku,
+            sub_account_interactions,
+            // shop product scripts (jieger 商品话术库)
+            shop_product_scripts_list,
+            shop_product_script_get,
+            shop_product_script_create,
+            shop_product_script_update,
+            shop_product_script_delete,
+            shop_product_script_add_line,
+            shop_product_script_update_line,
+            shop_product_script_delete_line,
+            shop_product_script_reorder_lines,
+            // scene play
+            scene_create,
+            scene_get,
+            scene_list,
+            scene_update,
+            scene_delete,
+            scene_add_line,
+            scene_update_line,
+            scene_delete_line,
+            scene_reorder_lines,
+            scene_play,
+            scene_stop,
+            // live-mate HTTP QR login (tokens never persisted)
+            mate_login_start,
+            mate_login_cancel,
+            mate_login_state,
+            // live launch (jieger 开播控制)
+            live_launch_status,
+            live_launch_prerequisites,
+            live_launch_credentials,
+            live_launch_heartbeat_start,
+            live_launch_heartbeat_stop,
+            live_launch_stream_start,
+            live_launch_stream_stop,
+            // live room monitor (jieger 调度中枢)
+            start_live_room_monitor,
+            stop_live_room_monitor,
+            get_live_room_monitor_state,
             // profiles
             profiles_list,
             profiles_get,
@@ -498,6 +676,11 @@ pub fn run() {
             // settings
             settings_get,
             settings_update,
+            // shop helper (follow-assistant cart; isolated from CPS shelving)
+            shop_helper_read_goods,
+            shop_helper_switch_tab,
+            shop_helper_add_to_cart,
+            shop_helper_remove_from_cart,
             // dialog
             dialog_pick_browser_binary,
             dialog_pick_directory,
@@ -531,6 +714,21 @@ pub fn run() {
             extensions_prepare_from_file,
             extensions_prepare_from_folder,
             extensions_icon,
+            // auto-popup (jieger autoPopUp port)
+            auto_popup_start,
+            auto_popup_stop,
+            auto_popup_status,
+            auto_popup_update_config,
+            auto_popup_goods,
+            auto_popup_scan,
+            auto_popup_explain_once,
+            auto_popup_register_shortcuts,
+            auto_popup_unregister_shortcuts,
+            auto_popup_trigger_shortcut,
+            get_huibo_video_list,
+            start_huibo_live,
+            get_shop_live_state,
+            cancel_huibo_task,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -539,6 +737,7 @@ pub fn run() {
                 let state = app.state::<AppState>();
                 state.driver.stop_kuaishou_identity_monitor();
                 state.driver.stop_kuaishou_init_monitor();
+                state.driver.stop_sub_account_login_monitor();
             }
         });
 }

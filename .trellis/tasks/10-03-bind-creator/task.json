@@ -3,7 +3,7 @@
   "name": "bind-creator",
   "title": "达人授权迁移",
   "description": "迁移 jieger tasks/jinniu/bindCreator: 达人绑定授权。Rust 侧重写。依赖 ks-platform-primitives, jinniu-promote。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -12,7 +12,7 @@
   "assignee": "zmingu",
   "createdAt": "2026-10-03",
   "completedAt": null,
-  "branch": null,
+  "branch": "zmingu/bind-creator",
   "base_branch": "main",
   "worktree_path": null,
   "commit": null,
@@ -22,5 +22,9 @@
   "parent": "10-03-jieger-business-migration",
   "relatedFiles": [],
   "notes": "",
-  "meta": {}
+  "meta": {
+    "execution_state": "worker_report_verified",
+    "blocker": null,
+    "worker": "pi dispatch ctx_2266592d63cd worker_done succeeded 2026-10-03T14:55:45Z; implementation in F:/orca_worktrees/Cloaksession/bind-creator-pi (branch zmingu/bind-creator-pi, base main 含规划 3fc4a8c); independently verified with CARGO_TARGET_DIR=D:/cargo-target: profile-manager ok incl 3 new jinniu_authorize tests, tauri-app 78 passed 0 failed, cargo check --workspace clean; terminal released, delivery acked; see research/pi-retry-2026-10-03.md; pending merge/wiring/UI/Chromix acceptance like the other modules; huibo-live still undispatched"
+  }
 }

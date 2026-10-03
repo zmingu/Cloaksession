@@ -28,9 +28,14 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         "chromix_options",
         "TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(chromix_options) AND json_type(chromix_options) = 'object')",
     )?;
+    crate::auto_reply::migrate(conn)?;
     crate::business_accounts::migrate(conn)?;
+    crate::jinniu_authorize::migrate(conn)?;
+    crate::scenes::migrate(conn)?;
+    crate::shop_product_script::migrate(conn)?;
     crate::kuaishou_identity::migrate(conn)?;
     crate::kuaishou_account::migrate(conn)?;
+    crate::live_events::migrate(conn)?;
     Ok(())
 }
 
