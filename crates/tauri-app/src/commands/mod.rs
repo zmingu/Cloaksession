@@ -14,6 +14,7 @@ pub mod fingerprint;
 pub mod groups;
 pub mod kuaishou_identity;
 pub mod kuaishou_init;
+pub mod native_text;
 pub mod profiles;
 pub mod proxy;
 pub mod settings;

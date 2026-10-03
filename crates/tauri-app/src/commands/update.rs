@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_dialog::DialogExt;
 
+use crate::commands::native_text::{persisted_language, text, NativeTextKey};
 use crate::AppState;
 
 const GITHUB_OWNER: &str = "xiaozhou26";
@@ -385,17 +386,22 @@ pub async fn update_install(
 
 #[tauri::command]
 pub async fn update_download(
-    _app: AppHandle,
-    _state: State<'_, AppState>,
+    app: AppHandle,
+    state: State<'_, AppState>,
     version: String,
 ) -> Result<(), String> {
     // On macOS / non-Windows: open the GitHub release download URL.
     let url = format!(
         "https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}/releases/tag/{version}"
     );
-    _app.dialog()
-        .message(format!("Download Cloaksession {version} from:\n{url}"))
-        .title("Download update");
+    // Read the persisted language and drop the settings guard before the
+    // blocking native dialog is opened.
+    let lang = persisted_language(&state).await;
+    let title = text(lang, NativeTextKey::UpdateDownloadDialogTitle);
+    let body = text(lang, NativeTextKey::UpdateDownloadDialogBody)
+        .replace("{version}", &version)
+        .replace("{url}", &url);
+    app.dialog().message(body).title(title);
     // Try to open in browser.
     #[cfg(target_os = "windows")]
     {
