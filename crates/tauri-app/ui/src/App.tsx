@@ -16,6 +16,7 @@ import { ChromiumBootstrapModal } from "./components/onboarding/ChromiumBootstra
 import { UpdateBanner } from "./components/UpdateBanner";
 import { Modal, ConfirmHost, confirm } from "./components/atoms";
 import { readPersisted, usePersistedState, writePersisted } from "./lib/persisted";
+import { useT } from "./i18n/LanguageProvider";
 import { KuaishouIdentityProvider } from "./lib/KuaishouIdentityProvider";
 import { KuaishouIdentityDialog } from "./components/profile/KuaishouIdentity";
 import type { ActivityEvent, ChromiumStatus, ProfileSummary, SystemInfo } from "./types";
@@ -27,6 +28,7 @@ type ModalState =
   | { kind: "delete-confirm"; profileId: string };
 
 export function App(): JSX.Element {
+  const t = useT();
   // Persisted UI state — survives app restarts under localStorage `multizen.ui.*`.
   const [section, setSection] = usePersistedState<Section>("section", "profiles");
   const [drawerOpen, setDrawerOpen] = usePersistedState<boolean>("drawerOpen", false);
@@ -428,9 +430,9 @@ export function App(): JSX.Element {
                 confirmClose={async () => {
                   if (!sheetDirty) return true;
                   return confirm({
-                    title: "Discard your changes?",
-                    body: "You haven't created the profile yet. Closing will lose what you've entered.",
-                    confirmLabel: "Discard",
+                    title: t("common.discardChanges.title"),
+                    body: t("profile.create.discardBody"),
+                    confirmLabel: t("common.discard"),
                     destructive: true,
                   });
                 }}

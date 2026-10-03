@@ -2,6 +2,7 @@ import { proxy as proxyApi } from "../../lib/ipc";
 import { useState, type JSX } from "react";
 import { AlertTriangle, CheckCircle2, Globe2, Loader2 } from "lucide-react";
 import { Flag } from "../atoms";
+import { useT } from "../../i18n/LanguageProvider";
 import type { ProxyConfig, ProxyGeoResult } from "../../types";
 
 /**
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export function ProxyTester({ proxy, profileId, onProbed }: Props): JSX.Element | null {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ProxyGeoResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +60,7 @@ export function ProxyTester({ proxy, profileId, onProbed }: Props): JSX.Element 
         }}
       >
         {busy ? <Loader2 size={11} className="animate-spin" /> : <Globe2 size={11} />}
-        {busy ? "Testing…" : "Test proxy"}
+        {busy ? t("proxy.testing") : t("proxy.test")}
       </button>
 
       {result && <ResultCard result={result} />}

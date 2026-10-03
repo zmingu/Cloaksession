@@ -3,6 +3,7 @@ import { Activity as ActivityIcon, ChevronUp, ChevronDown } from "lucide-react";
 import type { ActivityEvent, ProfileSummary } from "../../types";
 import { Pill, Kbd, Flag, ccFromTimezone } from "../atoms";
 import { formatTime } from "../../lib/relativeTime";
+import { useT } from "../../i18n/LanguageProvider";
 
 interface Props {
   open: boolean;
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function ActivityDrawer({ open, events, profiles, onToggle }: Props): JSX.Element {
+  const t = useT();
   const liveCount = useMemo(() => events.filter((e) => e.status === "pending").length, [events]);
   const profilesById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
   const recent = useMemo(() => events.slice(-150).reverse(), [events]);
@@ -41,13 +43,13 @@ export function ActivityDrawer({ open, events, profiles, onToggle }: Props): JSX
         }}
       >
         <ActivityIcon size={13} className="text-accent-foreground" />
-        <span className="text-[12px] font-semibold text-slate-100">MCP activity</span>
+        <span className="text-[12px] font-semibold text-slate-100">{t("activity.title")}</span>
         {liveCount > 0 ? (
-          <Pill kind="ai" dot>{liveCount} live</Pill>
+          <Pill kind="ai" dot>{t("activity.liveCount", { n: liveCount })}</Pill>
         ) : (
-          <Pill kind="idle">{events.length} calls</Pill>
+          <Pill kind="idle">{t("activity.callsCount", { n: events.length })}</Pill>
         )}
-        <span className="mono text-[10px] text-slate-500">last 5 min</span>
+        <span className="mono text-[10px] text-slate-500">{t("activity.last5min")}</span>
         <div className="flex-1" />
         <Kbd>⌘ ⇧ A</Kbd>
         {open ? (
@@ -62,7 +64,7 @@ export function ActivityDrawer({ open, events, profiles, onToggle }: Props): JSX
         <div className="flex-1 overflow-auto">
           {recent.length === 0 ? (
             <div className="px-6 py-12 text-center text-[12px] text-slate-500">
-              No MCP calls yet. Connect an agent (see the MCP tab) and its tool calls stream here.
+              {t("activity.feedEmptyLong")}
             </div>
           ) : (
             <>
@@ -78,11 +80,11 @@ export function ActivityDrawer({ open, events, profiles, onToggle }: Props): JSX
                   background: "rgba(10,11,15,0.95)",
                 }}
               >
-                <div>Time</div>
-                <div>Tool</div>
-                <div>Summary</div>
-                <div>Dur</div>
-                <div className="text-right">Status</div>
+                <div>{t("activity.cols.time")}</div>
+                <div>{t("activity.cols.tool")}</div>
+                <div>{t("activity.cols.summary")}</div>
+                <div>{t("activity.cols.dur")}</div>
+                <div className="text-right">{t("activity.cols.status")}</div>
               </div>
               {recent.map((e) => (
                 <Row key={e.id} event={e} profile={e.profileId ? profilesById.get(e.profileId) : undefined} />
@@ -96,7 +98,8 @@ export function ActivityDrawer({ open, events, profiles, onToggle }: Props): JSX
 }
 
 function Row({ event, profile }: { event: ActivityEvent; profile?: ProfileSummary }): JSX.Element {
-  const cc = profile ? ccFromTimezone((profile as ProfileSummary).tags.find((t) => t.startsWith("tz:"))?.slice(3)) : undefined;
+  const t = useT();
+  const cc = profile ? ccFromTimezone((profile as ProfileSummary).tags.find((tag) => tag.startsWith("tz:"))?.slice(3)) : undefined;
 
   const argsLine = useMemo(() => {
     const args = (event.args ?? {}) as Record<string, unknown>;
@@ -121,6 +124,7 @@ function Row({ event, profile }: { event: ActivityEvent; profile?: ProfileSummar
     >
       <div className="mono text-[11px] text-slate-500">{formatTime(event.timestamp)}</div>
       <div className="mono text-[12px] text-slate-300 truncate">
+        {/* MCP tool namespace — protocol, never translated. */}
         <span className="text-muted-foreground">multizen.</span>
         {event.tool}
       </div>
@@ -137,9 +141,9 @@ function Row({ event, profile }: { event: ActivityEvent; profile?: ProfileSummar
         {event.durationMs !== undefined ? `${event.durationMs}ms` : "—"}
       </div>
       <div className="text-right">
-        {event.status === "ok" && <Pill kind="running">ok</Pill>}
-        {event.status === "pending" && <Pill kind="ai" dot>live</Pill>}
-        {event.status === "error" && <Pill kind="error">error</Pill>}
+        {event.status === "ok" && <Pill kind="running">{t("activity.status.ok")}</Pill>}
+        {event.status === "pending" && <Pill kind="ai" dot>{t("activity.status.live")}</Pill>}
+        {event.status === "error" && <Pill kind="error">{t("activity.status.error")}</Pill>}
       </div>
     </div>
   );

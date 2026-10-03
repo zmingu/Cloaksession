@@ -6,6 +6,7 @@ import {
   type CatalogExtension,
 } from "../../data/extensionCatalog";
 import { ExtIcon } from "./ExtIcon";
+import { useT } from "../../i18n/LanguageProvider";
 
 /**
  * In-app "Discover" picker over the curated MV3 catalog. Searchable, grouped by
@@ -24,6 +25,7 @@ export function ExtensionCatalog({
   busyId: string | null;
   onInstall: (ext: CatalogExtension) => void;
 }): JSX.Element {
+  const t = useT();
   const [query, setQuery] = useState("");
 
   const groups = useMemo(() => {
@@ -39,8 +41,7 @@ export function ExtensionCatalog({
   if (CATALOG_EXTENSIONS.length === 0) {
     return (
       <div className="text-[11px] text-slate-600 leading-relaxed px-1 py-2">
-        The extension catalog is empty in this build. Add extensions by Chrome Web Store URL or
-        ID above.
+        {t("catalog.empty")}
       </div>
     );
   }
@@ -54,19 +55,19 @@ export function ExtensionCatalog({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search the catalog…"
+          placeholder={t("catalog.searchPlaceholder")}
           className="flex-1 bg-transparent text-[12px] text-slate-200 placeholder:text-slate-600 outline-none"
         />
       </div>
 
       {groups.length === 0 ? (
-        <div className="text-[11px] text-slate-600 px-1 py-2">No matches.</div>
+        <div className="text-[11px] text-slate-600 px-1 py-2">{t("catalog.noMatch")}</div>
       ) : (
         <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
           {groups.map(({ cat, items }) => (
             <div key={cat.id} className="space-y-1.5">
               <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
-                {cat.label}
+                {t(cat.labelKey)}
               </div>
               {items.map((ext) => {
                 const added = installedIds.has(ext.id);
@@ -93,15 +94,15 @@ export function ExtensionCatalog({
                     >
                       {added ? (
                         <>
-                          <Check size={11} /> Added
+                          <Check size={11} /> {t("catalog.added")}
                         </>
                       ) : busy ? (
                         <>
-                          <Loader2 size={11} className="animate-spin" /> Adding
+                          <Loader2 size={11} className="animate-spin" /> {t("catalog.adding")}
                         </>
                       ) : (
                         <>
-                          <Plus size={11} /> Add
+                          <Plus size={11} /> {t("catalog.add")}
                         </>
                       )}
                     </button>

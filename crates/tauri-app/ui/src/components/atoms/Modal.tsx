@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { useT } from "../../i18n/LanguageProvider";
 
 /**
  * Generic modal primitive. Handles:
@@ -68,6 +69,7 @@ export function Modal({
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [closing] = useState(false);
+  const t = useT();
 
   // Wrap onClose with the optional confirm gate.
   const tryClose = useCallback(async () => {
@@ -195,7 +197,7 @@ export function Modal({
             <button
               type="button"
               onClick={() => void tryClose()}
-              aria-label="Close"
+              aria-label={t("common.close.aria")}
               className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:text-slate-200 hover:bg-white/[0.06] transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -256,6 +258,7 @@ export function ConfirmHost(): JSX.Element | null {
     open: false,
     title: "",
   });
+  const t = useT();
 
   useEffect(() => {
     confirmHostSetter = setState;
@@ -290,7 +293,7 @@ export function ConfirmHost(): JSX.Element | null {
             onClick={() => close(false)}
             className="px-3 h-8 text-[12px] rounded-lg text-slate-300 hover:text-slate-100 hover:bg-white/[0.06] transition-colors"
           >
-            {state.cancelLabel ?? "Cancel"}
+            {state.cancelLabel ?? t("common.cancel")}
           </button>
           <button
             type="button"
@@ -307,7 +310,7 @@ export function ConfirmHost(): JSX.Element | null {
                 : "inset 0 1px 0 rgba(255,255,255,0.16), 0 4px 12px -2px var(--accent)",
             }}
           >
-            {state.confirmLabel ?? "Confirm"}
+            {state.confirmLabel ?? t("common.confirm")}
           </button>
         </div>
       </div>

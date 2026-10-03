@@ -1,12 +1,11 @@
 import { settings } from "../../lib/ipc";
 import { useState, type JSX } from "react";
 import { Cube } from "../atoms";
+import { useT } from "../../i18n/LanguageProvider";
 
 interface Props {
   onCreate: (name: string, tags: string[]) => Promise<void>;
 }
-
-const DEFAULT_NAME = "My first profile";
 
 /**
  * Three-step first-run: welcome → anonymous-usage consent → name a profile.
@@ -19,10 +18,12 @@ const DEFAULT_NAME = "My first profile";
  * proxy / fingerprint are editable later from the profile panel.
  */
 export function FirstRun({ onCreate }: Props): JSX.Element {
+  const t = useT();
+  const defaultName = t("onboarding.defaultProfileName");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   // Pre-filled with the default. The input below auto-selects on focus,
   // so the user can hit Enter to accept or just start typing to replace.
-  const [name, setName] = useState(DEFAULT_NAME);
+  const [name, setName] = useState(defaultName);
   const [telemetry, setTelemetry] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -42,7 +43,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
       } catch {
         /* leave the default (off) */
       }
-      await onCreate(name.trim() || DEFAULT_NAME, []);
+      await onCreate(name.trim() || defaultName, []);
     } finally {
       setBusy(false);
     }
@@ -102,11 +103,10 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
                 className="font-bold tracking-tight text-slate-100"
                 style={{ fontSize: 30, lineHeight: 1.1, letterSpacing: "-0.02em" }}
               >
-                A library of isolated browsers.
+                {t("onboarding.heroTitle")}
               </div>
               <div className="text-[14px] text-slate-400 mt-3 leading-relaxed">
-                Cookies, login, fingerprint, and proxy isolated per profile.
-                Drive them yourself or via any MCP agent.
+                {t("onboarding.heroSubtitle")}
               </div>
             </div>
             <div className="flex items-center gap-3 mt-1.5 mono text-[11px] text-slate-500">
@@ -126,7 +126,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
               className="btn-brand text-[13px] mt-2"
               style={{ padding: "10px 16px", borderRadius: 11 }}
             >
-              Continue
+              {t("common.continue")}
             </button>
           </>
         )}
@@ -138,13 +138,10 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
                 className="font-bold tracking-tight text-slate-100"
                 style={{ fontSize: 26, lineHeight: 1.15, letterSpacing: "-0.01em" }}
               >
-                Help improve Cloaksession?
+                {t("onboarding.telemetryTitle")}
               </div>
               <div className="text-[13px] text-slate-400 mt-2.5 leading-relaxed">
-                Optionally send an anonymous daily heartbeat: just app version and
-                OS family. No account, no persistent ID, and your IP is never
-                stored. No profiles, proxies, or browsing — ever. Off unless you
-                enable it; change it anytime in Settings.
+                {t("onboarding.telemetryBody")}
               </div>
             </div>
             <div className="flex items-center gap-2.5 mt-1">
@@ -154,7 +151,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
                 className="btn-brand text-[13px]"
                 style={{ padding: "10px 16px", borderRadius: 11 }}
               >
-                Enable
+                {t("common.enable")}
               </button>
               <button
                 type="button"
@@ -162,7 +159,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
                 className="btn-ghost text-[13px]"
                 style={{ padding: "10px 16px", borderRadius: 11 }}
               >
-                Not now
+                {t("common.notNow")}
               </button>
             </div>
           </>
@@ -175,11 +172,10 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
                 className="font-bold tracking-tight text-slate-100"
                 style={{ fontSize: 26, lineHeight: 1.15, letterSpacing: "-0.01em" }}
               >
-                Name your first profile.
+                {t("onboarding.nameTitle")}
               </div>
               <div className="text-[13px] text-slate-400 mt-2.5 leading-relaxed">
-                Just a label to find it later. Tags, proxy, and fingerprint are
-                editable anytime from the profile panel.
+                {t("onboarding.nameBody")}
               </div>
             </div>
             <div className="w-full text-left">
@@ -191,7 +187,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !busy) void submit();
                 }}
-                placeholder={DEFAULT_NAME}
+                placeholder={defaultName}
                 className="w-full px-4 py-3 rounded-xl bg-white/[0.03] text-[14px] text-slate-100 placeholder:text-slate-600 outline-none focus:bg-white/[0.05] transition-colors mono"
                 style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
               />
@@ -203,7 +199,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
               className="btn-brand text-[13px] mt-2"
               style={{ padding: "10px 16px", borderRadius: 11 }}
             >
-              {busy ? "Creating…" : "Create profile"}
+              {busy ? t("onboarding.creating") : t("onboarding.create")}
             </button>
           </>
         )}

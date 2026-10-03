@@ -4,6 +4,7 @@ import type { ActivityEvent, ProfileSummary } from "../../types";
 import { Pill, Flag, ccFromTimezone } from "../atoms";
 import { formatTime } from "../../lib/relativeTime";
 import { useScrollFade } from "../../lib/useScrollFade";
+import { useT } from "../../i18n/LanguageProvider";
 
 interface Props {
   events: ActivityEvent[];
@@ -20,6 +21,7 @@ interface Props {
  * config); bottom half = the live feed of MCP tool calls.
  */
 export function McpPanel({ events, profiles, mcpUrl, mcpToken }: Props): JSX.Element {
+  const t = useT();
   const profilesById = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
   const recent = useMemo(() => events.slice().reverse(), [events]);
   const scrollRef = useScrollFade<HTMLDivElement>();
@@ -28,21 +30,20 @@ export function McpPanel({ events, profiles, mcpUrl, mcpToken }: Props): JSX.Ele
     <div ref={scrollRef} className="flex-1 overflow-auto scroll-fade" style={{ padding: "24px 32px" }}>
       <div className="max-w-[960px] mx-auto">
         <div className="flex items-baseline gap-3 mb-1.5">
+          {/* "MCP" is a protocol abbreviation — kept as-is in both languages. */}
           <div className="text-lg font-bold tracking-tight text-slate-100">MCP</div>
-          <div className="mono text-[11px] text-slate-600">·  {events.length} calls</div>
+          <div className="mono text-[11px] text-slate-600">· {t("activity.callsCount", { n: events.length })}</div>
         </div>
         <div className="text-[13px] text-slate-500 mb-5 leading-relaxed max-w-[68ch]">
-          Drive your profiles from an AI agent. Point any MCP client (Claude Desktop, Cursor,
-          Cline, …) at Cloaksession, then launch a profile and let the agent open tabs, click, type,
-          and read pages through it — every tool call streams into the feed below.
+          {t("mcp.hero")}
         </div>
 
         <ConnectCard baseUrl={mcpUrl} token={mcpToken} />
 
         {/* Live feed */}
         <div className="flex items-baseline gap-2.5 mt-7 mb-2.5">
-          <div className="text-[13px] font-semibold text-slate-200">Live tool calls</div>
-          <div className="mono text-[10px] text-slate-600">{events.length} total</div>
+          <div className="text-[13px] font-semibold text-slate-200">{t("mcp.liveCalls")}</div>
+          <div className="mono text-[10px] text-slate-600">{events.length} {t("nav.topbar.total")}</div>
         </div>
 
         {recent.length === 0 ? (
@@ -55,10 +56,9 @@ export function McpPanel({ events, profiles, mcpUrl, mcpToken }: Props): JSX.Ele
               boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
             }}
           >
-            <div className="text-[13px] font-semibold text-slate-100">No agent calls yet</div>
+            <div className="text-[13px] font-semibold text-slate-100">{t("mcp.feedEmpty")}</div>
             <div className="text-[12px] text-slate-500 mt-1.5 leading-relaxed max-w-[46ch] mx-auto">
-              Connect a client above, launch a profile, and every MCP tool call the agent makes
-              shows up here — with sanitized arguments, outcome, and duration.
+              {t("mcp.feedHint")}
             </div>
           </div>
         ) : (
@@ -85,6 +85,7 @@ function ConnectCard({
   baseUrl: string | null;
   token: string | null;
 }): JSX.Element {
+  const t = useT();
   const off = baseUrl === null;
   const base = (baseUrl ?? "http://127.0.0.1:7777").replace(/\/$/, "");
   const httpUrl = `${base}/mcp`; // Streamable HTTP — the current MCP transport
@@ -128,7 +129,9 @@ function ConnectCard({
   );
 
   // A self-contained instruction the user can paste into any coding agent
-  // (Claude Code, Cursor, …) so it wires up the connection for them.
+  // (Claude Code, Cursor, …) so it wires up the connection for them. This is a
+  // clipboard payload full of protocol examples (TOML/JSON/header shapes), so
+  // it stays in its original form per the PRD protocol exception.
   const llmPrompt = useMemo(
     () =>
       [
@@ -176,88 +179,77 @@ function ConnectCard({
         >
           <Plug size={15} strokeWidth={1.75} />
         </div>
-        <div className="text-[13px] font-semibold text-slate-100">Connect an agent</div>
+        <div className="text-[13px] font-semibold text-slate-100">{t("mcp.connectAgent")}</div>
         <div className="ml-auto flex items-center gap-2">
           {!off && <CopyPromptButton prompt={llmPrompt} />}
           {off ? (
-            <Pill kind="idle">server off</Pill>
+            <Pill kind="idle">{t("mcp.serverOff")}</Pill>
           ) : (
-            <Pill kind="running" dot>listening</Pill>
+            <Pill kind="running" dot>{t("mcp.listening")}</Pill>
           )}
         </div>
       </div>
 
       {off ? (
         <div className="text-[12px] text-slate-400 leading-relaxed">
-          The MCP server is disabled. Turn on{" "}
-          <span className="text-slate-200 font-medium">Auto-start MCP HTTP transport</span> in{" "}
-          <span className="text-slate-200 font-medium">Settings</span> to get a connection
-          endpoint.
+          {t("mcp.disabledHint", { Settings: t("nav.settings"), autoStart: t("settings.mcp.autostart") })}
         </div>
       ) : (
         <>
           {/* Endpoint — Streamable HTTP is the current transport */}
           <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-1.5">
-            Endpoint (Streamable HTTP)
+            {t("mcp.endpoint")}
           </div>
           <CopyRow value={httpUrl} mono />
           <div className="mt-1.5 text-[11px] text-slate-500 leading-relaxed">
-            Legacy HTTP+SSE endpoint (older clients):{" "}
-            <code className="mono text-slate-400">{sseUrl}</code>
+            {t("mcp.legacyEndpoint", { sseUrl })}
           </div>
 
           {/* Auth token — every request needs it; each config below embeds it. */}
           <div className="mt-3 text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-1.5">
-            Auth token
+            {t("mcp.authToken")}
           </div>
           <CopyRow value={bearer} mono />
           <div className="mt-1.5 text-[11px] text-slate-500 leading-relaxed">
-            Sent as <code className="mono text-slate-400">Authorization: Bearer …</code> — the
-            configs below already include it. Keep it secret; anyone with it can drive your
-            profiles.
+            {t("mcp.tokenHint", { authorization: "Authorization: Bearer <token>" })}
           </div>
 
           {/* Steps */}
           <ol className="mt-4 space-y-2">
-            <Step n={1}>Copy the config for your client below into its MCP config.</Step>
-            <Step n={2}>Reload / restart the client so it connects.</Step>
-            <Step n={3}>Launch a profile here, and let the agent drive it.</Step>
+            <Step n={1}>{t("mcp.steps.copyTheConfigFor")}</Step>
+            <Step n={2}>{t("mcp.steps.reloadRestartTheClient")}</Step>
+            <Step n={3}>{t("mcp.steps.launchAProfileHere")}</Step>
           </ol>
 
           {/* Config snippets — three shapes by client type */}
           <div className="mt-4 space-y-3">
             <div>
               <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-1.5">
-                Codex CLI — ~/.codex/config.toml
+                {t("mcp.configGroups.codexCliCodexConfig")}
               </div>
               <CopyRow value={codexConfig} mono block />
               <div className="flex items-start gap-1.5 mt-2 text-[11px] text-slate-500 leading-relaxed">
                 <Terminal size={12} className="mt-[2px] flex-shrink-0 text-slate-600" />
                 <span>
-                  The <code className="text-slate-400">url</code> field needs a Codex build with
-                  streamable-HTTP MCP support. On older Codex (stdio only), use the{" "}
-                  <span className="text-slate-400">Stdio clients</span> config below instead.
+                  {t("mcp.codexNote", { url: "url", stdioClients: t("mcp.stdioClients") })}
                 </span>
               </div>
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-1.5">
-                JSON URL clients — Cursor, Cline, Continue
+                {t("mcp.configGroups.jsonUrlClientsCursor")}
               </div>
               <CopyRow value={jsonConfig} mono block />
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-1.5">
-                Stdio clients — Claude Desktop
+                {t("mcp.configGroups.stdioClientsClaudeDesktop")}
               </div>
               <CopyRow value={stdioConfig} mono block />
               <div className="flex items-start gap-1.5 mt-2 text-[11px] text-slate-500 leading-relaxed">
                 <Terminal size={12} className="mt-[2px] flex-shrink-0 text-slate-600" />
                 <span>
-                  Claude Desktop&apos;s config has no <code className="text-slate-400">url</code>{" "}
-                  field, so it bridges the endpoint through{" "}
-                  <code className="text-slate-400">mcp-remote</code> (needs Node). Change the port
-                  in <span className="text-slate-400">Settings</span>.
+                  {t("mcp.stdioNote", { tool: "mcp-remote", settings: t("nav.settings") })}
                 </span>
               </div>
             </div>
@@ -299,6 +291,7 @@ function CopyRow({
   mono?: boolean;
   block?: boolean;
 }): JSX.Element {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   function copy(): void {
     navigator.clipboard
@@ -339,7 +332,7 @@ function CopyRow({
       <button
         type="button"
         onClick={copy}
-        title="Copy"
+        title={t("common.copy")}
         className="flex-shrink-0 flex items-center justify-center transition-colors"
         style={{
           width: 28,
@@ -364,6 +357,7 @@ function CopyRow({
  * editing config files by hand.
  */
 function CopyPromptButton({ prompt }: { prompt: string }): JSX.Element {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   function copy(): void {
     navigator.clipboard
@@ -380,7 +374,7 @@ function CopyPromptButton({ prompt }: { prompt: string }): JSX.Element {
     <button
       type="button"
       onClick={copy}
-      title="Copy a prompt you can paste into Claude Code / Cursor to set up the connection"
+      title={t("mcp.copyForLlm.title")}
       className="flex items-center gap-1.5 transition-colors"
       style={{
         height: 26,
@@ -396,7 +390,7 @@ function CopyPromptButton({ prompt }: { prompt: string }): JSX.Element {
       }}
     >
       {copied ? <Check size={12} /> : <Sparkles size={12} />}
-      {copied ? "Copied" : "Copy for LLM"}
+      {copied ? t("common.copied") : t("mcp.copyForLlm")}
     </button>
   );
 }
@@ -426,6 +420,7 @@ function PageRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
           <code className="mono text-[12px] font-semibold text-slate-100">
+            {/* MCP tool namespace — protocol, never translated. */}
             <span className="text-[var(--accent-foreground)]">multizen.</span>
             {event.tool}
           </code>
@@ -449,7 +444,8 @@ function PageRow({
 }
 
 function StatusPill({ status }: { status: ActivityEvent["status"] }): JSX.Element {
-  if (status === "ok") return <Pill kind="running">ok</Pill>;
-  if (status === "pending") return <Pill kind="ai" dot>live</Pill>;
-  return <Pill kind="error">error</Pill>;
+  const t = useT();
+  if (status === "ok") return <Pill kind="running">{t("activity.status.ok")}</Pill>;
+  if (status === "pending") return <Pill kind="ai" dot>{t("activity.status.live")}</Pill>;
+  return <Pill kind="error">{t("activity.status.error")}</Pill>;
 }

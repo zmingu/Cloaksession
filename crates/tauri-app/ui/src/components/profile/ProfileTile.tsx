@@ -17,6 +17,7 @@ import { cn } from "../../lib/cn";
 import { profileEmoji } from "../../lib/profileEmoji";
 import { emojiTint } from "../../lib/emojiTint";
 import { useProxyHealth } from "../../lib/proxyHealth";
+import { useT } from "../../i18n/LanguageProvider";
 import { KuaishouIdentitySummary } from "./KuaishouIdentity";
 import type { ActivityEvent } from "../../types";
 
@@ -248,6 +249,7 @@ export function ProfileTile({
  * re-check. Direct profiles show a muted "no proxy" line instead.
  */
 function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
+  const t = useT();
   const { health, recheck } = useProxyHealth(profile.id, profile.proxy, profile.proxyCountry);
 
   if (health.status === "direct") {
@@ -256,7 +258,7 @@ function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
         className="flex items-center gap-2 px-2.5 py-2 rounded-[11px]"
         style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)" }}
       >
-        <span className="text-[12px] font-semibold text-slate-400 truncate">Direct — no proxy</span>
+        <span className="text-[12px] font-semibold text-slate-400 truncate">{t("proxy.directNone")}</span>
         <span className="ml-auto mono text-[10px] text-slate-600">host DNS</span>
       </div>
     );
@@ -266,15 +268,15 @@ function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
   const isError = health.status === "error";
   const label =
     health.status === "ok"
-      ? (health.country ?? countryNameFromCc(cc) ?? "Connected")
+      ? (health.country ?? countryNameFromCc(cc) ?? t("proxy.connected"))
       : isError
-        ? "Proxy unreachable"
-        : (countryNameFromCc(cc) ?? "Checking…");
+        ? t("proxy.unreachable")
+        : (countryNameFromCc(cc) ?? t("proxy.checking"));
   const title = isError
-    ? `${health.error} — click to retry`
+    ? t("proxy.healthRetry", { error: health.error })
     : health.status === "ok"
-      ? `${label}${cc ? ` · ${cc.toUpperCase()}` : ""} — click to re-check`
-      : "Checking proxy…";
+      ? t("proxy.healthRecheck", { label: `${label}${cc ? ` · ${cc.toUpperCase()}` : ""}` })
+      : t("proxy.checking");
 
   return (
     <button
@@ -309,7 +311,7 @@ function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
       {health.status === "ok" && (
         <span className="ml-auto inline-flex items-center gap-1.5">
           {profile.proxy && (
-            <span className="mono text-[10px] text-slate-600">proxy</span>
+            <span className="mono text-[10px] text-slate-600">{t("profile.list.proxyLabel")}</span>
           )}
           <span
             className="w-[7px] h-[7px] rounded-full bg-emerald-500"
@@ -323,13 +325,13 @@ function ProxyHealthRow({ profile }: { profile: TileData }): JSX.Element {
           style={{ color: "#f5b34a" }}
         >
           <Loader2 size={12} className="animate-spin" />
-          Checking…
+          {t("proxy.checking")}
         </span>
       )}
       {isError && (
         <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-red-300">
           <RefreshCw size={11} />
-          retry
+          {t("common.retry")}
         </span>
       )}
     </button>

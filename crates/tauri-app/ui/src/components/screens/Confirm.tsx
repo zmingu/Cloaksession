@@ -1,5 +1,6 @@
 import { useEffect, useState, type JSX, type ReactNode } from "react";
 import { Kbd } from "../atoms";
+import { useT } from "../../i18n/LanguageProvider";
 
 interface ConfirmProps {
   open: boolean;
@@ -12,6 +13,7 @@ interface ConfirmProps {
 }
 
 export function Confirm(props: ConfirmProps): JSX.Element | null {
+  const t = useT();
   useEffect(() => {
     if (!props.open) return;
     const onKey = (e: KeyboardEvent): void => {
@@ -50,7 +52,7 @@ export function Confirm(props: ConfirmProps): JSX.Element | null {
             className="btn-ghost px-3 py-[7px] text-[12px] rounded-[9px]"
             onClick={props.onCancel}
           >
-            Cancel
+            {t("common.cancel")}
             <Kbd>esc</Kbd>
           </button>
           <button
@@ -67,7 +69,7 @@ export function Confirm(props: ConfirmProps): JSX.Element | null {
             }
             onClick={props.onConfirm}
           >
-            {props.confirmLabel ?? "Confirm"}
+            {props.confirmLabel ?? t("common.confirm")}
             <Kbd variant={props.destructive ? "default" : "on-brand"}>⏎</Kbd>
           </button>
         </div>
@@ -91,6 +93,7 @@ interface PromptProps {
 export function Prompt(props: PromptProps): JSX.Element | null {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
+  const t = useT();
 
   useEffect(() => {
     if (props.open) setValue("");
@@ -150,7 +153,7 @@ export function Prompt(props: PromptProps): JSX.Element | null {
         />
         <div className="flex items-center gap-2 mt-5 justify-end">
           <button type="button" className="btn-ghost px-3 py-[7px] text-[12px] rounded-[9px]" onClick={props.onCancel}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -158,7 +161,7 @@ export function Prompt(props: PromptProps): JSX.Element | null {
             onClick={submit}
             className="btn-brand px-3 py-[7px] text-[12px] rounded-[9px]"
           >
-            {busy ? "…" : (props.confirmLabel ?? "Submit")}
+            {busy ? "…" : (props.confirmLabel ?? t("common.submit"))}
           </button>
         </div>
       </div>

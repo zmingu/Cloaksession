@@ -2,6 +2,7 @@ import { fingerprint as fingerprintApi, profiles } from "../../lib/ipc";
 import { useEffect, useRef, useState, type JSX, type KeyboardEvent } from "react";
 import { Kbd } from "../atoms";
 import { FingerprintForm } from "./FingerprintForm";
+import { useT } from "../../i18n/LanguageProvider";
 import { ChromixProfileOptions } from "./ChromixProfileOptions";
 import { ProxyTester } from "./ProxyTester";
 import { ExtensionsSection } from "./ExtensionsSection";
@@ -53,6 +54,7 @@ const EMPTY_PROXY: DraftProxy = {
  * bar commits the whole draft with Create / Create & launch.
  */
 export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): JSX.Element {
+  const t = useT();
   const [section, setSection] = useState<SectionId>("general");
   const [name, setName] = useState("");
   const [tagsRaw, setTagsRaw] = useState("");
@@ -109,7 +111,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
   function buildProxy(): ProxyConfig | undefined {
     if (!proxy.enabled) return undefined;
     if (!proxy.host.trim()) {
-      throw new Error("Proxy host is required");
+      throw new Error(t("profile.validation.proxyHostRequired"));
     }
     return {
       type: proxy.type,
@@ -135,12 +137,12 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
 
   async function submit(autoLaunch: boolean): Promise<void> {
     if (!name.trim()) {
-      setError("Name is required");
+      setError(t("profile.validation.nameRequired"));
       setSection("general");
       return;
     }
     if (!fingerprint) {
-      setError("Fingerprint preset is still loading");
+      setError(t("profile.new.fingerprintLoading"));
       setSection("fingerprint");
       return;
     }
@@ -198,11 +200,11 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
           {section === "general" && (
             <div className="space-y-3">
               <div className="flex gap-2.5 items-end">
-                <Field label="Icon">
+                <Field label={t("profile.field.icon")}>
                   <EmojiField value={icon} onChange={setIcon} name={name} tags={tagList} />
                 </Field>
                 <div className="grid grid-cols-2 gap-2.5 flex-1 min-w-0">
-                  <Field label="Name">
+                  <Field label={t("profile.field.name")}>
                     <Input
                       autoFocusHint
                       value={name}
@@ -210,30 +212,30 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
                         setName(v);
                         setError(null); // clear a stale "…required" as they fix it
                       }}
-                      placeholder="e.g. acme — sales · west"
+                      placeholder={t("profile.field.namePlaceholder")}
                     />
                   </Field>
-                  <Field label="Tags">
+                  <Field label={t("profile.field.tags")}>
                     <Input
                       value={tagsRaw}
                       onChange={setTagsRaw}
-                      placeholder="comma-separated (optional)"
+                      placeholder={t("profile.field.tagsPlaceholder")}
                     />
                   </Field>
                 </div>
               </div>
-              <Field label="Group">
+              <Field label={t("profile.field.group")}>
                 <Input
                   value={group}
                   onChange={setGroup}
-                  placeholder="optional — e.g. sales"
+                  placeholder={t("profile.field.groupPlaceholder")}
                 />
               </Field>
-              <Field label="Notes">
+              <Field label={t("profile.field.notes")}>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Optional — what this profile is for"
+                  placeholder={t("profile.field.notesPlaceholder")}
                   rows={3}
                   className="w-full px-2.5 py-2 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-600 outline-none focus:bg-white/[0.05] transition-colors resize-none"
                   style={{
@@ -258,12 +260,12 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
                   onChange={(e) => setProxy((p) => ({ ...p, enabled: e.target.checked }))}
                   className="w-3.5 h-3.5 rounded accent-[var(--accent)]"
                 />
-                Use proxy
+                {t("profile.proxy.useProxy")}
               </label>
               {proxy.enabled && (
                 <div className="space-y-2.5">
                   <div className="grid grid-cols-[110px_1fr_90px] gap-2.5">
-                    <Field label="Type">
+                    <Field label={t("profile.proxy.type")}>
                       <select
                         value={proxy.type}
                         onChange={(e) =>
@@ -276,7 +278,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
                         <option value="socks5">SOCKS5</option>
                       </select>
                     </Field>
-                    <Field label="Host">
+                    <Field label={t("profile.proxy.host")}>
                       <Input
                         value={proxy.host}
                         onChange={(v) => {
@@ -300,7 +302,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
                         mono
                       />
                     </Field>
-                    <Field label="Port">
+                    <Field label={t("profile.proxy.port")}>
                       <Input
                         value={proxy.port}
                         onChange={(v) => setProxy((p) => ({ ...p, port: v }))}
@@ -310,14 +312,14 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
                     </Field>
                   </div>
                   <div className="grid grid-cols-2 gap-2.5">
-                    <Field label="Username">
+                    <Field label={t("profile.proxy.username")}>
                       <Input
                         value={proxy.username}
                         onChange={(v) => setProxy((p) => ({ ...p, username: v }))}
                         mono
                       />
                     </Field>
-                    <Field label="Password">
+                    <Field label={t("profile.proxy.password")}>
                       <Input
                         type="password"
                         value={proxy.password}
@@ -353,7 +355,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
                 proxy={proxyForForm}
               />
             ) : (
-              <div className="text-[11px] text-slate-600">Loading preset…</div>
+              <div className="text-[11px] text-slate-600">{t("profile.new.presetLoading")}</div>
             ))}
         </div>
       </div>
@@ -372,7 +374,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
           onClick={onCancel}
           disabled={busy}
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           type="button"
@@ -388,7 +390,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
           onClick={() => void submit(true)}
           className="btn-brand px-3 py-[7px] text-[12px] rounded-[9px]"
         >
-          {busy ? "…" : "Create & launch"}
+          {busy ? "…" : t("profile.new.createAndLaunch")}
           <Kbd variant="on-brand">⌘ ⏎</Kbd>
         </button>
       </div>

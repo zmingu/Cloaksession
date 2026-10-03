@@ -5,6 +5,7 @@ import type { ExtensionConfig } from "../../types";
 import { ExtensionCatalog } from "./ExtensionCatalog";
 import { ExtIcon } from "./ExtIcon";
 import type { CatalogExtension } from "../../data/extensionCatalog";
+import { useT } from "../../i18n/LanguageProvider";
 
 /**
  * Per-profile extensions manager, shared by the create + edit sheets.
@@ -29,14 +30,14 @@ export function ExtensionsSection({
   // compose against the latest list rather than a stale closure snapshot.
   onStagedChange?: Dispatch<SetStateAction<ExtensionConfig[]>>;
 }): JSX.Element {
+  const t = useT();
   if (!profileId) {
     if (onStagedChange) {
       return <StagingExtensions staged={staged ?? []} onChange={onStagedChange} />;
     }
     return (
       <div className="text-[12px] text-slate-500 leading-relaxed">
-        Save the profile first — then you can add extensions (.crx / .zip / folder, or by
-        Chrome Web Store link) and they&apos;ll load in this profile only.
+        {t("extensions.saveFirst")}
       </div>
     );
   }
@@ -158,6 +159,7 @@ function StagingExtensions({
   staged: ExtensionConfig[];
   onChange: Dispatch<SetStateAction<ExtensionConfig[]>>;
 }): JSX.Element {
+  const t = useT();
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -265,19 +267,18 @@ function StagingExtensions({
         className="btn-ghost px-3 py-[7px] text-[12px] rounded-[9px] inline-flex items-center gap-1.5"
       >
         <Library size={12} />
-        {showAttach ? "Hide your extensions" : "Attach from your profiles"}
+        {showAttach ? t("extensions.hideMine") : t("extensions.attachFromProfiles")}
       </button>
 
       {showAttach && (
         <div className="space-y-1.5">
           {available === null ? (
             <div className="text-[11px] text-slate-600 flex items-center gap-1.5">
-              <Loader2 size={11} className="animate-spin" /> Loading…
+              <Loader2 size={11} className="animate-spin" /> {t("common.loading")}
             </div>
           ) : attachable.length === 0 ? (
             <div className="text-[11px] text-slate-600 leading-relaxed">
-              No other extensions in your library yet. Add one above and it becomes attachable
-              to future profiles.
+              {t("extensions.libraryEmpty")}
             </div>
           ) : (
             attachable.map((ext) => (
@@ -301,8 +302,7 @@ function StagingExtensions({
       )}
 
       <div className="text-[11px] text-slate-600 leading-relaxed">
-        Extensions load on first launch. Login/state is not copied — attached extensions start
-        fresh in this profile.
+        {t("extensions.freshNote")}
       </div>
 
       {error && <ErrorBox message={error} />}
@@ -323,6 +323,7 @@ function ExtRow({
   onToggle: (enabled: boolean) => void;
   onRemove: () => void;
 }): JSX.Element {
+  const t = useT();
   return (
     <div
       className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
@@ -340,11 +341,11 @@ function ExtRow({
           onChange={(e) => onToggle(e.target.checked)}
           className="w-3.5 h-3.5 rounded accent-purple-500"
         />
-        on
+        {t("extensions.enabled")}
       </label>
       <button
         type="button"
-        aria-label="Remove"
+        aria-label={t("common.remove.aria")}
         onClick={onRemove}
         className="text-slate-500 hover:text-red-400 transition-colors"
       >
@@ -369,13 +370,14 @@ function AddRow({
   onAddFile: () => void;
   onAddFolder: () => void;
 }): JSX.Element {
+  const t = useT();
   return (
     <>
       <div className="flex gap-2">
         <input
           value={url}
           onChange={(e) => onUrl(e.target.value)}
-          placeholder="Chrome Web Store URL or extension ID"
+          placeholder={t("extensions.urlOrIdPlaceholder")}
           className="flex-1 px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 placeholder:text-slate-600 outline-none focus:bg-white/[0.05] transition-colors"
           style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
         />
@@ -386,7 +388,7 @@ function AddRow({
           className="btn-secondary px-3 py-[7px] text-[12px] rounded-[9px] whitespace-nowrap inline-flex items-center gap-1.5"
         >
           {busy ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-          Add
+          {t("extensions.add")}
         </button>
       </div>
 
@@ -397,7 +399,7 @@ function AddRow({
           onClick={onAddFile}
           className="btn-ghost px-3 py-[7px] text-[12px] rounded-[9px]"
         >
-          Add .crx / .zip…
+          {t("extensions.addFile")}
         </button>
         <button
           type="button"
@@ -405,7 +407,7 @@ function AddRow({
           onClick={onAddFolder}
           className="btn-ghost px-3 py-[7px] text-[12px] rounded-[9px]"
         >
-          Add folder…
+          {t("extensions.addFolder")}
         </button>
       </div>
     </>
@@ -419,6 +421,7 @@ function CatalogToggle({
   open: boolean;
   onToggle: () => void;
 }): JSX.Element {
+  const t = useT();
   return (
     <button
       type="button"
@@ -426,7 +429,7 @@ function CatalogToggle({
       className="btn-ghost px-3 py-[7px] text-[12px] rounded-[9px] inline-flex items-center gap-1.5"
     >
       <LayoutGrid size={12} />
-      {open ? "Hide catalog" : "Browse catalog"}
+      {open ? t("extensions.hideCatalog") : t("extensions.browseCatalog")}
     </button>
   );
 }

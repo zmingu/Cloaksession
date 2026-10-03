@@ -1,6 +1,7 @@
 import { dialog, fingerprint as fingerprintApi, proxy as proxyApi } from "../../lib/ipc";
 import { useEffect, useRef, useState, type JSX, type ReactNode } from "react";
 import { AlertTriangle, FolderOpen, MapPin, RefreshCw } from "lucide-react";
+import { useT } from "../../i18n/LanguageProvider";
 import type {
   DeviceCatalogEntry,
   FingerprintConfig,
@@ -31,6 +32,7 @@ interface Props {
 }
 
 export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.Element {
+  const t = useT();
   const [devices, setDevices] = useState<ReadonlyArray<DeviceCatalogEntry>>([]);
   const [locales, setLocales] = useState<ReadonlyArray<LocaleCatalogEntry>>([]);
   const [detecting, setDetecting] = useState(false);
@@ -147,10 +149,10 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
             boxShadow:
               "inset 0 0 0 1px var(--ring), 0 1px 0 rgba(255,255,255,0.05)",
           }}
-          title="Generate a new coherent device + locale + screen + UA"
+          title={t("fingerprint.regenerate.title")}
         >
           <RefreshCw size={12} strokeWidth={2.25} />
-          Regenerate fingerprint
+          {t("fingerprint.regenerate")}
         </button>
         {proxy && proxy.host && (
           <button
@@ -162,7 +164,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
               background: "rgba(255,255,255,0.03)",
               boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
             }}
-            title="Probe the proxy and align locale/timezone with its geo"
+            title={t("fingerprint.matchProxy.title")}
           >
             <MapPin size={12} strokeWidth={2} />
             {detecting ? "Detecting…" : "Match proxy"}
@@ -170,7 +172,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
         )}
       </div>
 
-      <Field label="Device">
+      <Field label={t("fingerprint.field.device")}>
         <Select
           value={fingerprint.device}
           onChange={(v) => void reconcile({ device: v as never })}
@@ -178,7 +180,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
         />
       </Field>
 
-      <Field label="Locale">
+      <Field label={t("fingerprint.field.locale")}>
         <Select
           value={currentLocale?.id ?? fingerprint.locale}
           onChange={(v) => void reconcile({ localeId: v })}
@@ -192,7 +194,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
         />
       </Field>
 
-      <Field label="Timezone">
+      <Field label={t("fingerprint.field.timezone")}>
         <Select
           value={fingerprint.timezone}
           onChange={(v) => void reconcile({ timezone: v })}
@@ -219,7 +221,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
         />
       </Field>
 
-      <Field label="Screen size">
+      <Field label={t("fingerprint.field.screen")}>
         <Select
           value={`${fingerprint.screen.width}×${fingerprint.screen.height}`}
           onChange={(v) => {
@@ -275,7 +277,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
         />
       </Field>
       <div className="grid grid-cols-2 gap-2.5">
-        <Field label="Platform">
+      <Field label={t("fingerprint.field.platform")}>
           <input
             type="text"
             value={fingerprint.platform}
@@ -284,7 +286,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
             style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
           />
         </Field>
-        <Field label="Country">
+        <Field label={t("fingerprint.field.country")}>
           <input
             type="text"
             maxLength={2}
@@ -295,7 +297,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
           />
         </Field>
       </div>
-      <Field label="Languages" desc="Comma-separated navigator.languages values.">
+      <Field label={t("fingerprint.field.languages")} desc={t("fingerprint.field.languagesDesc")}>
         <input
           type="text"
           value={fingerprint.languages.join(", ")}
@@ -333,7 +335,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
             style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
           />
         </Field>
-        <Field label="Hardware concurrency">
+        <Field label={t("fingerprint.field.hwConcurrency")}>
           <input
             type="number"
             min={1}
@@ -349,7 +351,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
             style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
           />
         </Field>
-        <Field label="Device memory (GB)">
+        <Field label={t("fingerprint.field.deviceMemory")}>
           <input
             type="number"
             min={1}
@@ -366,13 +368,13 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
           />
         </Field>
       </div>
-      <Field label="Available screen size" desc="Clear both values to omit availScreen.">
+      <Field label={t("fingerprint.field.availScreen")} desc={t("fingerprint.field.availScreenDesc")}>
         <div className="grid grid-cols-[1fr_1fr_auto] gap-2.5 items-end">
           <input
             type="number"
             min={1}
             value={fingerprint.availScreen?.width ?? ""}
-            placeholder="width"
+            placeholder={t("fingerprint.availWidth.placeholder")}
             onChange={(e) => {
               const width = Number(e.target.value);
               if (!Number.isInteger(width) || width <= 0) {
@@ -407,7 +409,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
             style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
           />
           {fingerprint.availScreen && (
-            <button type="button" onClick={() => onChange({ ...fingerprint, availScreen: null })} className="h-9 px-2.5 text-[11px] text-slate-400 rounded-lg" style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}>Clear</button>
+            <button type="button" onClick={() => onChange({ ...fingerprint, availScreen: null })} className="h-9 px-2.5 text-[11px] text-slate-400 rounded-lg" style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}>{t("common.clear")}</button>
           )}
         </div>
       </Field>
@@ -429,7 +431,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
           style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
         />
       </Field>
-      <Field label="Client hints" desc="All values are persisted verbatim and used by the selected browser engine where supported.">
+      <Field label={t("fingerprint.field.clientHints")} desc={t("fingerprint.field.clientHintsDesc")}>
         <div className="space-y-1.5">
           {(Object.keys(fingerprint.clientHints) as Array<keyof FingerprintConfig["clientHints"]>).map((key) => (
             <input
@@ -445,7 +447,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
         </div>
       </Field>
 
-      <Field label="Storage quota (MB)" desc="Pins navigator.storage.estimate(). Empty = engine default.">
+      <Field label={t("fingerprint.field.storageQuota")} desc={t("fingerprint.field.storageQuotaDesc")}>
         <input
           type="number"
           min={0}
@@ -468,14 +470,14 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
               });
             }
           }}
-          placeholder="0 (default)"
+          placeholder={t("fingerprint.storageQuota.placeholder")}
           className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 outline-none"
           style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
         />
       </Field>
       <Field
-        label="Font directory"
-        desc="Folder CloakBrowser loads fonts from (--fingerprint-fonts-dir). Leave empty for the OS default (C:\\Windows\\Fonts on Windows)."
+        label={t("fingerprint.field.fontsDir")}
+        desc={t("fingerprint.field.fontsDirDesc")}
       >
         <div className="flex gap-1.5">
           <input
@@ -504,10 +506,10 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
               background: "rgba(255,255,255,0.03)",
               boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
             }}
-            title="Browse for a font folder"
+            title={t("fingerprint.browseFonts.title")}
           >
             <FolderOpen size={13} strokeWidth={2} />
-            <span className="ml-1.5">Browse…</span>
+            <span className="ml-1.5">{t("common.browse")}</span>
           </button>
           {fingerprint.fontsDir && (
             <button
@@ -518,9 +520,9 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
                 background: "rgba(255,255,255,0.03)",
                 boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
               }}
-              title="Reset to engine default"
+              title={t("fingerprint.resetEngineDefault.title")}
             >
-              Clear
+              {t("common.clear")}
             </button>
           )}
         </div>
@@ -531,8 +533,8 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
           change the seed → rotate just the noise without touching device/UA.
           Empty = deterministic from the profile id (stable per profile). */}
       <Field
-        label="Canvas noise seed"
-        desc="Rotates CloakBrowser canvas/audio/WebGL noise. Same seed = same noise. Empty = stable per-profile default."
+        label={t("fingerprint.field.noiseSeed")}
+        desc={t("fingerprint.field.noiseSeedDesc")}
       >
         <div className="flex gap-1.5">
           <input
@@ -544,7 +546,7 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
                 seed: e.target.value.trim() || undefined,
               })
             }
-            placeholder="(profile default)"
+            placeholder={t("fingerprint.noiseSeed.placeholder")}
             className="flex-1 min-w-0 px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 outline-none mono"
             style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
           />
@@ -564,10 +566,10 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
               background: "rgba(255,255,255,0.03)",
               boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
             }}
-            title="Generate a random seed to rotate canvas/audio/WebGL noise"
+            title={t("fingerprint.randomizeSeed.title")}
           >
             <RefreshCw size={13} strokeWidth={2} />
-            <span className="ml-1.5">Randomize</span>
+            <span className="ml-1.5">{t("fingerprint.randomizeSeed")}</span>
           </button>
           {fingerprint.seed && (
             <button
@@ -580,9 +582,9 @@ export function FingerprintForm({ fingerprint, onChange, proxy }: Props): JSX.El
                 background: "rgba(255,255,255,0.03)",
                 boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
               }}
-              title="Reset to per-profile default"
+              title={t("fingerprint.resetProfileDefault.title")}
             >
-              Clear
+              {t("common.clear")}
             </button>
           )}
         </div>

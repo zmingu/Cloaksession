@@ -3,6 +3,7 @@ import type { AppSettings, Profile } from "../src/types";
 
 export const defaultSettings: AppSettings = {
   theme: "dark",
+  language: "en",
   mcpHttpEnabled: true,
   mcpHttpPort: 7777,
   browserEngine: "cloakbrowser",
