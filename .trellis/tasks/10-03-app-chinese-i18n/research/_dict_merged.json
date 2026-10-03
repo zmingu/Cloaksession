@@ -1,0 +1,3506 @@
+{
+ "common.close.aria": {
+  "en": "Close",
+  "zh": "关闭",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.discardChanges.title": {
+  "en": "Discard your changes?",
+  "zh": "放弃更改？",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.discard": {
+  "en": "Discard",
+  "zh": "放弃",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.cancel": {
+  "en": "Cancel",
+  "zh": "取消",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.confirm": {
+  "en": "Confirm",
+  "zh": "确认",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.submit": {
+  "en": "Submit",
+  "zh": "提交",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.copy": {
+  "en": "Copy",
+  "zh": "复制",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.copied": {
+  "en": "Copied",
+  "zh": "已复制",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.copyUrl.aria": {
+  "en": "Copy URL",
+  "zh": "复制 URL",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.copyToken.aria": {
+  "en": "Copy token",
+  "zh": "复制令牌",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.mcp.revealToken.aria": {
+  "en": "Reveal token",
+  "zh": "显示令牌",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.mcp.hideToken.aria": {
+  "en": "Hide token",
+  "zh": "隐藏令牌",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.remove.aria": {
+  "en": "Remove",
+  "zh": "移除",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.continue": {
+  "en": "Continue",
+  "zh": "继续",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.enable": {
+  "en": "Enable",
+  "zh": "启用",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.notNow": {
+  "en": "Not now",
+  "zh": "暂不",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.later": {
+  "en": "Later",
+  "zh": "稍后",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.dismiss.aria": {
+  "en": "Dismiss",
+  "zh": "忽略",
+  "en_review": false,
+  "zh_review": false
+ },
+ "nav.item.shortcutTitle": {
+  "en": "{{label}} · ⌘{{kbd}}",
+  "zh": "{{label}} · ⌘{{kbd}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "nav.commandPalette.title": {
+  "en": "Command palette · ⌘K",
+  "zh": "命令面板 · ⌘K",
+  "en_review": false,
+  "zh_review": false
+ },
+ "nav.profiles": {
+  "en": "Profiles",
+  "zh": "浏览器配置",
+  "en_review": false,
+  "zh_review": false
+ },
+ "nav.settings": {
+  "en": "Settings",
+  "zh": "设置",
+  "en_review": false,
+  "zh_review": false
+ },
+ "group.filter.all": {
+  "en": "All",
+  "zh": "全部",
+  "en_review": false,
+  "zh_review": false
+ },
+ "group.filter.ungrouped": {
+  "en": "Ungrouped",
+  "zh": "未分组",
+  "en_review": false,
+  "zh_review": false
+ },
+ "group.delete.title": {
+  "en": "Delete group \"{{label}}\"",
+  "zh": "删除分组“{{label}}",
+  "en_review": false,
+  "zh_review": false
+ },
+ "group.delete.aria": {
+  "en": "Delete group {{label}}",
+  "zh": "Delete group {{label}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "errors.deleteGroupFailed": {
+  "en": "Delete group failed: {{msg}}",
+  "zh": "Delete group failed: {{msg}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "nav.topbar.searchPlaceholder": {
+  "en": "Search profiles, tags, urls…",
+  "zh": "搜索配置、标签、网址…",
+  "en_review": false,
+  "zh_review": false
+ },
+ "nav.topbar.running": {
+  "en": "running",
+  "zh": "运行中",
+  "en_review": false,
+  "zh_review": false
+ },
+ "nav.topbar.total": {
+  "en": "total",
+  "zh": "共计",
+  "en_review": false,
+  "zh_review": false
+ },
+ "nav.topbar.mcpOff": {
+  "en": "MCP · :{{port}}",
+  "zh": "MCP · :{{port}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "app.rendererError.title": {
+  "en": "Renderer error",
+  "zh": "渲染错误",
+  "en_review": false,
+  "zh_review": false
+ },
+ "app.bridgeMissing": {
+  "en": "Preload bridge missing — <code>window.multizen</code> is undefined. Open DevTools for details.",
+  "zh": "预加载桥缺失 … 打开 DevTools 查看详情",
+  "en_review": false,
+  "zh_review": false
+ },
+ "errors.launchFailed": {
+  "en": "Launch failed: {{msg}}",
+  "zh": "启动失败：{{msg}}",
+  "en_review": false,
+  "zh_review": false
+ },
+ "archive.exportedTo": {
+  "en": "Exported to {{file}}",
+  "zh": "Exported to {{file}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "errors.exportFailed": {
+  "en": "Export failed: {{result.reason}}",
+  "zh": "Export failed: {{result.reason}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "errors.importFailed": {
+  "en": "Import failed: {{result.reason}}",
+  "zh": "Import failed: {{result.reason}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.passphraseMinLength": {
+  "en": "Passphrase must be at least 8 characters",
+  "zh": "口令至少 8 个字符",
+  "en_review": false,
+  "zh_review": false
+ },
+ "extensions.installedReopening": {
+  "en": "Added \"{{e.extension.name}}\" — profile is reopening…",
+  "zh": "Added \"{{e.extension.name}}\" — profile is reopening…",
+  "en_review": false,
+  "zh_review": true
+ },
+ "errors.extensionInstallFailed": {
+  "en": "Extension install failed: {{e.error}}",
+  "zh": "Extension install failed: {{e.error}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.new.title": {
+  "en": "New profile",
+  "zh": "新建浏览器配置",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.new.subtitle": {
+  "en": "Cookies, login state, and fingerprint live in this profile only.",
+  "zh": "Cookie、登录态与指纹仅属于此配置。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.create.discardTitle": {
+  "en": "Discard your changes?",
+  "zh": "Discard your changes?",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.create.discardBody": {
+  "en": "You haven't created the profile yet. Closing will lose what you've entered.",
+  "zh": "You haven't created the profile yet. Closing will lose what you've entered.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.edit.title": {
+  "en": "Edit {{editingProfile.name}}",
+  "zh": "Edit {{editingProfile.name}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.edit.titleFallback": {
+  "en": "/",
+  "zh": "编辑浏览器配置",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.edit.subtitle": {
+  "en": "Profile changes autosave. Business account registration saves separately.",
+  "zh": "配置更改自动保存；业务账号登记需单独保存。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.tabs.general": {
+  "en": "General",
+  "zh": "通用",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.tabs.browser": {
+  "en": "Browser",
+  "zh": "浏览器",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.tabs.proxy": {
+  "en": "Proxy",
+  "zh": "代理",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.tabs.extensions": {
+  "en": "Extensions",
+  "zh": "扩展",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.tabs.fingerprint": {
+  "en": "Fingerprint",
+  "zh": "浏览器指纹",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.tabs.chromixFingerprint": {
+  "en": "Chromix fingerprint",
+  "zh": "Chromix 指纹参数",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.validation.nameRequired": {
+  "en": "Name is required",
+  "zh": "名称为必填项",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.validation.proxyHostRequired": {
+  "en": "Proxy host is required",
+  "zh": "代理主机为必填项",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.new.fingerprintLoading": {
+  "en": "Fingerprint preset is still loading",
+  "zh": "指纹预设加载中",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.field.icon": {
+  "en": "Icon",
+  "zh": "图标",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.field.name": {
+  "en": "Name",
+  "zh": "名称",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.field.namePlaceholder": {
+  "en": "e.g. acme — sales · west",
+  "zh": "e.g. acme — sales · west",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.field.tags": {
+  "en": "Tags",
+  "zh": "标签",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.field.tagsPlaceholder": {
+  "en": "comma-separated (optional)",
+  "zh": "comma-separated (optional)",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.field.group": {
+  "en": "Group",
+  "zh": "分组",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.field.groupPlaceholder": {
+  "en": "optional — e.g. sales",
+  "zh": "optional — e.g. sales",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.field.notes": {
+  "en": "Notes",
+  "zh": "备注",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.field.notesPlaceholder": {
+  "en": "Optional — what this profile is for",
+  "zh": "选填——此配置的用途",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.field.requiredSuffix": {
+  "en": "…required",
+  "zh": "（必填）",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.proxy.useProxy": {
+  "en": "Use proxy",
+  "zh": "使用代理",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.proxy.type": {
+  "en": "Type",
+  "zh": "类型",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.proxy.host": {
+  "en": "Host",
+  "zh": "主机",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.proxy.port": {
+  "en": "Port",
+  "zh": "端口",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.proxy.username": {
+  "en": "Username",
+  "zh": "用户名",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.proxy.password": {
+  "en": "Password",
+  "zh": "密码",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.new.presetLoading": {
+  "en": "Loading preset…",
+  "zh": "预设加载中…",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.new.createAndLaunch": {
+  "en": "Create & launch",
+  "zh": "创建并启动",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.edit.allSaved": {
+  "en": "{{status.message}}",
+  "zh": "{{status.message}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.browser.startPage": {
+  "en": "Start page",
+  "zh": "起始页",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.browser.startPageHint": {
+  "en": "Opens on a profile's first launch (later launches restore your tabs). Leave the default or set your own — any http(s) URL, or",
+  "zh": "Opens on a profile's first launch (later launches restore your tabs). Leave the default or set your own — any http(s) URL, or",
+  "en_review": false,
+  "zh_review": true
+ },
+ "proxy.test": {
+  "en": "Test proxy",
+  "zh": "测试代理",
+  "en_review": false,
+  "zh_review": false
+ },
+ "proxy.direct": {
+  "en": "direct",
+  "zh": "直连",
+  "en_review": false,
+  "zh_review": false
+ },
+ "proxy.none": {
+  "en": "no proxy",
+  "zh": "无代理",
+  "en_review": false,
+  "zh_review": false
+ },
+ "proxy.directNone": {
+  "en": "Direct — no proxy",
+  "zh": "直连——无代理",
+  "en_review": false,
+  "zh_review": false
+ },
+ "proxy.connected": {
+  "en": "Connected",
+  "zh": "已连通",
+  "en_review": false,
+  "zh_review": false
+ },
+ "proxy.unreachable": {
+  "en": "Proxy unreachable",
+  "zh": "代理不可达",
+  "en_review": false,
+  "zh_review": false
+ },
+ "proxy.healthRetry": {
+  "en": "Health Retry",
+  "zh": "Health Retry",
+  "en_review": false,
+  "zh_review": true
+ },
+ "proxy.healthRecheck": {
+  "en": "Health Recheck",
+  "zh": "Health Recheck",
+  "en_review": false,
+  "zh_review": true
+ },
+ "proxy.checking": {
+  "en": "checking proxy…",
+  "zh": "正在检测代理…",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.regenerate": {
+  "en": "Regenerate fingerprint",
+  "zh": "检测中…",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.detecting": {
+  "en": "{detecting ? \"Detecting…\" : \"Match proxy\"}",
+  "zh": "{detecting ? \"Detecting…\" : \"Match proxy\"}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "fingerprint.matchProxy": {
+  "en": "Regenerate fingerprint",
+  "zh": "Regenerate fingerprint",
+  "en_review": false,
+  "zh_review": true
+ },
+ "fingerprint.matchProxyNoop": {
+  "en": "Match proxy did nothing",
+  "zh": "匹配代理未产生变化",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.matchProxy.title": {
+  "en": "Probe the proxy and align locale/timezone with its geo",
+  "zh": "探测代理并按其地理对齐区域语言",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.noLocaleMatch": {
+  "en": "No Locale Match",
+  "zh": "No Locale Match",
+  "en_review": false,
+  "zh_review": true
+ },
+ "fingerprint.localeNotInCatalog": {
+  "en": "Locale Not In Catalog",
+  "zh": "Locale Not In Catalog",
+  "en_review": false,
+  "zh_review": true
+ },
+ "fingerprint.proxyMismatch": {
+  "en": "Locale country is {{country}} but proxy IP is in {{country}} — anti-bot systems flag this. Pick a matching locale or proxy.",
+  "zh": "Locale country is {{country}} but proxy IP is in {{country}} — anti-bot systems flag this. Pick a matching locale or proxy.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "fingerprint.proxyCoherent": {
+  "en": "Coherent: proxy resolves to {{city}}, {{countryName}} ({{ip}}) — matches locale.",
+  "zh": "Coherent: proxy resolves to {{city}}, {{countryName}} ({{ip}}) — matches locale.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "fingerprint.regenerate.title": {
+  "en": "Generate a new coherent device + locale + screen + UA",
+  "zh": "Generate a new coherent device + locale + screen + UA",
+  "en_review": false,
+  "zh_review": true
+ },
+ "fingerprint.field.device": {
+  "en": "Device",
+  "zh": "设备",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.field.locale": {
+  "en": "Locale",
+  "zh": "区域语言",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.localeCustom": {
+  "en": "Locale Custom",
+  "zh": "Locale Custom",
+  "en_review": false,
+  "zh_review": true
+ },
+ "fingerprint.field.timezone": {
+  "en": "Timezone",
+  "zh": "时区",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.timezoneProxy": {
+  "en": "Timezone Proxy",
+  "zh": "Timezone Proxy",
+  "en_review": false,
+  "zh_review": true
+ },
+ "fingerprint.field.screen": {
+  "en": "Screen size",
+  "zh": "屏幕尺寸",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.screenCustom": {
+  "en": "Screen Custom",
+  "zh": "Screen Custom",
+  "en_review": false,
+  "zh_review": true
+ },
+ "fingerprint.field.platform": {
+  "en": "Platform",
+  "zh": "平台",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.field.country": {
+  "en": "Country",
+  "zh": "国家",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.field.languages": {
+  "en": "Languages",
+  "zh": "语言",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.field.languagesDesc": {
+  "en": "Comma-separated navigator.languages values.",
+  "zh": "逗号分隔的 navigator.languages 值。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.field.hwConcurrency": {
+  "en": "Hardware concurrency",
+  "zh": "硬件并发数",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.field.deviceMemory": {
+  "en": "Device memory (GB)",
+  "zh": "Device memory (GB)",
+  "en_review": false,
+  "zh_review": true
+ },
+ "fingerprint.field.availScreen": {
+  "en": "Available screen size",
+  "zh": "可用屏幕尺寸",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.field.availScreenDesc": {
+  "en": "Clear both values to omit availScreen.",
+  "zh": "清空两值以省略 availScreen。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.availWidth.placeholder": {
+  "en": "width",
+  "zh": "宽",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.clear": {
+  "en": "Clear",
+  "zh": "清空",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.field.clientHints": {
+  "en": "Client hints",
+  "zh": "Client Hints",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.field.clientHintsDesc": {
+  "en": "All values are persisted verbatim and used by the selected browser engine where supported.",
+  "zh": "所有值按原文持久化，并由所选浏览器引擎在支持时使用。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.field.storageQuota": {
+  "en": "Storage quota (MB)",
+  "zh": "存储配额 (MB)",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.field.storageQuotaDesc": {
+  "en": "Pins navigator.storage.estimate(). Empty = engine default.",
+  "zh": "固定 navigator.storage.estimate()。留空 = 引擎默认。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.storageQuota.placeholder": {
+  "en": "0 (default)",
+  "zh": "0（默认）",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.field.fontsDir": {
+  "en": "Font directory",
+  "zh": "Font directory",
+  "en_review": false,
+  "zh_review": true
+ },
+ "fingerprint.field.fontsDirDesc": {
+  "en": "Folder CloakBrowser loads fonts from (--fingerprint-fonts-dir). Leave empty for the OS default (C:\\Windows\\Fonts on Windows).",
+  "zh": "Folder CloakBrowser loads fonts from (--fingerprint-fonts-dir). Leave empty for the OS default (C:\\Windows\\Fonts on Windows).",
+  "en_review": false,
+  "zh_review": true
+ },
+ "fingerprint.browseFonts.title": {
+  "en": "Browse for a font folder",
+  "zh": "浏览字体文件夹",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.browse": {
+  "en": "Browse…",
+  "zh": "浏览…",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.resetEngineDefault.title": {
+  "en": "Reset to engine default",
+  "zh": "重置为引擎默认",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.field.noiseSeed": {
+  "en": "Canvas noise seed",
+  "zh": "Canvas 噪声种子",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.field.noiseSeedDesc": {
+  "en": "Rotates CloakBrowser canvas/audio/WebGL noise. Same seed = same noise. Empty = stable per-profile default.",
+  "zh": "轮换 CloakBrowser 的 canvas",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.noiseSeed.placeholder": {
+  "en": "(profile default)",
+  "zh": "（配置默认值）",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.randomizeSeed.title": {
+  "en": "Generate a random seed to rotate canvas/audio/WebGL noise",
+  "zh": "生成随机种子以轮换噪声",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.randomizeSeed": {
+  "en": "Randomize",
+  "zh": "随机",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.resetProfileDefault.title": {
+  "en": "Reset to per-profile default",
+  "zh": "重置为按配置默认值",
+  "en_review": false,
+  "zh_review": false
+ },
+ "fingerprint.screenNative": {
+  "en": "1512 × 982 (native)",
+  "zh": "（原生）",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.groups.identity": {
+  "en": "Identity & browser",
+  "zh": "Identity & browser",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.identityDesc": {
+  "en": "One immutable launch persona is shared by renderers and workers. An unset field writes no override.",
+  "zh": "One immutable launch persona is shared by renderers and workers. An unset field writes no override.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.hardware": {
+  "en": "CPU & memory",
+  "zh": "CPU & memory",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.hardwareDesc": {
+  "en": "Presentation settings do not allocate CPU cores or change V8 heap limits.",
+  "zh": "Presentation settings do not allocate CPU cores or change V8 heap limits.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.display": {
+  "en": "Screen, work area & viewport",
+  "zh": "Screen, work area & viewport",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.displayDesc": {
+  "en": "Screen/work-area values are DIP. …",
+  "zh": "Screen/work-area values are DIP. …",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.gpu": {
+  "en": "GPU & rendering backend",
+  "zh": "GPU & rendering backend",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.gpuDesc": {
+  "en": "Native is the ordinary launch default. …",
+  "zh": "Native is the ordinary launch default. …",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.fonts": {
+  "en": "Fonts",
+  "zh": "Fonts",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.fontsDesc": {
+  "en": "Use actual installed fonts. A family name is not a font file or a DirectWrite rasterizer.",
+  "zh": "Use actual installed fonts. A family name is not a font file or a DirectWrite rasterizer.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.regional": {
+  "en": "Locale & timezone",
+  "zh": "Locale & timezone",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.regionalDesc": {
+  "en": "Explicit regional settings survive fingerprint=off. …",
+  "zh": "Explicit regional settings survive fingerprint=off. …",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.storage": {
+  "en": "Storage quota",
+  "zh": "Storage quota",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.storageDesc": {
+  "en": "Quota is a launch-local backend policy, not a disk reservation. Zero is a valid quota.",
+  "zh": "Quota is a launch-local backend policy, not a disk reservation. Zero is a valid quota.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.network": {
+  "en": "WebRTC & GeoIP",
+  "zh": "WebRTC & GeoIP",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.networkDesc": {
+  "en": "IP overrides change local ICE/SDP/stats presentation, not sockets, STUN success or routing. …",
+  "zh": "IP overrides change local ICE/SDP/stats presentation, not sockets, STUN success or routing. …",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.media": {
+  "en": "Audio, codecs & clocks",
+  "zh": "Audio, codecs & clocks",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.mediaDesc": {
+  "en": "Codec restrictions never add support. …",
+  "zh": "Codec restrictions never add support. …",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.preferences": {
+  "en": "CSS & input preferences",
+  "zh": "CSS & input preferences",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.preferencesDesc": {
+  "en": "These configure effective WebPreferences. …",
+  "zh": "These configure effective WebPreferences. …",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.privacy": {
+  "en": "Noise, cookies & author shadow roots",
+  "zh": "Noise, cookies & author shadow roots",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.privacyDesc": {
+  "en": "Noise controls existing perturbation paths, …",
+  "zh": "Noise controls existing perturbation paths, …",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.sdk": {
+  "en": "SDK launch behavior",
+  "zh": "SDK launch behavior",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.sdkDesc": {
+  "en": "Only explicit selections are written. …",
+  "zh": "Only explicit selections are written. …",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.advanced": {
+  "en": "Advanced / high-risk engine controls",
+  "zh": "Advanced / high-risk engine controls",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.groups.advancedDesc": {
+  "en": "Explicit SDK-documented opt-ins. …",
+  "zh": "Explicit SDK-documented opt-ins. …",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.form.title": {
+  "en": "Chromix fingerprint parameters",
+  "zh": "Chromix 指纹参数",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.form.intro": {
+  "en": "Every field starts unset. Changes update SDK options for the outer Save action; they do not launch a browser. Numeric flags remain exact strings, including uint64 seeds. Unknown arguments and SDK properties are preserved.",
+  "zh": "Every field starts unset. Changes update SDK options for the outer Save action; they do not launch a browser. Numeric flags remain exact strings, including uint64 seeds. Unknown arguments and SDK properties are preserved.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.form.contractNote": {
+  "en": "This is the public source contract, not proof that an installed binary supports it. Use a matching rebuilt browser and SDK. Raw aliases retain SDK precedence; editing one parameter never clears its other aliases or unrelated settings.",
+  "zh": "This is the public source contract, not proof that an installed binary supports it. Use a matching rebuilt browser and SDK. Raw aliases retain SDK precedence; editing one parameter never clears its other aliases or unrelated settings.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.form.docLinks.publicFlags": {
+  "en": "Public flags ↗",
+  "zh": "Public flags ↗",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.form.docLinks.nodeSdk": {
+  "en": "Node SDK ↗",
+  "zh": "Node SDK ↗",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.form.docLinks.backendPolicy": {
+  "en": "Backend policy ↗",
+  "zh": "Backend policy ↗",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.form.search": {
+  "en": "Find a parameter",
+  "zh": "Find a parameter",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.form.searchPlaceholder": {
+  "en": "Name, --flag, SDK property or description",
+  "zh": "Name, --flag, SDK property or description",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.form.notesCount": {
+  "en": "Notes Count",
+  "zh": "Notes Count",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.form.configuredCount": {
+  "en": "Configured Count",
+  "zh": "Configured Count",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.form.noMatch": {
+  "en": "No matching parameters.",
+  "zh": "没有匹配的参数。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.form.footerNote": {
+  "en": "Additional SDK objects (including viewport, contextOptions and launchOptions) remain available in the outer SDK JSON editor. Warnings do not normalize or delete stored values. The matching SDK performs final launch validation.",
+  "zh": "Additional SDK objects (including viewport, contextOptions and launchOptions) remain available in the outer SDK JSON editor. Warnings do not normalize or delete stored values. The matching SDK performs final launch validation.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.field.unset": {
+  "en": "Unset",
+  "zh": "未设置",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.field.unsetTitle": {
+  "en": "Remove only the selected parameter",
+  "zh": "仅移除所选参数",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.field.editAria": {
+  "en": "Edit Aria",
+  "zh": "Edit Aria",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.field.srcPublic": {
+  "en": "· public",
+  "zh": "· 公开",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.field.srcRaw": {
+  "en": "· raw / higher priority",
+  "zh": "· 原始（更高优先级）",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.field.notSet": {
+  "en": "Not set (SDK / engine default)",
+  "zh": "未设置（SDK",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.field.nullStored": {
+  "en": "null (stored)",
+  "zh": "null（已存储）",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.field.bareFlag": {
+  "en": "Bare flag (present, no value)",
+  "zh": "裸 flag（存在，无值）",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.field.explicitEmptyDisabled": {
+  "en": "Explicit empty (=) — disabled",
+  "zh": "显式空（=）——已禁用",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.field.storedValue": {
+  "en": "前缀选项 +",
+  "zh": "前缀选项 +",
+  "en_review": true,
+  "zh_review": true
+ },
+ "chromix.field.explicitEmpty": {
+  "en": "前缀选项 +",
+  "zh": "前缀选项 +",
+  "en_review": true,
+  "zh_review": true
+ },
+ "chromix.field.phBare": {
+  "en": "Bare flag (no value)",
+  "zh": "Bare flag (no value)",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.field.phEmpty": {
+  "en": "Explicit empty value (=)",
+  "zh": "Explicit empty value (=)",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.field.phUnset": {
+  "en": "Not set",
+  "zh": "Not set",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.field.bareOrSeed": {
+  "en": "Bare flag / generate seed",
+  "zh": "Bare flag / generate seed",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.field.setOff": {
+  "en": "Set off",
+  "zh": "Set off",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.field.rawAliasNote": {
+  "en": "Editing the raw alias. Public aliases are preserved and can be selected separately.",
+  "zh": "Editing the raw alias. Public aliases are preserved and can be selected separately.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.validation.lineBreak": {
+  "en": "An argument contains a line break. Use SDK JSON to preserve that value exactly.",
+  "zh": "An argument contains a line break. Use SDK JSON to preserve that value exactly.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.rawArgs.title": {
+  "en": "Raw options.args — one flag per line",
+  "zh": "Raw options.args — one flag per line",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.rawArgs.desc": {
+  "en": "Complete options.args array, including unknown flags and duplicates. Use --key=value (spaces inside the value are literal); no shell splitting or automatic alias cleanup. Apply updates options only; the outer Save still persists it.",
+  "zh": "Complete options.args array, including unknown flags and duplicates. Use --key=value (spaces inside the value are literal); no shell splitting or automatic alias cleanup. Apply updates options only; the outer Save still persists it.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.rawArgs.browserArgs": {
+  "en": "Browser arguments",
+  "zh": "浏览器参数",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.rawArgs.apply": {
+  "en": "{{controlClass}} resize-y",
+  "zh": "{{controlClass}} resize-y",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.rawArgs.discard": {
+  "en": "Apply raw args",
+  "zh": "丢弃草稿并重载当前参数",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.profileOptions.jsonObject": {
+  "en": "SDK options must be a JSON object.",
+  "zh": "SDK options must be a JSON object.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.profileOptions.intro": {
+  "en": "These settings apply when Chromix is selected in Settings → Browser engine. Each profile stores its own SDK options. Profile keys override global SDK defaults; arrays and nested objects replace the matching global value. Empty options inherit global defaults. The other engines keep using the original Fingerprint section.",
+  "zh": "These settings apply when Chromix is selected in Settings → Browser engine. Each profile stores its own SDK options. Profile keys override global SDK defaults; arrays and nested objects replace the matching global value. Empty options inherit global defaults. The other engines keep using the original Fingerprint section.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.profileOptions.title": {
+  "en": "Complete profile SDK options (JSON)",
+  "zh": "Complete profile SDK options (JSON)",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.profileOptions.desc": {
+  "en": "Edit any JSON-serializable SDK option, including args, contextOptions, launchOptions, viewport and humanConfig. Apply JSON to update the form before saving. The CDP sidecar rejects the separate measured-device devicePool mode.",
+  "zh": "Edit any JSON-serializable SDK option, including args, contextOptions, launchOptions, viewport and humanConfig. Apply JSON to update the form before saving. The CDP sidecar rejects the separate measured-device devicePool mode.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.profileOptions.aria": {
+  "en": "Profile Chromix SDK options",
+  "zh": "Profile Chromix SDK options",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.profileOptions.apply": {
+  "en": "Apply profile JSON",
+  "zh": "应用配置 JSON",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.editor.invalidJson": {
+  "en": "/",
+  "zh": "/",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.mustBeObject": {
+  "en": "/",
+  "zh": "/",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.sdkOptions": {
+  "en": "SDK options",
+  "zh": "SDK 选项",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.editor.nodeHint": {
+  "en": "Enter a Node.js executable path or node.",
+  "zh": "Enter a Node.js executable path or node.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.nodeDefault": {
+  "en": "Default: node (from PATH). Use an absolute executable path if the desktop app cannot find Node.js.",
+  "zh": "Default: node (from PATH). Use an absolute executable path if the desktop app cannot find Node.js.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.environment": {
+  "en": "Environment",
+  "zh": "环境变量",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.editor.envHint": {
+  "en": "Environment values must all be strings (including numbers and booleans, written in quotes).",
+  "zh": "Environment values must all be strings (including numbers and booleans, written in quotes).",
+  "en_review": false,
+  "zh_review": true
+ },
+ "errors.chromixSaveFailed": {
+  "en": "Chromix Save Failed",
+  "zh": "Chromix Save Failed",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.title": {
+  "en": "Chromix configuration",
+  "zh": "Chromix configuration",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.intro": {
+  "en": "Global settings for all Chromix profiles. Save explicitly, then restart the app to apply changes to browser startup. Switching engines does not erase this configuration.",
+  "zh": "Global settings for all Chromix profiles. Save explicitly, then restart the app to apply changes to browser startup. Switching engines does not erase this configuration.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.nodeLabel": {
+  "en": "Node.js executable",
+  "zh": "Node.js 可执行文件",
+  "en_review": false,
+  "zh_review": false
+ },
+ "chromix.editor.sections.globalFingerprintParameters": {
+  "en": "Global fingerprint parameters",
+  "zh": "Global fingerprint parameters",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.sections.sdkOptionsJson": {
+  "en": "SDK options JSON",
+  "zh": "SDK options JSON",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.sections.environmentJson": {
+  "en": "Environment JSON",
+  "zh": "Environment JSON",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.fixJsonHint": {
+  "en": "Correct SDK options JSON to edit the structured fingerprint fields. Your draft is preserved.",
+  "zh": "Correct SDK options JSON to edit the structured fingerprint fields. Your draft is preserved.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.save.saving": {
+  "en": "Saving…",
+  "zh": "Saving…",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.save.saveChromixSettings": {
+  "en": "Save Chromix settings",
+  "zh": "Save Chromix settings",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.save.savedRestartTheApp": {
+  "en": "Saved. Restart the app to apply.",
+  "zh": "Saved. Restart the app to apply.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.save.unsavedChangesSaveBefore": {
+  "en": "Unsaved changes — save before leaving this page.",
+  "zh": "Unsaved changes — save before leaving this page.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.save.noUnsavedChanges": {
+  "en": "No unsaved changes.",
+  "zh": "No unsaved changes.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.boundaryLabels.automationBoundary": {
+  "en": "Automation boundary:",
+  "zh": "Automation boundary:",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.boundaryLabels.measuredDevices": {
+  "en": "Measured devices:",
+  "zh": "Measured devices:",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.boundaryLabels.hostControls": {
+  "en": "Host controls:",
+  "zh": "Host controls:",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.humanizeNote": {
+  "en": "SDK humanize only affects SDK Playwright page objects. Existing MCP/CDP actions still use Cloaksession's current driver, not the SDK's humanized mouse or keyboard methods.",
+  "zh": "SDK humanize only affects SDK Playwright page objects. Existing MCP/CDP actions still use Cloaksession's current driver, not the SDK's humanized mouse or keyboard methods.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.devicePoolNote": {
+  "en": "devicePool requires the matching Python SDK and matching browser binary through a separate measured-device entry point. Cloaksession's CDP sidecar rejects devicePool and measured mode because that entry point excludes host CDP overrides. The example below is for direct SDK use only.",
+  "zh": "devicePool requires the matching Python SDK and matching browser binary through a separate measured-device entry point. Cloaksession's CDP sidecar rejects devicePool and measured mode because that entry point excludes host CDP overrides. The example below is for direct SDK use only.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.reservedArgsNote": {
+  "en": "Cloaksession supplies profile storage by default and reserves debugging arguments, including --remote-debugging-port, --remote-debugging-address and --remote-debugging-pipe. Do not override them in args, launchOptions or contextOptions.",
+  "zh": "Cloaksession supplies profile storage by default and reserves debugging arguments, including --remote-debugging-port, --remote-debugging-address and --remote-debugging-pipe. Do not override them in args, launchOptions or contextOptions.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.sdkReadme": {
+  "en": "Official Chromix Node SDK README ↗",
+  "zh": "Official Chromix Node SDK README ↗",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.examplesTitle": {
+  "en": "Complete SDK JSON examples",
+  "zh": "Complete SDK JSON examples",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.examplesNote": {
+  "en": "Reference examples, not defaults or a field whitelist. Replace paths, credentials and persona values before use. Omit userDataDir to keep Cloaksession's per-profile storage; an explicit path overrides it and must not be shared by concurrent profiles. Availability depends on the installed SDK and matching native binary; consult the official README above.",
+  "zh": "Reference examples, not defaults or a field whitelist. Replace paths, credentials and persona values before use. Omit userDataDir to keep Cloaksession's per-profile storage; an explicit path overrides it and must not be shared by concurrent profiles. Availability depends on the installed SDK and matching native binary; consult the official README above.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.exampleTitles.sdkOptionsExample": {
+  "en": "SDK options example",
+  "zh": "SDK options example",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.exampleTitles.environmentExample": {
+  "en": "Environment example",
+  "zh": "Environment example",
+  "en_review": false,
+  "zh_review": true
+ },
+ "chromix.editor.exampleTitles.devicepoolOptionsExampleSeparate": {
+  "en": "devicePool options example (separate measured-device mode)",
+  "zh": "devicePool options example (separate measured-device mode)",
+  "en_review": false,
+  "zh_review": true
+ },
+ "extensions.attachExisting": {
+  "en": "Attach existing",
+  "zh": "Attach existing",
+  "en_review": false,
+  "zh_review": true
+ },
+ "extensions.hideMine": {
+  "en": "Hide your extensions",
+  "zh": "隐藏我的扩展",
+  "en_review": false,
+  "zh_review": false
+ },
+ "extensions.attachFromProfiles": {
+  "en": "Attach from your profiles",
+  "zh": "从我的配置中附加",
+  "en_review": false,
+  "zh_review": false
+ },
+ "extensions.libraryEmpty": {
+  "en": "No other extensions in your library yet. Add one above and it becomes attachable to future profiles.",
+  "zh": "No other extensions in your library yet. Add one above and it becomes attachable to future profiles.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "extensions.freshNote": {
+  "en": "Extensions load on first launch. Login/state is not copied — attached extensions start fresh in this profile.",
+  "zh": "Extensions load on first launch. Login/state is not copied — attached extensions start fresh in this profile.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "extensions.urlOrIdPlaceholder": {
+  "en": "Chrome Web Store URL or extension ID",
+  "zh": "Chrome Web Store URL or extension ID",
+  "en_review": false,
+  "zh_review": true
+ },
+ "extensions.addFile": {
+  "en": "Add .crx / .zip…",
+  "zh": "Add .crx / .zip…",
+  "en_review": false,
+  "zh_review": true
+ },
+ "extensions.addFolder": {
+  "en": "Add folder…",
+  "zh": "Add folder…",
+  "en_review": false,
+  "zh_review": true
+ },
+ "extensions.hideCatalog": {
+  "en": "Hide catalog",
+  "zh": "Hide catalog",
+  "en_review": false,
+  "zh_review": true
+ },
+ "extensions.browseCatalog": {
+  "en": "Browse catalog",
+  "zh": "Browse catalog",
+  "en_review": false,
+  "zh_review": true
+ },
+ "catalog.added": {
+  "en": "Added",
+  "zh": "已添加",
+  "en_review": false,
+  "zh_review": false
+ },
+ "catalog.empty": {
+  "en": "The extension catalog is empty in this build. Add extensions by Chrome Web Store URL or ID above.",
+  "zh": "The extension catalog is empty in this build. Add extensions by Chrome Web Store URL or ID above.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "catalog.searchPlaceholder": {
+  "en": "Search the catalog…",
+  "zh": "搜索目录…",
+  "en_review": false,
+  "zh_review": false
+ },
+ "catalog.noMatch": {
+  "en": "No matches.",
+  "zh": "No matches.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "catalog.categories.adBlocking": {
+  "en": "Ad blocking",
+  "zh": "广告拦截",
+  "en_review": false,
+  "zh_review": false
+ },
+ "catalog.categories.privacyAntiTrack": {
+  "en": "Privacy & anti-track",
+  "zh": "隐私与反追踪",
+  "en_review": false,
+  "zh_review": false
+ },
+ "catalog.categories.productivityTabs": {
+  "en": "Productivity & tabs",
+  "zh": "效率与标签页",
+  "en_review": false,
+  "zh_review": false
+ },
+ "catalog.categories.passwordsWallets": {
+  "en": "Passwords & wallets",
+  "zh": "密码与钱包",
+  "en_review": false,
+  "zh_review": false
+ },
+ "catalog.categories.developerTools": {
+  "en": "Developer tools",
+  "zh": "开发者工具",
+  "en_review": false,
+  "zh_review": false
+ },
+ "catalog.categories.utilities": {
+  "en": "Utilities",
+  "zh": "实用工具",
+  "en_review": false,
+  "zh_review": false
+ },
+ "catalog.categories.socialShopping": {
+  "en": "Social & shopping",
+  "zh": "社交与购物",
+  "en_review": false,
+  "zh_review": false
+ },
+ "mcp.connectAgent": {
+  "en": "Connect an agent",
+  "zh": "连接 AI 智能体",
+  "en_review": false,
+  "zh_review": false
+ },
+ "mcp.hero": {
+  "en": "Drive your profiles from an AI agent. Point any MCP client (Claude Desktop, Cursor, Cline, …) at Cloaksession, then launch a profile and let the agent open tabs, click, type, and read pages through it — every tool call streams into the feed below.",
+  "zh": "Drive your profiles from an AI agent. Point any MCP client (Claude Desktop, Cursor, Cline, …) at Cloaksession, then launch a profile and let the agent open tabs, click, type, and read pages through it — every tool call streams into the feed below.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "mcp.liveCalls": {
+  "en": "Live tool calls",
+  "zh": "实时工具调用",
+  "en_review": false,
+  "zh_review": false
+ },
+ "mcp.feedEmpty": {
+  "en": "No agent calls yet",
+  "zh": "MCP tab",
+  "en_review": false,
+  "zh_review": false
+ },
+ "mcp.feedHint": {
+  "en": "Connect a client above, launch a profile, and every MCP tool call the agent makes shows up here — with sanitized arguments, outcome, and duration.",
+  "zh": "Connect a client above, launch a profile, and every MCP tool call the agent makes shows up here — with sanitized arguments, outcome, and duration.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "mcp.llmPrompt.iMUsingThe": {
+  "en": "I'm using the Cloaksession browser…",
+  "zh": "I'm using the Cloaksession browser…",
+  "en_review": false,
+  "zh_review": true
+ },
+ "mcp.llmPrompt.prefixedMultizenILl": {
+  "en": "…prefixed \"multizen.\" — I'll launch a profile…",
+  "zh": "…prefixed \"multizen.\" — I'll launch a profile…",
+  "en_review": false,
+  "zh_review": true
+ },
+ "mcp.serverOff": {
+  "en": "server off",
+  "zh": "服务未启动",
+  "en_review": false,
+  "zh_review": false
+ },
+ "mcp.listening": {
+  "en": "listening",
+  "zh": "监听中",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.mcp.autostart": {
+  "en": "Auto-start MCP HTTP transport on app launch",
+  "zh": "随应用启动自动启动 MCP HTTP 传输",
+  "en_review": false,
+  "zh_review": false
+ },
+ "mcp.disabledHint": {
+  "en": "The MCP server is disabled. Turn on {Auto-start…} in {{Settings}} to get a connection endpoint.",
+  "zh": "The MCP server is disabled. Turn on {Auto-start…} in {{Settings}} to get a connection endpoint.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "mcp.endpoint": {
+  "en": "Endpoint (Streamable HTTP)",
+  "zh": "端点（Streamable HTTP）",
+  "en_review": false,
+  "zh_review": false
+ },
+ "mcp.legacyEndpoint": {
+  "en": "Legacy HTTP+SSE endpoint (older clients): {{sseUrl}}",
+  "zh": "Legacy HTTP+SSE endpoint (older clients): {{sseUrl}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "mcp.authToken": {
+  "en": "Auth token",
+  "zh": "鉴权令牌",
+  "en_review": false,
+  "zh_review": false
+ },
+ "mcp.tokenHint": {
+  "en": "Sent as {Authorization: Bearer …} — the configs below already include it. Keep it secret; anyone with it can drive your profiles.",
+  "zh": "Sent as {Authorization: Bearer …} — the configs below already include it. Keep it secret; anyone with it can drive your profiles.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "mcp.steps.copyTheConfigFor": {
+  "en": "Copy the config for your client below into its MCP config.",
+  "zh": "Copy the config for your client below into its MCP config.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "mcp.steps.reloadRestartTheClient": {
+  "en": "Reload / restart the client so it connects.",
+  "zh": "Reload / restart the client so it connects.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "mcp.steps.launchAProfileHere": {
+  "en": "Launch a profile here, and let the agent drive it.",
+  "zh": "Launch a profile here, and let the agent drive it.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "mcp.configGroups.codexCliCodexConfig": {
+  "en": "Codex CLI — ~/.codex/config.toml",
+  "zh": "Codex CLI — ~/.codex/config.toml",
+  "en_review": false,
+  "zh_review": true
+ },
+ "mcp.configGroups.jsonUrlClientsCursor": {
+  "en": "JSON URL clients — Cursor, Cline, Continue",
+  "zh": "JSON URL clients — Cursor, Cline, Continue",
+  "en_review": false,
+  "zh_review": true
+ },
+ "mcp.configGroups.stdioClientsClaudeDesktop": {
+  "en": "Stdio clients — Claude Desktop",
+  "zh": "Stdio clients — Claude Desktop",
+  "en_review": false,
+  "zh_review": true
+ },
+ "mcp.stdioClients": {
+  "en": "Stdio clients",
+  "zh": "Stdio 客户端",
+  "en_review": false,
+  "zh_review": false
+ },
+ "mcp.codexNote": {
+  "en": "The {{url}} field needs a Codex build with streamable-HTTP MCP support. On older Codex (stdio only), use the {Stdio clients} config below instead.",
+  "zh": "The {{url}} field needs a Codex build with streamable-HTTP MCP support. On older Codex (stdio only), use the {Stdio clients} config below instead.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "mcp.stdioNote": {
+  "en": "mcp-remote",
+  "zh": "mcp-remote",
+  "en_review": false,
+  "zh_review": true
+ },
+ "mcp.copyForLlm": {
+  "en": "Copy for LLM",
+  "zh": "复制给 LLM",
+  "en_review": false,
+  "zh_review": false
+ },
+ "mcp.copyForLlm.title": {
+  "en": "Copy a prompt you can paste into Claude Code / Cursor to set up the connection",
+  "zh": "Copy a prompt you can paste into Claude Code / Cursor to set up the connection",
+  "en_review": false,
+  "zh_review": true
+ },
+ "activity.status.ok": {
+  "en": "ok",
+  "zh": "成功",
+  "en_review": false,
+  "zh_review": false
+ },
+ "activity.status.live": {
+  "en": "live",
+  "zh": "进行中",
+  "en_review": false,
+  "zh_review": false
+ },
+ "activity.status.error": {
+  "en": "error",
+  "zh": "失败",
+  "en_review": false,
+  "zh_review": false
+ },
+ "activity.title": {
+  "en": "MCP activity",
+  "zh": "MCP 活动",
+  "en_review": false,
+  "zh_review": false
+ },
+ "activity.liveCount": {
+  "en": "/",
+  "zh": "/",
+  "en_review": false,
+  "zh_review": true
+ },
+ "activity.callsCount": {
+  "en": "/",
+  "zh": "/",
+  "en_review": false,
+  "zh_review": true
+ },
+ "activity.last5min": {
+  "en": "last 5 min",
+  "zh": "近 5 分钟",
+  "en_review": false,
+  "zh_review": false
+ },
+ "activity.cols.time": {
+  "en": "Time",
+  "zh": "时间",
+  "en_review": false,
+  "zh_review": false
+ },
+ "activity.cols.tool": {
+  "en": "Tool",
+  "zh": "工具",
+  "en_review": false,
+  "zh_review": false
+ },
+ "activity.cols.summary": {
+  "en": "Summary",
+  "zh": "摘要",
+  "en_review": false,
+  "zh_review": false
+ },
+ "activity.cols.dur": {
+  "en": "Dur",
+  "zh": "时长",
+  "en_review": false,
+  "zh_review": false
+ },
+ "activity.cols.status": {
+  "en": "Status",
+  "zh": "状态",
+  "en_review": false,
+  "zh_review": false
+ },
+ "errors.settingsSaveFailed": {
+  "en": "Settings Save Failed",
+  "zh": "Settings Save Failed",
+  "en_review": false,
+  "zh_review": true
+ },
+ "settings.intro": {
+  "en": "MCP server, browser startup, archives and build info. Configuration is stored locally. Chromix SDK downloads and optional GeoIP lookups follow your SDK settings.",
+  "zh": "MCP 服务器、浏览器启动、归档与构建信息。配置保存在本地。Chromix SDK 下载与可选的 GeoIP 查询遵循你的 SDK 设置。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.mcp.title": {
+  "en": "MCP server",
+  "zh": "MCP 服务器",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.mcp.desc": {
+  "en": "Local HTTP transport that Cursor / Claude Desktop / Cline / any MCP client connects to. Requires the auth token below. The MCP tab has ready-to-paste client configs.",
+  "zh": "本地 HTTP 传输，供 Cursor / Claude Desktop / Cline / 任意 MCP 客户端连接。需要下方的认证令牌。MCP 标签页提供可直接粘贴的客户端配置。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.mcp.runningOn": {
+  "en": "running on :{{port}}",
+  "zh": "运行于 :{{port}}",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.engine.title": {
+  "en": "Browser engine",
+  "zh": "浏览器引擎",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.engine.desc": {
+  "en": "Global startup setting. Restart the app to apply; switching engines keeps each engine's saved configuration.",
+  "zh": "全局启动设置。重启应用后生效；切换引擎会保留各引擎已保存的配置。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.engine.selected": {
+  "en": "selected",
+  "zh": "已选",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.engine.options.selected": {
+  "en": "selected",
+  "zh": "已选",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.chromix.title": {
+  "en": "Chromix SDK configuration",
+  "zh": "Chromix SDK 配置",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.chromix.desc": {
+  "en": "Full SDK JSON, Node.js runtime and environment overrides. Changes apply after the next app restart.",
+  "zh": "完整 SDK JSON、Node.js 运行时与环境覆盖项。更改在下次重启应用后生效。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.binary.title": {
+  "en": "Browser binary",
+  "zh": "浏览器可执行文件",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.binary.descChromix": {
+  "en": "Use a matching Chromix executable. With no custom path, binary resolution and downloads are handled by the Chromix SDK, not the CloakBrowser / Chrome for Testing downloader. Restart the app to apply.",
+  "zh": "使用匹配的 Chromix 可执行文件。未指定自定义路径时，二进制解析与下载由 Chromix SDK 处理，而非 CloakBrowser / Chrome for Testing 下载器。重启应用后生效。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.binary.descDefault": {
+  "en": "Point Cloaksession at your own Chromium / CloakBrowser executable instead of auto-downloading. Restart the app to apply.",
+  "zh": "让 Cloaksession 指向你自己的 Chromium / CloakBrowser 可执行文件，而不是自动下载。重启应用后生效。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.binary.pathAria": {
+  "en": "Browser binary path",
+  "zh": "浏览器可执行文件路径",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.binary.phChromix": {
+  "en": "Default (Chromix SDK resolution)",
+  "zh": "默认（Chromix SDK 解析）",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.binary.phDefault": {
+  "en": "Default (auto-download)",
+  "zh": "默认（自动下载）",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.binary.skipDownload": {
+  "en": "Skip Chromix SDK auto-download (use a local or SDK-cached binary)",
+  "zh": "跳过 Chromix SDK 自动下载（使用本地或 SDK 缓存的二进制）",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.binary.skipDownloadLegacy": {
+  "en": "Skip auto-download (use cached binary or the custom path above)",
+  "zh": "跳过自动下载（使用缓存二进制或上方的自定义路径）",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.binary.offlineNote": {
+  "en": "For offline Chromix launches, use an installed SDK cache entry, a custom binary path or CLOAKBROWSER_BINARY_PATH in Environment JSON. Launch fails if no local binary is available. The SDK's cache and download settings are separate from the legacy engines.",
+  "zh": "离线启动 Chromix 时，请使用已安装的 SDK 缓存条目、自定义二进制路径或环境 JSON 中的 CLOAKBROWSER_BINARY_PATH。若无可用本地二进制，启动会失败。SDK 的缓存与下载设置与旧引擎相互独立。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.binary.offlineNoteLegacy": {
+  "en": "When on, Cloaksession never fetches a browser runtime. Launch fails with a clear error if no binary is available. Pair with a custom path for fully offline setups.",
+  "zh": "开启后，Cloaksession 不再获取浏览器运行时。若无可用二进制，启动会以明确错误失败。搭配自定义路径可实现完全离线。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.archives.title": {
+  "en": "Archives",
+  "zh": "归档",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.archives.desc": {
+  "en": ".mzar files are encrypted bundles of profiles — cookies, login state, fingerprints, notes — protected with a passphrase you set at export time.",
+  "zh": ".mzar 文件是浏览器配置的加密打包——Cookie、登录态、浏览器指纹、备注——由你在导出时设置的口令保护。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "archive.importAction": {
+  "en": "Import .mzar archive",
+  "zh": "Import .mzar archive",
+  "en_review": false,
+  "zh_review": true
+ },
+ "settings.archives.readDocs": {
+  "en": "Read archive format docs",
+  "zh": "阅读归档格式文档",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.updates.title": {
+  "en": "Updates",
+  "zh": "更新",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.updates.descMacos": {
+  "en": "Auto-install isn't available on macOS yet — we'll notify you in-app to download the new version.",
+  "zh": "macOS 暂不支持自动安装——我们会在应用内提示你下载新版本。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.updates.descDefault": {
+  "en": "Cloaksession checks for updates in the background and installs them on restart.",
+  "zh": "Cloaksession 会在后台检查更新，并在重启时安装。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "update.check": {
+  "en": "Check for updates",
+  "zh": "检查更新",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.updates.autoCheck": {
+  "en": "Automatically check for updates",
+  "zh": "自动检查更新",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.telemetry.title": {
+  "en": "Anonymous usage",
+  "zh": "匿名使用统计",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.telemetry.desc": {
+  "en": "Off by default. Help gauge how many people run Cloaksession.",
+  "zh": "默认关闭。帮助了解有多少人在使用 Cloaksession。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.telemetry.heartbeat": {
+  "en": "Send an anonymous daily heartbeat",
+  "zh": "发送匿名每日心跳",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.telemetry.heartbeatDesc": {
+  "en": "When on, sends once a day: app version, OS family, and a random single-use token — no account, no persistent ID, and your IP is never stored (a coarse country is derived server-side then discarded). No profiles, proxies, or browsing are ever included. Set MULTIZEN_NO_TELEMETRY=1 to force it off.",
+  "zh": "开启后每天发送一次：应用版本、操作系统类型和一个随机一次性令牌——不包含账号、不包含持久 ID，你的 IP 也不会被存储（服务端会推导出粗略国家后即丢弃）。绝不包含浏览器配置、代理或浏览记录。设置 MULTIZEN_NO_TELEMETRY=1 可强制关闭。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.about.title": {
+  "en": "About",
+  "zh": "关于",
+  "en_review": false,
+  "zh_review": false
+ },
+ "update.downloading": {
+  "en": "（下载中横幅；另有 :9",
+  "zh": "（下载中横幅；另有 :9",
+  "en_review": true,
+  "zh_review": true
+ },
+ "update.restart": {
+  "en": "Restart to update",
+  "zh": "重启以更新",
+  "en_review": false,
+  "zh_review": false
+ },
+ "update.download": {
+  "en": "Download",
+  "zh": "Download",
+  "en_review": false,
+  "zh_review": true
+ },
+ "update.availableBanner": {
+  "en": "Cloaksession {{version}} is available.",
+  "zh": "Cloaksession {{version}} is available.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "update.readyBanner": {
+  "en": "Cloaksession {{version}} is ready to install.",
+  "zh": "Cloaksession {{version}} is ready to install.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "update.restartNow": {
+  "en": "Restart now",
+  "zh": "立即重启",
+  "en_review": false,
+  "zh_review": false
+ },
+ "update.nativeDownloadTitle": {
+  "en": "Download update",
+  "zh": "Download update",
+  "en_review": false,
+  "zh_review": true
+ },
+ "update.nativeDownloadBody": {
+  "en": "Download update",
+  "zh": "Download update",
+  "en_review": false,
+  "zh_review": true
+ },
+ "update.statusFailed": {
+  "en": "Download client build failed: {{e}}",
+  "zh": "Download client build failed: {{e}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "update.downloadFailed": {
+  "en": "Download failed: {{e}}",
+  "zh": "Download failed: {{e}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "update.downloadHttp": {
+  "en": "Download HTTP {{status}}",
+  "zh": "Download HTTP {{status}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "update.ioFailed.cannotCreateTempFile": {
+  "en": "Cannot create temp file: {{e}}",
+  "zh": "Cannot create temp file: {{e}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "update.ioFailed.writeFailed": {
+  "en": "Write failed: {{e}}",
+  "zh": "Write failed: {{e}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "update.ioFailed.downloadStreamError": {
+  "en": "Download stream error: {{e}}",
+  "zh": "Download stream error: {{e}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "update.noInstaller": {
+  "en": "No downloaded installer to install",
+  "zh": "No downloaded installer to install",
+  "en_review": false,
+  "zh_review": true
+ },
+ "update.installerMissing": {
+  "en": "Installer not found: {{path}}",
+  "zh": "Installer not found: {{path}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.defaultProfileName": {
+  "en": "My first profile",
+  "zh": "My first profile",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.heroTitle": {
+  "en": "A library of isolated browsers.",
+  "zh": "A library of isolated browsers.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.heroSubtitle": {
+  "en": "Cookies, login, fingerprint, and proxy isolated per profile. Drive them yourself or via any MCP agent.",
+  "zh": "Cookies, login, fingerprint, and proxy isolated per profile. Drive them yourself or via any MCP agent.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.telemetryTitle": {
+  "en": "Help improve Cloaksession?",
+  "zh": "Help improve Cloaksession?",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.telemetryBody": {
+  "en": "Optionally send an anonymous daily heartbeat: just app version and OS family. No account, no persistent ID, and your IP is never stored. No profiles, proxies, or browsing — ever. Off unless you enable it; change it anytime in Settings.",
+  "zh": "Optionally send an anonymous daily heartbeat: just app version and OS family. No account, no persistent ID, and your IP is never stored. No profiles, proxies, or browsing — ever. Off unless you enable it; change it anytime in Settings.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.creating": {
+  "en": "Creating…",
+  "zh": "创建中…",
+  "en_review": false,
+  "zh_review": false
+ },
+ "onboarding.create": {
+  "en": "Create profile",
+  "zh": "创建配置",
+  "en_review": false,
+  "zh_review": false
+ },
+ "onboarding.bootstrap.title": {
+  "en": "Setting up Cloaksession",
+  "zh": "Setting up Cloaksession",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.status.lookingUpTheBrowser": {
+  "en": "Looking up the browser runtime",
+  "zh": "Looking up the browser runtime",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.status.downloadingBrowserRuntime": {
+  "en": "Downloading browser runtime",
+  "zh": "Downloading browser runtime",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.status.verifyingDownload": {
+  "en": "Verifying download",
+  "zh": "Verifying download",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.status.installingBrowserRuntime": {
+  "en": "Installing browser runtime",
+  "zh": "Installing browser runtime",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.status.setupFailed": {
+  "en": "Setup failed",
+  "zh": "Setup failed",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.firstRunNote": {
+  "en": "First-run download. About 150-550 MB.",
+  "zh": "First-run download. About 150-550 MB.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.progress.resolvingTheLatestCompatible": {
+  "en": "Resolving the latest compatible build",
+  "zh": "Resolving the latest compatible build",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.progress.runtime": {
+  "en": "Runtime {{version}}",
+  "zh": "Runtime {{version}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.progress.checkingIntegritySha256": {
+  "en": "Checking integrity (SHA-256 + macOS code signature)",
+  "zh": "Checking integrity (SHA-256 + macOS code signature)",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.progress.unpackingRuntime": {
+  "en": "Unpacking runtime {{version}}…",
+  "zh": "Unpacking runtime {{version}}…",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.progress.weCouldNotDownload": {
+  "en": "We could not download the Chromium binary.",
+  "zh": "We could not download the Chromium binary.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.substatus.preparingDownload": {
+  "en": "Preparing download…",
+  "zh": "Preparing download…",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.substatus.resolvingLatestStableVersion": {
+  "en": "Resolving latest stable version…",
+  "zh": "Resolving latest stable version…",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.substatus.unpackingAndVerifyingSignature": {
+  "en": "Unpacking and verifying signature…",
+  "zh": "Unpacking and verifying signature…",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.substatus.verifyingSha256Checksum": {
+  "en": "Verifying SHA-256 checksum…",
+  "zh": "Verifying SHA-256 checksum…",
+  "en_review": false,
+  "zh_review": true
+ },
+ "onboarding.bootstrap.retry": {
+  "en": "Retry download",
+  "zh": "重试下载",
+  "en_review": false,
+  "zh_review": false
+ },
+ "palette.openItem": {
+  "en": "Open Item",
+  "zh": "Open Item",
+  "en_review": false,
+  "zh_review": true
+ },
+ "palette.launchItem": {
+  "en": "Launch Item",
+  "zh": "Launch Item",
+  "en_review": false,
+  "zh_review": true
+ },
+ "palette.createNew": {
+  "en": "Create new profile · \"",
+  "zh": "Create new profile · \"",
+  "en_review": false,
+  "zh_review": true
+ },
+ "palette.actions": {
+  "en": "Actions",
+  "zh": "操作",
+  "en_review": false,
+  "zh_review": false
+ },
+ "palette.goToProfiles": {
+  "en": "Go to Profiles",
+  "zh": "前往浏览器配置",
+  "en_review": false,
+  "zh_review": false
+ },
+ "palette.goToMcp": {
+  "en": "Go to MCP",
+  "zh": "前往 MCP",
+  "en_review": false,
+  "zh_review": false
+ },
+ "palette.navigate": {
+  "en": "Navigate",
+  "zh": "导航",
+  "en_review": false,
+  "zh_review": false
+ },
+ "palette.searchPlaceholder": {
+  "en": "Search profiles, tags, actions…",
+  "zh": "搜索配置、标签、操作…",
+  "en_review": false,
+  "zh_review": false
+ },
+ "palette.noMatchPrefix": {
+  "en": "No matches. Press … to create a new profile.",
+  "zh": "No matches. Press … to create a new profile.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "palette.noMatchSuffix": {
+  "en": "No matches. Press",
+  "zh": "No matches. Press",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.importTitle": {
+  "en": "Import profile archive",
+  "zh": "Import profile archive",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.importDesc": {
+  "en": "Choose a .mzar file. Provide the passphrase used at export time.",
+  "zh": "Choose a .mzar file. Provide the passphrase used at export time.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.passphrase": {
+  "en": "Passphrase",
+  "zh": "口令",
+  "en_review": false,
+  "zh_review": false
+ },
+ "archive.passphrasePlaceholder": {
+  "en": "Passphrase",
+  "zh": "Passphrase",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.chooseAndImport": {
+  "en": "Choose file & import",
+  "zh": "选择文件并导入",
+  "en_review": false,
+  "zh_review": false
+ },
+ "archive.exportTitle": {
+  "en": "Export profile archive",
+  "zh": "Export profile archive",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.exportDesc": {
+  "en": "Choose a passphrase to encrypt the archive. You'll need it to import this profile elsewhere. Minimum 8 characters.",
+  "zh": "Choose a passphrase to encrypt the archive. You'll need it to import this profile elsewhere. Minimum 8 characters.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.newPassphrase": {
+  "en": "New passphrase",
+  "zh": "新口令",
+  "en_review": false,
+  "zh_review": false
+ },
+ "archive.passphrasePlaceholderMin": {
+  "en": "At least 8 characters",
+  "zh": "At least 8 characters",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.encryptAndSave": {
+  "en": "Encrypt & save…",
+  "zh": "加密并保存…",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.deleteTitle": {
+  "en": "Delete this profile?",
+  "zh": "删除配置",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.deleteBody": {
+  "en": "Cookies, login state, and on-disk data will be erased permanently. This cannot be undone.",
+  "zh": "Cookies, login state, and on-disk data will be erased permanently. This cannot be undone.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.deleteConfirm": {
+  "en": "Yes, delete",
+  "zh": "Yes, delete",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.exportAction": {
+  "en": "Export",
+  "zh": "导出",
+  "en_review": false,
+  "zh_review": false
+ },
+ "archive.nativeFilter": {
+  "en": "Cloaksession archive",
+  "zh": "Cloaksession archive",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.importReason.fileTooSmall": {
+  "en": "File too small",
+  "zh": "File too small",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.importReason.notACloaksessionArchive": {
+  "en": "Not a Cloaksession archive",
+  "zh": "Not a Cloaksession archive",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.importReason.wrongPassphraseOrCorrupted": {
+  "en": "Wrong passphrase or corrupted archive.",
+  "zh": "Wrong passphrase or corrupted archive.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.importReason.corruptedArchiveTooSmall": {
+  "en": "Corrupted archive (too small)",
+  "zh": "Corrupted archive (too small)",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.importReason.corruptedArchiveManifestTruncated": {
+  "en": "Corrupted archive (manifest truncated)",
+  "zh": "Corrupted archive (manifest truncated)",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.importReason.corruptedArchiveManifestJson": {
+  "en": "Corrupted archive (manifest JSON): {{e}}",
+  "zh": "Corrupted archive (manifest JSON): {{e}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.importReason.fileLengthTruncated": {
+  "en": "(file length truncated)",
+  "zh": "(file length truncated)",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.importReason.fileContentTruncated": {
+  "en": "(file content truncated)",
+  "zh": "(file content truncated)",
+  "en_review": false,
+  "zh_review": true
+ },
+ "archive.importReason.checksumMismatch": {
+  "en": "Checksum mismatch: {{path}}",
+  "zh": "Checksum mismatch: {{path}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.table.name": {
+  "en": "Name",
+  "zh": "名称",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.table.status": {
+  "en": "Status",
+  "zh": "状态",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.table.tags": {
+  "en": "Tags",
+  "zh": "标签",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.table.lastOpened": {
+  "en": "Last opened",
+  "zh": "上次打开",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.table.proxy": {
+  "en": "Proxy",
+  "zh": "代理",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.list.neverOpened": {
+  "en": "never opened",
+  "zh": "从未打开",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.list.proxyLabel": {
+  "en": "proxy",
+  "zh": "代理",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.list.moreActions": {
+  "en": "More actions",
+  "zh": "更多操作",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.filter.all": {
+  "en": "All",
+  "zh": "All",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.filter.running": {
+  "en": "Running",
+  "zh": "Running",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.filter.aiDriven": {
+  "en": "AI-driven",
+  "zh": "AI-driven",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.filter.errors": {
+  "en": "Errors",
+  "zh": "Errors",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.filter.idle": {
+  "en": "Idle",
+  "zh": "Idle",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.list.allProfiles": {
+  "en": "All profiles",
+  "zh": "全部浏览器配置",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.list.aiCount": {
+  "en": "Ai Count",
+  "zh": "Ai Count",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.list.gridView": {
+  "en": "Grid view",
+  "zh": "网格视图",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.list.listView": {
+  "en": "List view",
+  "zh": "列表视图",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.list.searchAria": {
+  "en": "搜索环境与账号档案",
+  "zh": "搜索环境与账号档案",
+  "en_review": true,
+  "zh_review": true
+ },
+ "profile.list.searchPlaceholder": {
+  "en": "搜索环境、姓名、快手ID或身份证号",
+  "zh": "搜索环境、姓名、快手ID或身份证号",
+  "en_review": true,
+  "zh_review": true
+ },
+ "profile.list.noFilterMatch": {
+  "en": "No profiles match the current filter.",
+  "zh": "当前筛选下没有匹配的配置。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.empty.title": {
+  "en": "No profiles yet",
+  "zh": "No profiles yet",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.empty.body": {
+  "en": "Each profile is its own browser — cookies, login, fingerprint, proxy. Create one to get started.",
+  "zh": "Each profile is its own browser — cookies, login, fingerprint, proxy. Create one to get started.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "palette.launch": {
+  "en": "…",
+  "zh": "…",
+  "en_review": false,
+  "zh_review": true
+ },
+ "palette.launching": {
+  "en": "Launching…",
+  "zh": "启动中…",
+  "en_review": false,
+  "zh_review": false
+ },
+ "account.scope.text": {
+  "en": "快手小店",
+  "zh": "快手小店",
+  "en_review": true,
+  "zh_review": true
+ },
+ "errors.accountLoadFailed": {
+  "en": "Account Load Failed",
+  "zh": "Account Load Failed",
+  "en_review": false,
+  "zh_review": true
+ },
+ "account.savedToast": {
+  "en": "账号登记已保存；这不代表已登录平台。",
+  "zh": "账号登记已保存；这不代表已登录平台。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.unboundToast": {
+  "en": "已解绑。登记记录已保留，未清除 Cookie；环境专用用途仍保留。",
+  "zh": "已解绑。登记记录已保留，未清除 Cookie；环境专用用途仍保留。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.staleToast": {
+  "en": "操作已完成，但最新状态读取失败，请重新加载，不要重复提交：{{detail}}",
+  "zh": "操作已完成，但最新状态读取失败，请重新加载，不要重复提交：{{detail}}",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.failedToast": {
+  "en": "操作失败：{{detail}}",
+  "zh": "操作失败：{{detail}}",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.sectionTitle": {
+  "en": "业务账号登记",
+  "zh": "业务账号登记",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.disclaimer": {
+  "en": "账号信息未验证，仅手工登记类型、别名与平台用户 ID，不代表已登录或免登录，不共享 Cookie。 每个 Profile 同时只能关联一个登记记录，不会自动覆盖、移动或合并账号。",
+  "zh": "账号信息未验证，仅手工登记类型、别名与平台用户 ID，不代表已登录或免登录，不共享 Cookie。 每个 Profile 同时只能关联一个登记记录，不会自动覆盖、移动或合并账号。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.saveNote": {
+  "en": "本分区需单独保存；切换分区保留草稿，关闭编辑页会丢弃未保存的登记修改。",
+  "zh": "本分区需单独保存；切换分区保留草稿，关闭编辑页会丢弃未保存的登记修改。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.reload": {
+  "en": "重新加载 / 重试",
+  "zh": "重新加载 / 重试",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.reloadTitle": {
+  "en": "重新加载状态",
+  "zh": "重新加载状态",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.reloadHint": {
+  "en": "重新加载会丢弃未保存的登记修改。",
+  "zh": "重新加载会丢弃未保存的登记修改。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.stoppedRequired": {
+  "en": "绑定、修改和解绑前必须停用 Profile；运行状态仅供提示，最终由后台校验。",
+  "zh": "绑定、修改和解绑前必须停用 Profile；运行状态仅供提示，最终由后台校验。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.mode.text": {
+  "en": "登记方式",
+  "zh": "登记方式",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.existing.text": {
+  "en": "已有未关联记录",
+  "zh": "已有未关联记录",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.existing.profile": {
+  "en": "包含删除环境后保留的登记；已关联其他 Profile 的记录不会出现在这里。",
+  "zh": "包含删除环境后保留的登记；已关联其他 Profile 的记录不会出现在这里。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.needsIsolatedEnv": {
+  "en": "（需要独立环境）",
+  "zh": "（需要独立环境）",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.field.text": {
+  "en": "账号类型",
+  "zh": "账号类型",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.field.profile": {
+  "en": "保存后此 Profile 将标记为磁力金牛专用…",
+  "zh": "保存后此 Profile 将标记为磁力金牛专用…",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.field.id": {
+  "en": "平台ID（可选，手填不代表已登录）",
+  "zh": "平台ID（可选，手填不代表已登录）",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.save.text": {
+  "en": "保存登记修改",
+  "zh": "保存登记修改",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.unbindConfirm.aria": {
+  "en": "确认解绑登记",
+  "zh": "确认解绑登记",
+  "en_review": true,
+  "zh_review": true
+ },
+ "account.unbindConfirm.confirm": {
+  "en": "确认解绑",
+  "zh": "确认解绑",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.avatarAlt": {
+  "en": "快手平台头像",
+  "zh": "快手平台头像",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.avatarUnavailable": {
+  "en": "平台头像不可用",
+  "zh": "平台头像不可用",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.avatarFallback": {
+  "en": "快",
+  "zh": "快",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.statusTitle.text": {
+  "en": "浏览器已关闭或正在关闭；运行状态最终由后台判定",
+  "zh": "浏览器已关闭或正在关闭；运行状态最终由后台判定",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.detecting": {
+  "en": "检测中…",
+  "zh": "检测中…",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.redetect": {
+  "en": "重新检测",
+  "zh": "重新检测",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.scanOpened": {
+  "en": "已打开小店登录页，请在浏览器中扫码；此操作不代表已登录。",
+  "zh": "已打开小店登录页，请在浏览器中扫码；此操作不代表已登录。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.scanFailed": {
+  "en": "已打开小店登录页，请在浏览器中扫码；此操作不代表已登录。",
+  "zh": "已打开小店登录页，请在浏览器中扫码；此操作不代表已登录。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.openShop.text": {
+  "en": "启动此环境并新开小店扫码页；不改起始页或登录数据，金牛环境不可用",
+  "zh": "启动此环境并新开小店扫码页；不改起始页或登录数据，金牛环境不可用",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.lastDetected": {
+  "en": "· 上次识别",
+  "zh": "· 上次识别",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.thisRound": {
+  "en": "上次识别",
+  "zh": "上次识别",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.details": {
+  "en": "快手详情",
+  "zh": "快手详情",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.refresh": {
+  "en": "刷新检测状态",
+  "zh": "刷新检测状态",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.refreshNote": {
+  "en": "读取 Rust 后台结果 · 不代表已登录或初始化完成",
+  "zh": "读取 Rust 后台结果 · 不代表已登录或初始化完成",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.conflict.id": {
+  "en": "登记冲突：手填平台ID与识别结果不同；…",
+  "zh": "登记冲突：手填平台ID与识别结果不同；…",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.conflict.text": {
+  "en": "登记冲突：后台报告身份登记冲突，…",
+  "zh": "登记冲突：后台报告身份登记冲突，…",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.copied": {
+  "en": "快手ID已复制",
+  "zh": "快手ID已复制",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.copyFailed": {
+  "en": "复制失败，请手动选择快手ID复制",
+  "zh": "复制失败，请手动选择快手ID复制",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.detailsAria": {
+  "en": "快手身份检测详情",
+  "zh": "快手身份检测详情",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.lastInfoSuffix": {
+  "en": "· 以下为上次识别信息",
+  "zh": "· 以下为上次识别信息",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.rows.id": {
+  "en": "快手ID",
+  "zh": "快手ID",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.rows.text": {
+  "en": "检测时间",
+  "zh": "检测时间",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.rows.rust": {
+  "en": "Rust 后台 · 小店页面身份检测（本地结果）",
+  "zh": "Rust 后台 · 小店页面身份检测（本地结果）",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.actionsNotes.id": {
+  "en": "复制快手ID",
+  "zh": "复制快手ID",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.actionsNotes.text": {
+  "en": "刷新检测状态",
+  "zh": "刷新检测状态",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.unknownRead": {
+  "en": "/",
+  "zh": "/",
+  "en_review": false,
+  "zh_review": true
+ },
+ "identity.unknownRedetect": {
+  "en": "/",
+  "zh": "/",
+  "en_review": false,
+  "zh_review": true
+ },
+ "identity.statusLabels.text": {
+  "en": "检测状态未知 / 读取失败",
+  "zh": "检测状态未知 / 读取失败",
+  "en_review": true,
+  "zh_review": true
+ },
+ "errors.identityInvalid.text": {
+  "en": "身份检测结果格式无效",
+  "zh": "身份检测结果格式无效",
+  "en_review": true,
+  "zh_review": true
+ },
+ "errors.identityInvalid.profile": {
+  "en": "身份检测结果与请求的 Profile 不符",
+  "zh": "身份检测结果与请求的 Profile 不符",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.step.text": {
+  "en": "待执行",
+  "zh": "待执行",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.step.ocr": {
+  "en": "中文 OCR 不可用",
+  "zh": "中文 OCR 不可用",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.errorLabels.text": {
+  "en": "待执行",
+  "zh": "待执行",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.errorLabels.ocr": {
+  "en": "中文 OCR 不可用",
+  "zh": "中文 OCR 不可用",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.text": {
+  "en": "持久初始化状态",
+  "zh": "持久初始化状态",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.noteDetectVsInit": {
+  "en": "身份识别不等于初始化完成；采集完成不等于人工已核对。",
+  "zh": "身份识别不等于初始化完成；采集完成不等于人工已核对。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.readFailed": {
+  "en": "初始化状态读取失败，请在详情刷新",
+  "zh": "初始化状态读取失败，请在详情刷新",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.photo.text": {
+  "en": "照片读取失败，请刷新档案",
+  "zh": "照片读取失败，请刷新档案",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.run.text": {
+  "en": "执行 / 补做初始化",
+  "zh": "执行 / 补做初始化",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.toast.text": {
+  "en": "档案读取失败，请刷新重试。",
+  "zh": "档案读取失败，请刷新重试。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.toast.ocr": {
+  "en": "本地中文 OCR 状态不可用，请检查系统语言资源；不会自动下载或上传。",
+  "zh": "本地中文 OCR 状态不可用，请检查系统语言资源；不会自动下载或上传。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.save.text": {
+  "en": "修正已保存并重新校验，请对照照片后确认。",
+  "zh": "修正已保存并重新校验，请对照照片后确认。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.archTitle": {
+  "en": "主体档案",
+  "zh": "主体档案",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.source.text": {
+  "en": "无关联环境 / 环境已删除",
+  "zh": "无关联环境 / 环境已删除",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.source.ocr": {
+  "en": "本地 OCR",
+  "zh": "本地 OCR",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.form.text": {
+  "en": "尚无可用照片，不能确认。",
+  "zh": "尚无可用照片，不能确认。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.validation.text": {
+  "en": "自动校验六项",
+  "zh": "自动校验六项",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.actions.text": {
+  "en": "保存修正并校验",
+  "zh": "保存修正并校验",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.actions.ocr": {
+  "en": "重新识别（本地 OCR）",
+  "zh": "重新识别（本地 OCR）",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.noArchive": {
+  "en": "暂无主体档案；身份已识别不代表资料已采集。",
+  "zh": "暂无主体档案；身份已识别不代表资料已采集。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.checks.text": {
+  "en": "姓名",
+  "zh": "姓名",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.checks.18": {
+  "en": "18位结构",
+  "zh": "18位结构",
+  "en_review": true,
+  "zh_review": true
+ },
+ "errors.subjectInvalid.text": {
+  "en": "主体档案响应无效，请刷新",
+  "zh": "主体档案响应无效，请刷新",
+  "en_review": true,
+  "zh_review": true
+ },
+ "errors.subjectInvalid.ocr": {
+  "en": "OCR 状态不可用",
+  "zh": "OCR 状态不可用",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.reviewed": {
+  "en": "已核对",
+  "zh": "已核对",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.unreviewed": {
+  "en": "未核对",
+  "zh": "未核对",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.archivesTitle": {
+  "en": "独立账号档案",
+  "zh": "独立账号档案",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.archives.text": {
+  "en": "刷新档案列表",
+  "zh": "刷新档案列表",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.archives.id": {
+  "en": "按姓名、快手ID、身份证号搜索；删除环境仍保留档案。环境筛选不影响档案结果。",
+  "zh": "按姓名、快手ID、身份证号搜索；删除环境仍保留档案。环境筛选不影响档案结果。",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.archiveRow.id": {
+  "en": "{{realName}} · 快手ID：{{id}} · {nickname ?? \"未读出昵称\"}",
+  "zh": "{{realName}} · 快手ID：{{id}} · {nickname ?? \"未读出昵称\"}",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.archiveRow.text": {
+  "en": "{{maskedIdCard}} · {已核对/待核对}",
+  "zh": "{{maskedIdCard}} · {已核对/待核对}",
+  "en_review": true,
+  "zh_review": true
+ },
+ "subject.archiveTitle": {
+  "en": "账号档案",
+  "zh": "账号档案",
+  "en_review": true,
+  "zh_review": true
+ },
+ "ocr.errors.ocrerror": {
+  "en": "OcrError",
+  "zh": "OcrError",
+  "en_review": false,
+  "zh_review": true
+ },
+ "ocr.errors.windowsOcr": {
+  "en": "本平台不支持 Windows 本地 OCR",
+  "zh": "本平台不支持 Windows 本地 OCR",
+  "en_review": true,
+  "zh_review": true
+ },
+ "ocr.errors.ocr": {
+  "en": "本机中文 OCR 语言资源不可用；不会自动安装或转云端",
+  "zh": "本机中文 OCR 语言资源不可用；不会自动安装或转云端",
+  "en_review": true,
+  "zh_review": true
+ },
+ "ocr.errors.text": {
+  "en": "图片为空或无法完整解码",
+  "zh": "图片为空或无法完整解码",
+  "en_review": true,
+  "zh_review": true
+ },
+ "ocr.errors.pngJpegWebp": {
+  "en": "仅支持静态 PNG、JPEG、WebP 图片",
+  "zh": "仅支持静态 PNG、JPEG、WebP 图片",
+  "en_review": true,
+  "zh_review": true
+ },
+ "ocr.availableLocal": {
+  "en": "系统中文OCR可用；仅本地识别",
+  "zh": "系统中文OCR可用；仅本地识别",
+  "en_review": true,
+  "zh_review": true
+ },
+ "identity.shopNotOpened": {
+  "en": "/",
+  "zh": "/",
+  "en_review": false,
+  "zh_review": true
+ },
+ "identity.shopNotActive": {
+  "en": "/",
+  "zh": "/",
+  "en_review": false,
+  "zh_review": true
+ },
+ "errors.businessOpFailed": {
+  "en": "Business Op Failed",
+  "zh": "Business Op Failed",
+  "en_review": false,
+  "zh_review": true
+ },
+ "time.never": {
+  "en": "never",
+  "zh": "从未",
+  "en_review": false,
+  "zh_review": false
+ },
+ "time.justNow": {
+  "en": "just now",
+  "zh": "刚刚",
+  "en_review": false,
+  "zh_review": false
+ },
+ "time.secondsAgo": {
+  "en": "/",
+  "zh": "/",
+  "en_review": false,
+  "zh_review": true
+ },
+ "time.minutesAgo": {
+  "en": "/",
+  "zh": "/",
+  "en_review": false,
+  "zh_review": true
+ },
+ "time.hoursAgo": {
+  "en": "/",
+  "zh": "/",
+  "en_review": false,
+  "zh_review": true
+ },
+ "time.daysAgo": {
+  "en": "just now",
+  "zh": "just now",
+  "en_review": false,
+  "zh_review": true
+ },
+ "locale.countryName": {
+  "en": "Intl.DisplayNames([\"en\"], { type: \"region\" })",
+  "zh": "Intl.DisplayNames([\"en\"], { type: \"region\" })",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.emoji.autoTitle": {
+  "en": "Auto Title",
+  "zh": "Auto Title",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.emoji.auto": {
+  "en": "Auto",
+  "zh": "自动",
+  "en_review": false,
+  "zh_review": false
+ },
+ "profile.emoji.setTitle": {
+  "en": "Set an emoji avatar",
+  "zh": "Set an emoji avatar",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.emoji.chooseAria": {
+  "en": "Choose emoji avatar",
+  "zh": "Choose emoji avatar",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.emoji.title": {
+  "en": "Emoji avatar",
+  "zh": "Emoji avatar",
+  "en_review": false,
+  "zh_review": true
+ },
+ "profile.emoji.clickToSet": {
+  "en": "Click to set an emoji",
+  "zh": "点击设置 emoji",
+  "en_review": false,
+  "zh_review": false
+ },
+ "dialog.browserBinaryFilter": {
+  "en": "Browser binary",
+  "zh": "Browser binary",
+  "en_review": false,
+  "zh_review": true
+ },
+ "dialog.extensionFilter": {
+  "en": "Extension",
+  "zh": "Extension",
+  "en_review": false,
+  "zh_review": true
+ },
+ "errors.extIdUnparseable": {
+  "en": "Ext Id Unparseable",
+  "zh": "Ext Id Unparseable",
+  "en_review": false,
+  "zh_review": true
+ },
+ "errors.extDownload.httpClientBuildFailed": {
+  "en": "HTTP client build failed: {{e}}",
+  "zh": "HTTP client build failed: {{e}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "errors.extDownload.webStoreDownloadFailed": {
+  "en": "Web Store download failed: {{e}}",
+  "zh": "Web Store download failed: {{e}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "errors.extDownload.webStoreReturnedHttp": {
+  "en": "Web Store returned HTTP {{status}} for extension {{id}}",
+  "zh": "Web Store returned HTTP {{status}} for extension {{id}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "errors.extDownload.failedToReadCrx": {
+  "en": "Failed to read CRX body: {{e}}",
+  "zh": "Failed to read CRX body: {{e}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "errors.extDownload.extensionIsnTAvailable": {
+  "en": "Extension {{id}} isn't available from the Web Store (empty response). Try uploading the .crx/.zip instead.",
+  "zh": "Extension {{id}} isn't available from the Web Store (empty response). Try uploading the .crx/.zip instead.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "errors.extUnavailable": {
+  "en": "Extension {{id}} isn't available from the Web Store (it may be delisted or region-restricted). Try uploading the .crx/.zip instead.",
+  "zh": "Extension {{id}} isn't available from the Web Store (it may be delisted or region-restricted). Try uploading the .crx/.zip instead.",
+  "en_review": false,
+  "zh_review": true
+ },
+ "errors.extReadFailed": {
+  "en": "Failed to read file: {{e}}",
+  "zh": "Failed to read file: {{e}}",
+  "en_review": false,
+  "zh_review": true
+ },
+ "errors.companionSignal": {
+  "en": "Invalid companion signal",
+  "zh": "Invalid companion signal",
+  "en_review": false,
+  "zh_review": true
+ },
+ "extensions.addedNoReopen": {
+  "en": "/",
+  "zh": "/",
+  "en_review": false,
+  "zh_review": true
+ },
+ "common.loading": {
+  "en": "Loading…",
+  "zh": "加载中…",
+  "en_review": false,
+  "zh_review": false
+ },
+ "common.retry": {
+  "en": "Retry",
+  "zh": "重试",
+  "en_review": false,
+  "zh_review": false
+ },
+ "nav.mcp": {
+  "en": "MCP",
+  "zh": "MCP",
+  "en_review": false,
+  "zh_review": true
+ },
+ "nav.groups": {
+  "en": "Groups",
+  "zh": "分组",
+  "en_review": false,
+  "zh_review": false
+ },
+ "nav.group.all": {
+  "en": "All",
+  "zh": "全部",
+  "en_review": false,
+  "zh_review": false
+ },
+ "nav.group.ungrouped": {
+  "en": "Ungrouped",
+  "zh": "未分组",
+  "en_review": false,
+  "zh_review": false
+ },
+ "nav.group.deleteTitle": {
+  "en": "Delete group \"{{label}}\"",
+  "zh": "删除分组“{{label}}”",
+  "en_review": false,
+  "zh_review": false
+ },
+ "nav.group.deleteAria": {
+  "en": "Delete group {{label}}",
+  "zh": "删除分组 {{label}}",
+  "en_review": false,
+  "zh_review": false
+ },
+ "nav.commandPalette": {
+  "en": "Command",
+  "zh": "命令",
+  "en_review": false,
+  "zh_review": false
+ },
+ "app.settingsLoadFailed.title": {
+  "en": "Could not load settings",
+  "zh": "无法加载设置",
+  "en_review": false,
+  "zh_review": false
+ },
+ "app.settingsLoadFailed.body": {
+  "en": "The app could not read your saved settings ({{error}}). It fell back to Chinese. Retry, or check that the app data directory is readable.",
+  "zh": "应用无法读取已保存的设置（{{error}}），已回退为中文。请重试，或检查应用数据目录是否可读。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.loading": {
+  "en": "Loading…",
+  "zh": "加载中…",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.loadFailed": {
+  "en": "Could not load settings: {{error}}",
+  "zh": "无法加载设置：{{error}}",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.saveFailed": {
+  "en": "Could not save settings: {{error}}",
+  "zh": "无法保存设置：{{error}}",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.language.title": {
+  "en": "Language",
+  "zh": "语言",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.language.desc": {
+  "en": "Choose the language for the Cloaksession interface. Changes are saved to your settings and apply immediately.",
+  "zh": "选择 Cloaksession 界面的显示语言。更改会保存到设置并立即生效。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.language.label": {
+  "en": "Interface language",
+  "zh": "界面语言",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.language.option.zhCN": {
+  "en": "简体中文",
+  "zh": "简体中文",
+  "en_review": true,
+  "zh_review": true
+ },
+ "settings.language.option.en": {
+  "en": "English",
+  "zh": "English",
+  "en_review": false,
+  "zh_review": true
+ },
+ "settings.language.saving": {
+  "en": "Saving…",
+  "zh": "保存中…",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.language.saved": {
+  "en": "Language updated",
+  "zh": "语言已更新",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.language.saveFailed": {
+  "en": "Could not change language: {{error}}",
+  "zh": "无法切换语言：{{error}}",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.mcp.off": {
+  "en": "off",
+  "zh": "未启动",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.mcp.tokenHint": {
+  "en": "Auth token — required. Send as Authorization: Bearer <token>. Keep it secret.",
+  "zh": "认证令牌 — 必需。以 Authorization: Bearer <token> 发送，请妥善保管。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.mcp.copyUrlAria": {
+  "en": "Copy URL",
+  "zh": "复制 URL",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.mcp.revealToken": {
+  "en": "Reveal token",
+  "zh": "显示令牌",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.mcp.hideToken": {
+  "en": "Hide token",
+  "zh": "隐藏令牌",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.mcp.copyTokenAria": {
+  "en": "Copy token",
+  "zh": "复制令牌",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.engine.cloakbrowserDesc": {
+  "en": "Source-patched Chromium from CloakHQ releases. Primary runtime.",
+  "zh": "来自 CloakHQ 发行版的源码补丁版 Chromium。主运行时。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.engine.chromixDesc": {
+  "en": "Chromix Node SDK with full JSON options and environment configuration.",
+  "zh": "Chromix Node SDK，支持完整 JSON 选项与环境配置。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.engine.cftDesc": {
+  "en": "Compatibility fallback using Google's official automation build.",
+  "zh": "使用 Google 官方自动化构建的兼容回退方案。",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.binary.browse": {
+  "en": "Browse…",
+  "zh": "浏览…",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.binary.reset": {
+  "en": "Reset",
+  "zh": "重置",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.archives.import": {
+  "en": "Import .mzar archive",
+  "zh": "导入 .mzar 归档",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.updates.check": {
+  "en": "Check for updates",
+  "zh": "检查更新",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.updates.lastChecked": {
+  "en": "Last checked: {{time}}",
+  "zh": "上次检查：{{time}}",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.updates.never": {
+  "en": "never",
+  "zh": "从未",
+  "en_review": false,
+  "zh_review": false
+ },
+ "settings.about.version": {
+  "en": "Cloaksession v{{version}} · {{platform}} · Tauri 2.x",
+  "zh": "Cloaksession v{{version}} · {{platform}} · Tauri 2.x",
+  "en_review": false,
+  "zh_review": true
+ },
+ "update.status.checking": {
+  "en": "Checking…",
+  "zh": "检查中…",
+  "en_review": false,
+  "zh_review": false
+ },
+ "update.status.upToDate": {
+  "en": "You're on the latest version",
+  "zh": "已是最新版本",
+  "en_review": false,
+  "zh_review": false
+ },
+ "update.status.available": {
+  "en": "v{{version}} available",
+  "zh": "有可用版本 v{{version}}",
+  "en_review": false,
+  "zh_review": false
+ },
+ "update.status.downloading": {
+  "en": "Downloading v{{version}}… {{percent}}%",
+  "zh": "正在下载 v{{version}}… {{percent}}%",
+  "en_review": false,
+  "zh_review": false
+ },
+ "update.status.ready": {
+  "en": "v{{version}} ready — restart to update",
+  "zh": "v{{version}} 已就绪 — 重启以更新",
+  "en_review": false,
+  "zh_review": false
+ },
+ "update.status.error": {
+  "en": "Check failed: {{message}}",
+  "zh": "检查失败：{{message}}",
+  "en_review": false,
+  "zh_review": false
+ }
+}

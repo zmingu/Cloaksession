@@ -1,0 +1,2648 @@
+[
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/atoms/Modal.tsx:198`",
+  "en": "`Close`（aria-label，✕ 按钮）",
+  "key": "`common.close.aria`",
+  "zh": "建议中文“关闭”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/atoms/Modal.tsx:231`",
+  "en": "`Discard your changes?`（ConfirmHost 默认标题；App.tsx:431 另有实例）",
+  "key": "`common.discardChanges.title`",
+  "zh": "建议“放弃更改？”；实施时与 profile.create 共用或保留两 key"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/atoms/Modal.tsx:232`",
+  "en": "`Discard`（默认确认按钮）",
+  "key": "`common.discard`",
+  "zh": "建议“放弃”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/atoms/Modal.tsx:293`",
+  "en": "`Cancel`（默认取消按钮）",
+  "key": "`common.cancel`",
+  "zh": "建议“取消”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/atoms/Modal.tsx:310`",
+  "en": "`Confirm`（Confirm 组件确认按钮）",
+  "key": "`common.confirm`",
+  "zh": "建议“确认”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/screens/Confirm.tsx:70`",
+  "en": "`Confirm`（同上另一实例）",
+  "key": "`common.confirm`（复用）",
+  "zh": "同一 key"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/screens/Confirm.tsx:161`",
+  "en": "`Submit`（异步提交中按钮）",
+  "key": "`common.submit`",
+  "zh": "建议“提交”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/App.tsx:433`",
+  "en": "`Discard`（新建页未保存确认）",
+  "key": "`common.discard`（复用）",
+  "zh": "—"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/mcp/McpPanel.tsx:342`",
+  "en": "`Copy`（复制按钮 title）",
+  "key": "`common.copy`",
+  "zh": "建议“复制”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/mcp/McpPanel.tsx:399`",
+  "en": "`Copied`（复制成功态）",
+  "key": "`common.copied`",
+  "zh": "建议“已复制”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/screens/Settings.tsx:137`",
+  "en": "`Copy URL`（aria-label）",
+  "key": "`common.copyUrl.aria`",
+  "zh": "建议“复制 URL”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/screens/Settings.tsx:176`",
+  "en": "`Copy token`（aria-label）",
+  "key": "`common.copyToken.aria`",
+  "zh": "建议“复制令牌”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/screens/Settings.tsx:168`",
+  "en": "`Reveal token` / `Hide token`（aria-label 二态）",
+  "key": "`settings.mcp.revealToken.aria` / `settings.mcp.hideToken.aria`",
+  "zh": "建议“显示令牌 / 隐藏令牌”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/profile/ExtensionsSection.tsx:347`",
+  "en": "`Remove`（aria-label，移除扩展）",
+  "key": "`common.remove.aria`",
+  "zh": "建议“移除”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/onboarding/FirstRun.tsx:129`",
+  "en": "`Continue`",
+  "key": "`common.continue`",
+  "zh": "建议“继续”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/onboarding/FirstRun.tsx:157`",
+  "en": "`Enable`（遥测 opt-in）",
+  "key": "`common.enable`",
+  "zh": "建议“启用”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/onboarding/FirstRun.tsx:164`",
+  "en": "`Not now`",
+  "key": "`common.notNow`",
+  "zh": "建议“暂不”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/UpdateBanner.tsx:64`",
+  "en": "`Later`",
+  "key": "`common.later`",
+  "zh": "建议“稍后”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/UpdateBanner.tsx:81`",
+  "en": "`Dismiss`（aria-label，✕）",
+  "key": "`common.dismiss.aria`",
+  "zh": "建议“忽略”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/screens/LeftRail.tsx:43`",
+  "en": "`${it.label} · ⌘${it.kbd}`（title 模板）",
+  "key": "`nav.item.shortcutTitle`，`{{label}} · ⌘{{kbd}}`",
+  "zh": "模板翻译，label/kbd 为变量"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/screens/Sidebar.tsx:66`",
+  "en": "同上（Sidebar 实例）",
+  "key": "`nav.item.shortcutTitle`（复用）",
+  "zh": "—"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/screens/LeftRail.tsx:61`",
+  "en": "`Command palette · ⌘K`（title）",
+  "key": "`nav.commandPalette.title`",
+  "zh": "建议“命令面板 · ⌘K”"
+ },
+ {
+  "sec": "A",
+  "loc": "`ui/src/components/screens/Sidebar.tsx:118`",
+  "en": "同上（Sidebar 实例）",
+  "key": "`nav.commandPalette.title`（复用）",
+  "zh": "—"
+ },
+ {
+  "sec": "B",
+  "loc": "`ui/src/components/screens/Sidebar.tsx:19`",
+  "en": "`Profiles`（NAV label）",
+  "key": "`nav.profiles`",
+  "zh": "建议“浏览器配置”；LeftRail:15、palette:55/80 复用"
+ },
+ {
+  "sec": "B",
+  "loc": "`ui/src/components/screens/Sidebar.tsx:21`",
+  "en": "`Settings`（NAV label）",
+  "key": "`nav.settings`",
+  "zh": "建议“设置”；LeftRail:17、palette:96、TopBar:72、McpPanel:194/260（“in Settings”内联引用）复用"
+ },
+ {
+  "sec": "B",
+  "loc": "`ui/src/components/screens/Sidebar.tsx:89`",
+  "en": "`All`（分组过滤）",
+  "key": "`group.filter.all`",
+  "zh": "建议“全部”；Constellation:215 复用"
+ },
+ {
+  "sec": "B",
+  "loc": "`ui/src/components/screens/Sidebar.tsx:105`",
+  "en": "`Ungrouped`（分组过滤；App.tsx:113 同值）",
+  "key": "`group.filter.ungrouped`",
+  "zh": "建议“未分组”；Constellation:232 复用"
+ },
+ {
+  "sec": "B",
+  "loc": "`ui/src/components/screens/Sidebar.tsx:169`",
+  "en": "`Delete group \"${label}\"`（title 模板）",
+  "key": "`group.delete.title`，`{{label}}`",
+  "zh": "建议“删除分组“{{label}}””"
+ },
+ {
+  "sec": "B",
+  "loc": "`ui/src/components/screens/Sidebar.tsx:172`",
+  "en": "`Delete group ${label}`（aria-label 模板）",
+  "key": "`group.delete.aria`，`{{label}}`",
+  "zh": "同上"
+ },
+ {
+  "sec": "B",
+  "loc": "`ui/src/App.tsx:286`",
+  "en": "`Delete group failed: ${msg}`（toast）",
+  "key": "`errors.deleteGroupFailed`，`{{msg}}`",
+  "zh": "msg 为 external-raw"
+ },
+ {
+  "sec": "B",
+  "loc": "`ui/src/components/screens/TopBar.tsx:50`",
+  "en": "`Search profiles, tags, urls…`（顶栏搜索占位）",
+  "key": "`nav.topbar.searchPlaceholder`",
+  "zh": "建议“搜索配置、标签、网址…”"
+ },
+ {
+  "sec": "B",
+  "loc": "`ui/src/components/screens/TopBar.tsx:60`",
+  "en": "`running`（计数后缀）",
+  "key": "`nav.topbar.running`",
+  "zh": "建议“运行中”"
+ },
+ {
+  "sec": "B",
+  "loc": "`ui/src/components/screens/TopBar.tsx:63`",
+  "en": "`total`（计数后缀）",
+  "key": "`nav.topbar.total`",
+  "zh": "建议“共计”"
+ },
+ {
+  "sec": "B",
+  "loc": "`ui/src/components/screens/TopBar.tsx:66`（Pill）",
+  "en": "`MCP · :{port}` / `MCP off`（字面量 `off`）",
+  "key": "`nav.topbar.mcpOff`（仅 off 部分）",
+  "zh": "建议“未启动”；端口部分 keep"
+ },
+ {
+  "sec": "C",
+  "loc": "`ui/src/main.tsx:28`",
+  "en": "`Renderer error`（错误边界标题）",
+  "key": "`app.rendererError.title`",
+  "zh": "建议“渲染错误”"
+ },
+ {
+  "sec": "C",
+  "loc": "`ui/src/App.tsx:411-413`",
+  "en": "`Preload bridge missing — <code>window.multizen</code> is undefined. Open DevTools for details.`",
+  "key": "`app.bridgeMissing`",
+  "zh": "`window.multizen` 为 protocol 不译；建议“预加载桥缺失 … 打开 DevTools 查看详情”"
+ },
+ {
+  "sec": "C",
+  "loc": "`ui/src/App.tsx:298`",
+  "en": "`Launch failed: ${msg}`",
+  "key": "`errors.launchFailed`，`{{msg}}`",
+  "zh": "建议“启动失败：{{msg}}”"
+ },
+ {
+  "sec": "C",
+  "loc": "`ui/src/App.tsx:335`",
+  "en": "`Exported to ${file}`",
+  "key": "`archive.exportedTo`，`{{file}}`",
+  "zh": "file 为 user-data（路径）"
+ },
+ {
+  "sec": "C",
+  "loc": "`ui/src/App.tsx:337`",
+  "en": "`Export failed: ${result.reason}`",
+  "key": "`errors.exportFailed`，`{{reason}}`",
+  "zh": "reason 透传后端（§R），原文展示"
+ },
+ {
+  "sec": "C",
+  "loc": "`ui/src/App.tsx:319`",
+  "en": "`Import failed: ${result.reason}`",
+  "key": "`errors.importFailed`，`{{reason}}`",
+  "zh": "同上"
+ },
+ {
+  "sec": "C",
+  "loc": "`ui/src/App.tsx:329`",
+  "en": "`Passphrase must be at least 8 characters`（前端校验；后端 archive.rs:201 同文）",
+  "key": "`archive.passphraseMinLength`",
+  "zh": "建议“口令至少 8 个字符”；前后端同文需一致"
+ },
+ {
+  "sec": "C",
+  "loc": "`ui/src/App.tsx:77`",
+  "en": "`` Added \"${e.extension.name}\" — profile is reopening… ``",
+  "key": "`extensions.installedReopening`，`{{name}}`",
+  "zh": "name 为 user-data（扩展名，external 原文）"
+ },
+ {
+  "sec": "C",
+  "loc": "`ui/src/App.tsx:78`",
+  "en": "`Extension install failed: ${e.error}`",
+  "key": "`errors.extensionInstallFailed`，`{{error}}`",
+  "zh": "error 为 external-raw"
+ },
+ {
+  "sec": "C",
+  "loc": "`ui/src/App.tsx:421`",
+  "en": "`New profile`（新建 sheet 标题）",
+  "key": "`profile.new.title`",
+  "zh": "建议“新建浏览器配置”；Constellation:206、EmptyState:45 复用"
+ },
+ {
+  "sec": "C",
+  "loc": "`ui/src/App.tsx:422`",
+  "en": "`Cookies, login state, and fingerprint live in this profile only.`（副标题）",
+  "key": "`profile.new.subtitle`",
+  "zh": "建议“Cookie、登录态与指纹仅属于此配置。”"
+ },
+ {
+  "sec": "C",
+  "loc": "`ui/src/App.tsx:431-432`",
+  "en": "`Discard your changes?` / `You haven't created the profile yet. Closing will lose what you've entered.`",
+  "key": "`profile.create.discardTitle` / `.discardBody`",
+  "zh": "通用 key 备选（见 §A）；此处为新建页实例"
+ },
+ {
+  "sec": "C",
+  "loc": "`ui/src/App.tsx:491`",
+  "en": "`` Edit ${editingProfile.name} `` / `Edit profile`",
+  "key": "`profile.edit.title`，`{{name}}` / `profile.edit.titleFallback`",
+  "zh": "建议“编辑 {{name}} / 编辑浏览器配置”；Row:365、Tile:445 菜单项复用 titleFallback"
+ },
+ {
+  "sec": "C",
+  "loc": "`ui/src/App.tsx:492`",
+  "en": "`Profile changes autosave. Business account registration saves separately.`",
+  "key": "`profile.edit.subtitle`",
+  "zh": "建议“配置更改自动保存；业务账号登记需单独保存。”"
+ },
+ {
+  "sec": "D",
+  "loc": "profileSheetKit.tsx:13",
+  "en": "`General`",
+  "key": "`profile.tabs.general`",
+  "zh": "建议“通用”；NewProfileSheet:56 / ProfileEditSheet:114 默认值复用"
+ },
+ {
+  "sec": "D",
+  "loc": "profileSheetKit.tsx:14",
+  "en": "`Browser`",
+  "key": "`profile.tabs.browser`",
+  "zh": "建议“浏览器”；BrowserSection:6 复用"
+ },
+ {
+  "sec": "D",
+  "loc": "profileSheetKit.tsx:15",
+  "en": "`Proxy`",
+  "key": "`profile.tabs.proxy`",
+  "zh": "建议“代理”"
+ },
+ {
+  "sec": "D",
+  "loc": "profileSheetKit.tsx:16",
+  "en": "`Extensions`",
+  "key": "`profile.tabs.extensions`",
+  "zh": "建议“扩展”"
+ },
+ {
+  "sec": "D",
+  "loc": "profileSheetKit.tsx:17",
+  "en": "`Fingerprint`",
+  "key": "`profile.tabs.fingerprint`",
+  "zh": "建议“浏览器指纹”"
+ },
+ {
+  "sec": "D",
+  "loc": "profileSheetKit.tsx:18",
+  "en": "`Chromix fingerprint`",
+  "key": "`profile.tabs.chromixFingerprint`",
+  "zh": "Chromix 为 brand；建议“Chromix 指纹参数”"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:138 / ProfileEditSheet.tsx:72",
+  "en": "`Name is required`（校验）",
+  "key": "`profile.validation.nameRequired`",
+  "zh": "建议“名称为必填项”"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:112 / ProfileEditSheet.tsx:73",
+  "en": "`Proxy host is required`（校验）",
+  "key": "`profile.validation.proxyHostRequired`",
+  "zh": "建议“代理主机为必填项”"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:143",
+  "en": "`Fingerprint preset is still loading`",
+  "key": "`profile.new.fingerprintLoading`",
+  "zh": "建议“指纹预设加载中”"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:201 / ProfileEditSheet.tsx:223",
+  "en": "`Icon`（Field label）",
+  "key": "`profile.field.icon`",
+  "zh": "建议“图标”"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:205 / ProfileEditSheet.tsx:233",
+  "en": "`Name`（Field label）",
+  "key": "`profile.field.name`",
+  "zh": "建议“名称”；ProfileTable:24 复用"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:213",
+  "en": "`e.g. acme — sales · west`（placeholder 示例）",
+  "key": "`profile.field.namePlaceholder`",
+  "zh": "示例文本，建议中文示例"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:216 / ProfileEditSheet.tsx:236",
+  "en": "`Tags`",
+  "key": "`profile.field.tags`",
+  "zh": "建议“标签”；ProfileTable:26 复用"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:220",
+  "en": "`comma-separated (optional)`（placeholder）",
+  "key": "`profile.field.tagsPlaceholder`",
+  "zh": "ProfileEditSheet:240 `comma-separated` 同 key"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:225 / ProfileEditSheet.tsx:245",
+  "en": "`Group`",
+  "key": "`profile.field.group`",
+  "zh": "建议“分组”"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:229 / ProfileEditSheet.tsx:249",
+  "en": "`optional — e.g. sales`（placeholder）",
+  "key": "`profile.field.groupPlaceholder`",
+  "zh": "建议中文示例"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:232 / ProfileEditSheet.tsx:252",
+  "en": "`Notes`",
+  "key": "`profile.field.notes`",
+  "zh": "建议“备注”"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:236",
+  "en": "`Optional — what this profile is for`（placeholder）",
+  "key": "`profile.field.notesPlaceholder`",
+  "zh": "建议“选填——此配置的用途”"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:211",
+  "en": "`…required`（字段必填后缀片段；多行 JSX 的一部分）",
+  "key": "`profile.field.requiredSuffix`",
+  "zh": "建议“（必填）”；与 label 组合渲染"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:260 / ProfileEditSheet.tsx:272",
+  "en": "`Use proxy`（复选框）",
+  "key": "`profile.proxy.useProxy`",
+  "zh": "建议“使用代理”"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:266 / ProfileEditSheet.tsx:278",
+  "en": "`Type`（代理类型）",
+  "key": "`profile.proxy.type`",
+  "zh": "建议“类型”"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:279 / ProfileEditSheet.tsx:289",
+  "en": "`Host`",
+  "key": "`profile.proxy.host`",
+  "zh": "建议“主机”"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:303 / ProfileEditSheet.tsx:310",
+  "en": "`Port`",
+  "key": "`profile.proxy.port`",
+  "zh": "建议“端口”"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:313 / ProfileEditSheet.tsx:320",
+  "en": "`Username`",
+  "key": "`profile.proxy.username`",
+  "zh": "建议“用户名”"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:320 / ProfileEditSheet.tsx:327",
+  "en": "`Password`",
+  "key": "`profile.proxy.password`",
+  "zh": "建议“密码”"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:356",
+  "en": "`Loading preset…`",
+  "key": "`profile.new.presetLoading`",
+  "zh": "建议“预设加载中…”"
+ },
+ {
+  "sec": "D",
+  "loc": "NewProfileSheet.tsx:391",
+  "en": "`Create & launch`（创建按钮；`…` 为省略号片段）",
+  "key": "`profile.new.createAndLaunch`",
+  "zh": "建议“创建并启动”"
+ },
+ {
+  "sec": "D",
+  "loc": "ProfileEditSheet.tsx:375",
+  "en": "`{status.message}`：`All changes saved`（:381）",
+  "key": "`profile.edit.allSaved`",
+  "zh": "建议“所有更改已保存”；其余动态 message 为校验/错误原文"
+ },
+ {
+  "sec": "D",
+  "loc": "`ui/src/components/profile/BrowserSection.tsx:28`",
+  "en": "`Start page`",
+  "key": "`profile.browser.startPage`",
+  "zh": "建议“起始页”"
+ },
+ {
+  "sec": "D",
+  "loc": "`ui/src/components/profile/BrowserSection.tsx:39`",
+  "en": "`Opens on a profile's first launch (later launches restore your tabs). Leave the default or set your own — any http(s) URL, or`（多行段落，after `or` 接 about:blank 选项）",
+  "key": "`profile.browser.startPageHint`",
+  "zh": "`http(s)`/`about:blank` 为 protocol 不译"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/ProxyTester.tsx:61`",
+  "en": "`Test proxy`（按钮）",
+  "key": "`proxy.test`",
+  "zh": "建议“测试代理”"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/ProfileRow.tsx:250`",
+  "en": "`direct`（无代理 pill/直连标志）",
+  "key": "`proxy.direct`",
+  "zh": "建议“直连”"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/ProfileTile.tsx:248`",
+  "en": "`no proxy`",
+  "key": "`proxy.none`",
+  "zh": "建议“无代理”"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/ProfileTile.tsx:259`",
+  "en": "`Direct — no proxy`",
+  "key": "`proxy.directNone`",
+  "zh": "建议“直连——无代理”"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/ProfileTile.tsx:269`",
+  "en": "`Connected`（代理可用）",
+  "key": "`proxy.connected`",
+  "zh": "建议“已连通”"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/ProfileTile.tsx:271` / ProfileRow（同模板）",
+  "en": "`Proxy unreachable`",
+  "key": "`proxy.unreachable`",
+  "zh": "建议“代理不可达”"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/ProfileRow.tsx:264` / ProfileTile.tsx:274",
+  "en": "`` `${health.error} — click to retry` ``",
+  "key": "`proxy.healthRetry`，`{{error}}`",
+  "zh": "error 为 external-raw"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/ProfileRow.tsx:266` / ProfileTile.tsx:276",
+  "en": "`` `${label}${cc ? … : \"\"} — click to re-check` ``",
+  "key": "`proxy.healthRecheck`，`{{label}}`",
+  "zh": "label/cc 为数据"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/ProfileRow.tsx:267` / ProfileTile.tsx:277",
+  "en": "`checking proxy…` / `Checking proxy…`（Row/Tile 大小写各一）",
+  "key": "`proxy.checking`",
+  "zh": "统一一 key，建議“正在检测代理…”"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/FingerprintForm.tsx:156-168`（按钮文本）",
+  "en": "`Regenerate fingerprint`（见 §F）/ `{detecting ? \"Detecting…\" : \"Match proxy\"}`",
+  "key": "`fingerprint.regenerate` / `fingerprint.detecting` / `fingerprint.matchProxy`",
+  "zh": "“Detecting…”建议“检测中…”；注：源码注释（:21,29）中的 \"Detect from proxy\" 仅为注释措辞，实际渲染按钮为 Match proxy"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/FingerprintForm.tsx:168`",
+  "en": "`Match proxy`（按钮；`Detecting…` 见上行）",
+  "key": "`fingerprint.matchProxy`",
+  "zh": "建议“匹配代理”"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/FingerprintForm.tsx:205`",
+  "en": "`Match proxy did nothing`（toast）",
+  "key": "`fingerprint.matchProxyNoop`",
+  "zh": "建议“匹配代理未产生变化”"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/FingerprintForm.tsx:165`",
+  "en": "`Probe the proxy and align locale/timezone with its geo`（title）",
+  "key": "`fingerprint.matchProxy.title`",
+  "zh": "建议“探测代理并按其地理对齐区域语言/时区”"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/FingerprintForm.tsx:93`",
+  "en": "`` `Proxy is in ${geo.countryName} (${geo.country}) — no locale preset matches. Pick a locale manually below.` ``",
+  "key": "`fingerprint.noLocaleMatch`，`{{countryName}} {{country}}`",
+  "zh": "地名/代码为数据"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/FingerprintForm.tsx:100`",
+  "en": "`` `Locale ${localeId} not in catalog. Pick one manually.` ``",
+  "key": "`fingerprint.localeNotInCatalog`，`{{localeId}}`",
+  "zh": "localeId 为 protocol"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/FingerprintForm.tsx:612-619`",
+  "en": "`Locale country is {country} but proxy IP is in {country} — anti-bot systems flag this. Pick a matching locale or proxy.`（多段 JSX，大写 strong 为数据）",
+  "key": "`fingerprint.proxyMismatch`，`{{profileCountry}} {{proxyCountry}}`",
+  "zh": "建议“区域语言国家为…，但代理 IP 位于…，反机器人系统会标记。请匹配区域语言或代理。”"
+ },
+ {
+  "sec": "E",
+  "loc": "`ui/src/components/profile/FingerprintForm.tsx:629-636`",
+  "en": "`Coherent: proxy resolves to {city}, {countryName} ({ip}) — matches locale.`",
+  "key": "`fingerprint.proxyCoherent`，`{{city}} {{countryName}} {{ip}}`",
+  "zh": "建议“一致：代理解析到…，与区域语言匹配。”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:150",
+  "en": "`Generate a new coherent device + locale + screen + UA`（title）",
+  "key": "`fingerprint.regenerate.title`",
+  "zh": "按钮文本见 :152"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:152",
+  "en": "`Regenerate fingerprint`（按钮文本；再生整套指纹）",
+  "key": "`fingerprint.regenerate`",
+  "zh": "建议“重新生成指纹”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:173",
+  "en": "`Device`",
+  "key": "`fingerprint.field.device`",
+  "zh": "建议“设备”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:181",
+  "en": "`Locale`",
+  "key": "`fingerprint.field.locale`",
+  "zh": "建议“区域语言”（PRD 术语）"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:188",
+  "en": "`` `${fingerprint.locale} (custom)` ``（自定义选项）",
+  "key": "`fingerprint.localeCustom`，`{{locale}}`",
+  "zh": "建议“{{locale}}（自定义）”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:195",
+  "en": "`Timezone`",
+  "key": "`fingerprint.field.timezone`",
+  "zh": "建议“时区”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:214",
+  "en": "`` `${fingerprint.timezone} (proxy)` ``（代理检出选项）",
+  "key": "`fingerprint.timezoneProxy`，`{{timezone}}`",
+  "zh": "建议“{{timezone}}（代理）”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:222",
+  "en": "`Screen size`",
+  "key": "`fingerprint.field.screen`",
+  "zh": "建议“屏幕尺寸”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:242",
+  "en": "`` `${w} × ${h} (custom)` ``（自定义选项）",
+  "key": "`fingerprint.screenCustom`",
+  "zh": "建议“{{w}} × {{h}}（自定义）”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:278",
+  "en": "`Platform`",
+  "key": "`fingerprint.field.platform`",
+  "zh": "建议“平台”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:287",
+  "en": "`Country`",
+  "key": "`fingerprint.field.country`",
+  "zh": "建议“国家/地区”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:298",
+  "en": "`Languages` + desc `Comma-separated navigator.languages values.`",
+  "key": "`fingerprint.field.languages` / `.languagesDesc`",
+  "zh": "`navigator.languages` 为 protocol；建议“语言 / 逗号分隔的 navigator.languages 值。”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:336",
+  "en": "`Hardware concurrency`",
+  "key": "`fingerprint.field.hwConcurrency`",
+  "zh": "建议“硬件并发数”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:352",
+  "en": "`Device memory (GB)`",
+  "key": "`fingerprint.field.deviceMemory`",
+  "zh": "GB 为 keep-original 单位"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:369",
+  "en": "`Available screen size` + desc `Clear both values to omit availScreen.`",
+  "key": "`fingerprint.field.availScreen` / `.availScreenDesc`",
+  "zh": "`availScreen` 为 protocol；建议“可用屏幕尺寸 / 清空两值以省略 availScreen。”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:375,394",
+  "en": "`width` / `height`（placeholder）",
+  "key": "`fingerprint.availWidth.placeholder` / `.availHeight.placeholder`",
+  "zh": "建议“宽 / 高”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:410",
+  "en": "`Clear`（清空可用尺寸）",
+  "key": "`common.clear`",
+  "zh": "建议“清空”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:432",
+  "en": "`Client hints` + desc `All values are persisted verbatim and used by the selected browser engine where supported.`",
+  "key": "`fingerprint.field.clientHints` / `.clientHintsDesc`",
+  "zh": "Client Hints 为品牌式术语，保留英文词；建议“Client Hints / 所有值按原文持久化，并由所选浏览器引擎在支持时使用。”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:448",
+  "en": "`Storage quota (MB)` + desc `Pins navigator.storage.estimate(). Empty = engine default.`",
+  "key": "`fingerprint.field.storageQuota` / `.storageQuotaDesc`",
+  "zh": "API 名保留；建议“存储配额 (MB) / 固定 navigator.storage.estimate()。留空 = 引擎默认。”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:471",
+  "en": "`0 (default)`（placeholder）",
+  "key": "`fingerprint.storageQuota.placeholder`",
+  "zh": "建议“0（默认）”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:477",
+  "en": "`Font directory` + desc `Folder CloakBrowser loads fonts from (--fingerprint-fonts-dir). Leave empty for the OS default (C:\\Windows\\Fonts on Windows).`",
+  "key": "`fingerprint.field.fontsDir` / `.fontsDirDesc`",
+  "zh": "CloakBrowser 为 brand；flag/路径为 protocol"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:507",
+  "en": "`Browse for a font folder`（title）",
+  "key": "`fingerprint.browseFonts.title`",
+  "zh": "建议“浏览字体文件夹”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:510",
+  "en": "`Browse…`（按钮）",
+  "key": "`common.browse`",
+  "zh": "建议“浏览…”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:521",
+  "en": "`Reset to engine default`（title）",
+  "key": "`fingerprint.resetEngineDefault.title`",
+  "zh": "建议“重置为引擎默认”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:534",
+  "en": "`Canvas noise seed` + desc `Rotates CloakBrowser canvas/audio/WebGL noise. Same seed = same noise. Empty = stable per-profile default.`",
+  "key": "`fingerprint.field.noiseSeed` / `.noiseSeedDesc`",
+  "zh": "品牌保留；建议“Canvas 噪声种子 / 轮换 CloakBrowser 的 canvas/音频/WebGL 噪声。相同种子 = 相同噪声。留空 = 稳定的按配置默认值。”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:547",
+  "en": "`(profile default)`（placeholder）",
+  "key": "`fingerprint.noiseSeed.placeholder`",
+  "zh": "建议“（配置默认值）”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:567",
+  "en": "`Generate a random seed to rotate canvas/audio/WebGL noise`（title）",
+  "key": "`fingerprint.randomizeSeed.title`",
+  "zh": "建议“生成随机种子以轮换噪声”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:570",
+  "en": "`Randomize`（按钮）",
+  "key": "`fingerprint.randomizeSeed`",
+  "zh": "建议“随机”"
+ },
+ {
+  "sec": "F",
+  "loc": "FingerprintForm.tsx:583",
+  "en": "`Reset to per-profile default`（title）",
+  "key": "`fingerprint.resetProfileDefault.title`",
+  "zh": "建议“重置为按配置默认值”"
+ },
+ {
+  "sec": "F",
+  "loc": "`commands/fingerprint.rs:135,139-154`",
+  "en": "屏幕选项 label（`1512 × 982 (native)` / `1920 × 1080` / `2560 × 1440`）",
+  "key": "`fingerprint.screenNative`（仅 `(native)` 限定词）",
+  "zh": "尺寸数字保留；建议“（原生）”"
+ },
+ {
+  "sec": "G",
+  "loc": ":33",
+  "en": "`Identity & browser` / `One immutable launch persona is shared by renderers and workers. An unset field writes no override.`",
+  "key": "`chromix.groups.identity` / `.identityDesc`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": ":34",
+  "en": "`CPU & memory` / `Presentation settings do not allocate CPU cores or change V8 heap limits.`",
+  "key": "`chromix.groups.hardware` / `.hardwareDesc`",
+  "zh": "V8 为 brand 保留"
+ },
+ {
+  "sec": "G",
+  "loc": ":35",
+  "en": "`Screen, work area & viewport` / `Screen/work-area values are DIP. …`",
+  "key": "`chromix.groups.display` / `.displayDesc`",
+  "zh": "DIP/SDK 为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": ":36",
+  "en": "`GPU & rendering backend` / `Native is the ordinary launch default. …`",
+  "key": "`chromix.groups.gpu` / `.gpuDesc`",
+  "zh": "WebGL/WebGPU 为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": ":37",
+  "en": "`Fonts` / `Use actual installed fonts. A family name is not a font file or a DirectWrite rasterizer.`",
+  "key": "`chromix.groups.fonts` / `.fontsDesc`",
+  "zh": "DirectWrite 为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": ":38",
+  "en": "`Locale & timezone` / `Explicit regional settings survive fingerprint=off. …`",
+  "key": "`chromix.groups.regional` / `.regionalDesc`",
+  "zh": "`fingerprint=off` 为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": ":39",
+  "en": "`Storage quota` / `Quota is a launch-local backend policy, not a disk reservation. Zero is a valid quota.`",
+  "key": "`chromix.groups.storage` / `.storageDesc`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": ":40",
+  "en": "`WebRTC & GeoIP` / `IP overrides change local ICE/SDP/stats presentation, not sockets, STUN success or routing. …`",
+  "key": "`chromix.groups.network` / `.networkDesc`",
+  "zh": "ICE/SDP/STUN 为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": ":41",
+  "en": "`Audio, codecs & clocks` / `Codec restrictions never add support. …`",
+  "key": "`chromix.groups.media` / `.mediaDesc`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": ":42",
+  "en": "`CSS & input preferences` / `These configure effective WebPreferences. …`",
+  "key": "`chromix.groups.preferences` / `.preferencesDesc`",
+  "zh": "WebPreferences 为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": ":43",
+  "en": "`Noise, cookies & author shadow roots` / `Noise controls existing perturbation paths, …`",
+  "key": "`chromix.groups.privacy` / `.privacyDesc`",
+  "zh": "FakeShadowRoot 为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": ":44",
+  "en": "`SDK launch behavior` / `Only explicit selections are written. …`",
+  "key": "`chromix.groups.sdk` / `.sdkDesc`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": ":45",
+  "en": "`Advanced / high-risk engine controls` / `Explicit SDK-documented opt-ins. …`",
+  "key": "`chromix.groups.advanced` / `.advancedDesc`",
+  "zh": "Canvas Bridge 为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:39,41",
+  "en": "`Chromix fingerprint parameters`（aria-label + 标题）",
+  "key": "`chromix.form.title`",
+  "zh": "Chromix 为 brand；建议“Chromix 指纹参数”"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:42",
+  "en": "`Every field starts unset. Changes update SDK options for the outer Save action; they do not launch a browser. Numeric flags remain exact strings, including uint64 seeds. Unknown arguments and SDK properties are preserved.`",
+  "key": "`chromix.form.intro`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:46",
+  "en": "`This is the public source contract, not proof that an installed binary supports it. Use a matching rebuilt browser and SDK. Raw aliases retain SDK precedence; editing one parameter never clears its other aliases or unrelated settings.`",
+  "key": "`chromix.form.contractNote`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:51-53",
+  "en": "`Public flags ↗` / `Node SDK ↗` / `Backend policy ↗`（外链）",
+  "key": "`chromix.form.docLinks.*`",
+  "zh": "`↗` 保留；链接 URL 为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:58-59",
+  "en": "`Find a parameter` / placeholder `Name, --flag, SDK property or description`",
+  "key": "`chromix.form.search` / `.searchPlaceholder`",
+  "zh": "flag 示例为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:63",
+  "en": "`` `Configuration notes (${notices.length})` ``（summary）",
+  "key": "`chromix.form.notesCount`，`{{n}}`",
+  "zh": "notices 内容为动态校验串（G3）"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:76",
+  "en": "`` `{configured} set · {groupFields.length} fields` ``",
+  "key": "`chromix.form.configuredCount`",
+  "zh": "数字为数据"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:85",
+  "en": "`No matching parameters.`（空搜索）",
+  "key": "`chromix.form.noMatch`",
+  "zh": "建议“没有匹配的参数。”"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:87-91",
+  "en": "`Additional SDK objects (including viewport, contextOptions and launchOptions) remain available in the outer SDK JSON editor. Warnings do not normalize or delete stored values. The matching SDK performs final launch validation.`",
+  "key": "`chromix.form.footerNote`",
+  "zh": "对象名为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:112",
+  "en": "`Unset`（清除单参按钮）+ title `Remove only the selected parameter`",
+  "key": "`chromix.field.unset` / `.unsetTitle`",
+  "zh": "建议“未设置 / 仅移除所选参数”"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:117",
+  "en": "`` `${field.label} parameter to edit` ``（aria-label 模板）",
+  "key": "`chromix.field.editAria`，`{{label}}`",
+  "zh": "label 为已翻译字段名"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:124",
+  "en": "` · public` / ` · raw / higher priority`（来源后缀）",
+  "key": "`chromix.field.srcPublic` / `.srcRaw`",
+  "zh": "建议“ · 公开 / · 原始（更高优先级）”"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:138",
+  "en": "`Not set (SDK / engine default)`（下拉选项）",
+  "key": "`chromix.field.notSet`",
+  "zh": "建议“未设置（SDK / 引擎默认）”"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:139",
+  "en": "`null (stored)`（有 sdkKey 时）/ `Bare flag (present, no value)`（无 sdkKey 时）",
+  "key": "`chromix.field.nullStored` / `.bareFlag`",
+  "zh": "建议“null（已存储）/ 裸 flag（存在，无值）”"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:140",
+  "en": "`Explicit empty (=) — disabled`",
+  "key": "`chromix.field.explicitEmptyDisabled`",
+  "zh": "建议“显式空（=）——已禁用”"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:141",
+  "en": "`` `{stored} (stored, preserved)` `` 前缀选项 + `Explicit empty (=)`",
+  "key": "`chromix.field.storedValue` / `.explicitEmpty`",
+  "zh": "stored 值为 protocol 数据"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:153",
+  "en": "placeholder 三态：`Bare flag (no value)` / `Explicit empty value (=)` / `Not set`",
+  "key": "`chromix.field.phBare` / `.phEmpty` / `.phUnset`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:161-162",
+  "en": "`Bare flag / generate seed` / `Set off`（seed 快捷按钮）",
+  "key": "`chromix.field.bareOrSeed` / `.setOff`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:169",
+  "en": "`Editing the raw alias. Public aliases are preserved and can be selected separately.`",
+  "key": "`chromix.field.rawAliasNote`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:185",
+  "en": "`An argument contains a line break. Use SDK JSON to preserve that value exactly.`",
+  "key": "`chromix.validation.lineBreak`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:201",
+  "en": "`Raw options.args — one flag per line`",
+  "key": "`chromix.rawArgs.title`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:202",
+  "en": "`Complete options.args array, including unknown flags and duplicates. Use --key=value (spaces inside the value are literal); no shell splitting or automatic alias cleanup. Apply updates options only; the outer Save still persists it.`",
+  "key": "`chromix.rawArgs.desc`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixFingerprintForm.tsx:206-210",
+  "en": "`Browser arguments` / `${controlClass} resize-y`（样式，剔除）/ `Apply raw args` / `Discard raw draft / reload current args`",
+  "key": "`chromix.rawArgs.browserArgs` / `.apply` / `.discard`",
+  "zh": "建议“浏览器参数 / 应用原始参数 / 丢弃草稿并重载当前参数”"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixProfileOptions.tsx:22",
+  "en": "`SDK options must be a JSON object.`（校验）",
+  "key": "`chromix.profileOptions.jsonObject`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixProfileOptions.tsx:33",
+  "en": "`These settings apply when Chromix is selected in Settings → Browser engine. Each profile stores its own SDK options. Profile keys override global SDK defaults; arrays and nested objects replace the matching global value. Empty options inherit global defaults. The other engines keep using the original Fingerprint section.`",
+  "key": "`chromix.profileOptions.intro`",
+  "zh": "`Settings → Browser engine` 内导航引用，随 nav/settings key 翻译"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixProfileOptions.tsx:41",
+  "en": "`Complete profile SDK options (JSON)`（标题）",
+  "key": "`chromix.profileOptions.title`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixProfileOptions.tsx:42",
+  "en": "`Edit any JSON-serializable SDK option, including args, contextOptions, launchOptions, viewport and humanConfig. Apply JSON to update the form before saving. The CDP sidecar rejects the separate measured-device devicePool mode.`",
+  "key": "`chromix.profileOptions.desc`",
+  "zh": "键名/devicePool 为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixProfileOptions.tsx:48",
+  "en": "`Profile Chromix SDK options`（aria-label）",
+  "key": "`chromix.profileOptions.aria`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": "ChromixProfileOptions.tsx:56",
+  "en": "`Apply profile JSON`（按钮）",
+  "key": "`chromix.profileOptions.apply`",
+  "zh": "建议“应用配置 JSON”"
+ },
+ {
+  "sec": "G",
+  "loc": ":57,60",
+  "en": "校验模板：`` `${label}: invalid JSON. ${error…}` `` / `` `${label} must be a top-level JSON object, not an array, null, or primitive.` ``",
+  "key": "`chromix.editor.invalidJson` / `.mustBeObject`，`{{label}}`",
+  "zh": "error 为 external-raw"
+ },
+ {
+  "sec": "G",
+  "loc": ":78,94",
+  "en": "`SDK options`（小节 label ×2）",
+  "key": "`chromix.editor.sdkOptions`",
+  "zh": "建议“SDK 选项”"
+ },
+ {
+  "sec": "G",
+  "loc": ":92,149",
+  "en": "`Enter a Node.js executable path or node.` / `Default: node (from PATH). Use an absolute executable path if the desktop app cannot find Node.js.`（Node 说明）",
+  "key": "`chromix.editor.nodeHint` / `.nodeDefault`",
+  "zh": "`node`/PATH 为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": ":99",
+  "en": "`Environment`（小节 label）",
+  "key": "`chromix.editor.environment`",
+  "zh": "建议“环境变量”"
+ },
+ {
+  "sec": "G",
+  "loc": ":101",
+  "en": "`Environment values must all be strings (including numbers and booleans, written in quotes).`",
+  "key": "`chromix.editor.envHint`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": ":122",
+  "en": "`` `Could not save Chromix settings: ${error…}` ``（toast）",
+  "key": "`errors.chromixSaveFailed`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": ":129-130",
+  "en": "aria `Chromix configuration` + 导语 `Global settings for all Chromix profiles. Save explicitly, then restart the app to apply changes to browser startup. Switching engines does not erase this configuration.`",
+  "key": "`chromix.editor.title` / `.intro`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": ":136",
+  "en": "`Node.js executable`（label）",
+  "key": "`chromix.editor.nodeLabel`",
+  "zh": "建议“Node.js 可执行文件”"
+ },
+ {
+  "sec": "G",
+  "loc": ":155,166,186",
+  "en": "小节标题：`Global fingerprint parameters` / `SDK options JSON` / `Environment JSON`",
+  "key": "`chromix.editor.sections.*`（3 key）",
+  "zh": "JSON 键名保留"
+ },
+ {
+  "sec": "G",
+  "loc": ":162",
+  "en": "`Correct SDK options JSON to edit the structured fingerprint fields. Your draft is preserved.`（JSON 非法时提示）",
+  "key": "`chromix.editor.fixJsonHint`",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": ":207,210",
+  "en": "保存按钮/状态：`Saving…` / `Save Chromix settings` / `Saved. Restart the app to apply.` / `Unsaved changes — save before leaving this page.` / `No unsaved changes.`",
+  "key": "`chromix.editor.save.*`（5 key）",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": ":216,221,227",
+  "en": "边界说明小节：`Automation boundary:` / `Measured devices:` / `Host controls:`",
+  "key": "`chromix.editor.boundaryLabels.*`（3 key）",
+  "zh": "—"
+ },
+ {
+  "sec": "G",
+  "loc": ":216",
+  "en": "`SDK humanize only affects SDK Playwright page objects. Existing MCP/CDP actions still use Cloaksession's current driver, not the SDK's humanized mouse or keyboard methods.`",
+  "key": "`chromix.editor.humanizeNote`",
+  "zh": "Playwright/MCP/CDP 为 brand/protocol"
+ },
+ {
+  "sec": "G",
+  "loc": ":221",
+  "en": "`devicePool requires the matching Python SDK and matching browser binary through a separate measured-device entry point. Cloaksession's CDP sidecar rejects devicePool and measured mode because that entry point excludes host CDP overrides. The example below is for direct SDK use only.`",
+  "key": "`chromix.editor.devicePoolNote`",
+  "zh": "devicePool/CDP 为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": ":227",
+  "en": "`Cloaksession supplies profile storage by default and reserves debugging arguments, including --remote-debugging-port, --remote-debugging-address and --remote-debugging-pipe. Do not override them in args, launchOptions or contextOptions.`",
+  "key": "`chromix.editor.reservedArgsNote`",
+  "zh": "flag/键名为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": ":231",
+  "en": "`Official Chromix Node SDK README ↗`（外链）",
+  "key": "`chromix.editor.sdkReadme`",
+  "zh": "链接 URL 为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": ":236-237",
+  "en": "`Complete SDK JSON examples` + 说明 `Reference examples, not defaults or a field whitelist. Replace paths, credentials and persona values before use. Omit userDataDir to keep Cloaksession's per-profile storage; an explicit path overrides it and must not be shared by concurrent profiles. Availability depends on the installed SDK and matching native binary; consult the official README above.`",
+  "key": "`chromix.editor.examplesTitle` / `.examplesNote`",
+  "zh": "键名（userDataDir）为 protocol"
+ },
+ {
+  "sec": "G",
+  "loc": ":243-245",
+  "en": "三个示例标题：`SDK options example` / `Environment example` / `devicePool options example (separate measured-device mode)`",
+  "key": "`chromix.editor.exampleTitles.*`（3 key）",
+  "zh": "示例 JSON 载荷本身为 protocol，不进字典"
+ },
+ {
+  "sec": "H",
+  "loc": "ExtensionsSection.tsx:18",
+  "en": "`Attach existing`（分区标题）+ 代码样例 `profiles.create({ extensions })`",
+  "key": "`extensions.attachExisting` / —（样例）",
+  "zh": "样例为 MCP/JSON 协议示例，保留（PRD 出范围）"
+ },
+ {
+  "sec": "H",
+  "loc": "ExtensionsSection.tsx:268",
+  "en": "`Hide your extensions` / `Attach from your profiles`（折叠开关二态）",
+  "key": "`extensions.hideMine` / `.attachFromProfiles`",
+  "zh": "建议“隐藏我的扩展 / 从我的配置中附加”"
+ },
+ {
+  "sec": "H",
+  "loc": "ExtensionsSection.tsx:278",
+  "en": "`No other extensions in your library yet. Add one above and it becomes attachable to future profiles.`",
+  "key": "`extensions.libraryEmpty`",
+  "zh": "—"
+ },
+ {
+  "sec": "H",
+  "loc": "ExtensionsSection.tsx:303",
+  "en": "`Extensions load on first launch. Login/state is not copied — attached extensions start fresh in this profile.`",
+  "key": "`extensions.freshNote`",
+  "zh": "—"
+ },
+ {
+  "sec": "H",
+  "loc": "ExtensionsSection.tsx:378",
+  "en": "`Chrome Web Store URL or extension ID`（placeholder）",
+  "key": "`extensions.urlOrIdPlaceholder`",
+  "zh": "Chrome Web Store 为 brand 保留"
+ },
+ {
+  "sec": "H",
+  "loc": "ExtensionsSection.tsx:399",
+  "en": "`Add .crx / .zip…`（文件选择按钮）",
+  "key": "`extensions.addFile`",
+  "zh": "`.crx/.zip` 为 protocol"
+ },
+ {
+  "sec": "H",
+  "loc": "ExtensionsSection.tsx:407",
+  "en": "`Add folder…`（文件夹选择按钮）",
+  "key": "`extensions.addFolder`",
+  "zh": "—"
+ },
+ {
+  "sec": "H",
+  "loc": "ExtensionsSection.tsx:429",
+  "en": "`Hide catalog` / `Browse catalog`（目录开关二态）",
+  "key": "`extensions.hideCatalog` / `.browseCatalog`",
+  "zh": "—"
+ },
+ {
+  "sec": "H",
+  "loc": "ExtensionCatalog.tsx:21",
+  "en": "`Added`（已添加徽标）",
+  "key": "`catalog.added`",
+  "zh": "建议“已添加”"
+ },
+ {
+  "sec": "H",
+  "loc": "ExtensionCatalog.tsx:41",
+  "en": "`The extension catalog is empty in this build. Add extensions by Chrome Web Store URL or ID above.`",
+  "key": "`catalog.empty`",
+  "zh": "—"
+ },
+ {
+  "sec": "H",
+  "loc": "ExtensionCatalog.tsx:57",
+  "en": "`Search the catalog…`（placeholder）",
+  "key": "`catalog.searchPlaceholder`",
+  "zh": "建议“搜索目录…”"
+ },
+ {
+  "sec": "H",
+  "loc": "ExtensionCatalog.tsx:63",
+  "en": "`No matches.`（空搜索）",
+  "key": "`catalog.noMatch`",
+  "zh": "CommandPalette:245 `No matches. Press … to create a new profile.` 另见 §N"
+ },
+ {
+  "sec": "H",
+  "loc": "`data/extensionCatalog.ts:28-34`",
+  "en": "分类：`Ad blocking` / `Privacy & anti-track` / `Productivity & tabs` / `Passwords & wallets` / `Developer tools` / `Utilities` / `Social & shopping`",
+  "key": "`catalog.categories.*`（7 key）",
+  "zh": "应用自有分类体系；建议“广告拦截 / 隐私与反追踪 / 效率与标签页 / 密码与钱包 / 开发者工具 / 实用工具 / 社交与购物”"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:19,179",
+  "en": "`Connect an agent`（标题）",
+  "key": "`mcp.connectAgent`",
+  "zh": "建议“连接 AI 智能体”"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:34",
+  "en": "`Drive your profiles from an AI agent. Point any MCP client (Claude Desktop, Cursor, Cline, …) at Cloaksession, then launch a profile and let the agent open tabs, click, type, and read pages through it — every tool call streams into the feed below.`",
+  "key": "`mcp.hero`",
+  "zh": "客户端/品牌名保留"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:44",
+  "en": "`Live tool calls`（feed 标题）",
+  "key": "`mcp.liveCalls`",
+  "zh": "建议“实时工具调用”"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:58",
+  "en": "`No agent calls yet`（feed 空态）",
+  "key": "`mcp.feedEmpty`",
+  "zh": "ActivityDrawer:64 另有一版 `No MCP calls yet. Connect an agent (see the MCP tab) and its tool calls stream here.` → `mcp.feedEmptyLong`（translate，“MCP tab”引用 nav key）"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:59",
+  "en": "`Connect a client above, launch a profile, and every MCP tool call the agent makes shows up here — with sanitized arguments, outcome, and duration.`",
+  "key": "`mcp.feedHint`",
+  "zh": "—"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:135-150",
+  "en": "粘贴给 LLM 的英文引导全文（含 8 个 lit：`I'm using the Cloaksession browser…` … `…prefixed \"multizen.\" — I'll launch a profile…`）",
+  "key": "`mcp.llmPrompt.*`（按段分 key，`{{httpUrl}}`/`{{sseUrl}}`/`{{bearer}}` 为变量）",
+  "zh": "正文译中；`multizen.` 工具前缀、URL、header 名、客户端名保留；`multizen` 服务器名保留"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:183,185",
+  "en": "`server off` / `listening`（状态 pill；`194` 处 `Auto-start MCP HTTP transport` 为开关 label，见下）",
+  "key": "`mcp.serverOff` / `.listening`",
+  "zh": "建议“服务未启动 / 监听中”"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:193",
+  "en": "`Auto-start MCP HTTP transport`（Settings 内开关；Settings.tsx:190 完整版 `Auto-start MCP HTTP transport on app launch`）",
+  "key": "`settings.mcp.autostart`",
+  "zh": "以 Settings 完整版为准，McpPanel 内联引用"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:194-260",
+  "en": "`The MCP server is disabled. Turn on {Auto-start…} in {Settings} to get a connection endpoint.`（off 态整段）",
+  "key": "`mcp.disabledHint`",
+  "zh": "内嵌 settings key 引用"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:200",
+  "en": "`Endpoint (Streamable HTTP)`（小节标题）",
+  "key": "`mcp.endpoint`",
+  "zh": "传输名保留；建议“端点（Streamable HTTP）”"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:205-207",
+  "en": "`Legacy HTTP+SSE endpoint (older clients): {sseUrl}`",
+  "key": "`mcp.legacyEndpoint`，`{{url}}`",
+  "zh": "建议“旧版 HTTP+SSE 端点（老客户端）：{{url}}”"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:210",
+  "en": "`Auth token`（小节标题）",
+  "key": "`mcp.authToken`",
+  "zh": "建议“鉴权令牌”"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:214",
+  "en": "`Sent as {Authorization: Bearer …} — the configs below already include it. Keep it secret; anyone with it can drive your profiles.`",
+  "key": "`mcp.tokenHint`",
+  "zh": "header 样例保留"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:222-224",
+  "en": "三个 Step：`Copy the config for your client below into its MCP config.` / `Reload / restart the client so it connects.` / `Launch a profile here, and let the agent drive it.`",
+  "key": "`mcp.steps.*`（3 key）",
+  "zh": "—"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:230,244,250",
+  "en": "配置分组标题：`Codex CLI — ~/.codex/config.toml` / `JSON URL clients — Cursor, Cline, Continue` / `Stdio clients — Claude Desktop`",
+  "key": "`mcp.configGroups.*`（3 key）",
+  "zh": "路径/客户端名保留"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:239",
+  "en": "`Stdio clients`（行内引用）",
+  "key": "`mcp.stdioClients`",
+  "zh": "建议“Stdio 客户端”"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:234-236",
+  "en": "`The {url} field needs a Codex build with streamable-HTTP MCP support. On older Codex (stdio only), use the {Stdio clients} config below instead.`",
+  "key": "`mcp.codexNote`",
+  "zh": "键名/产品名保留"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:259",
+  "en": "`mcp-remote`（code）+ `(needs Node). Change the port in {Settings}.`",
+  "key": "`mcp.stdioNote`",
+  "zh": "工具名/Settings 引用保留"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:362,399",
+  "en": "`Copy for LLM`（按钮二态其一）",
+  "key": "`mcp.copyForLlm`",
+  "zh": "建议“复制给 LLM”"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:383",
+  "en": "title `Copy a prompt you can paste into Claude Code / Cursor to set up the connection`",
+  "key": "`mcp.copyForLlm.title`",
+  "zh": "品牌名保留"
+ },
+ {
+  "sec": "I",
+  "loc": "McpPanel.tsx:452-454",
+  "en": "`ok` / `live` / `error`（状态 pill；与 ActivityDrawer:140-142 同词）",
+  "key": "`activity.status.*`（复用，见 §J）",
+  "zh": "建议“成功 / 进行中 / 失败”；实施时统一"
+ },
+ {
+  "sec": "J",
+  "loc": "ActivityDrawer.tsx:44",
+  "en": "`MCP activity`（标题）",
+  "key": "`activity.title`",
+  "zh": "建议“MCP 活动”"
+ },
+ {
+  "sec": "J",
+  "loc": "ActivityDrawer.tsx:46,48",
+  "en": "`` `{liveCount} live` `` / `` `{events.length} calls` ``（pill 计数）",
+  "key": "`activity.liveCount` / `.callsCount`，`{{n}}`",
+  "zh": "建议“{{n}} 进行中 / {{n}} 次调用”"
+ },
+ {
+  "sec": "J",
+  "loc": "ActivityDrawer.tsx:50",
+  "en": "`last 5 min`（时间窗）",
+  "key": "`activity.last5min`",
+  "zh": "建议“近 5 分钟”"
+ },
+ {
+  "sec": "J",
+  "loc": "ActivityDrawer.tsx:81-85",
+  "en": "表头：`Time` / `Tool` / `Summary` / `Dur` / `Status`",
+  "key": "`activity.cols.*`（5 key）",
+  "zh": "建议“时间 / 工具 / 摘要 / 时长 / 状态”"
+ },
+ {
+  "sec": "J",
+  "loc": "ActivityDrawer.tsx:140-142",
+  "en": "`ok` / `live` / `error`（状态 pill）",
+  "key": "`activity.status.ok` / `.live` / `.error`",
+  "zh": "ProfileRow:231/ProfileTile:342 的 `error`、ProfileRow:234/Tile:343 的 `idle`、Row:225/Tile:341 的 `running`、Tile:340/Constellation:25 的 `ai-driven` 统一到 `activity.status.*`＋`profile.state.*`（建议：成功/进行中/失败/空闲/运行中/AI 驱动）"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:66",
+  "en": "`` `Could not save settings: ${String(error)}` ``（toast）",
+  "key": "`errors.settingsSaveFailed`，`{{error}}`",
+  "zh": "error 为 external-raw；保存失败不冒充成功（PRD AC5）"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:100,102",
+  "en": "`Settings`（aria-label + 页标题）",
+  "key": "`nav.settings`（复用）",
+  "zh": "—"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:103",
+  "en": "`MCP server, browser startup, archives and build info. Configuration is stored locally. Chromix SDK downloads and optional GeoIP lookups follow your SDK settings.`（页导语）",
+  "key": "`settings.intro`",
+  "zh": "—"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:112-113",
+  "en": "`MCP server` + desc `Local HTTP transport that Cursor / Claude Desktop / Cline / any MCP client connects to. Requires the auth token below. The MCP tab has ready-to-paste client configs.`",
+  "key": "`settings.mcp.title` / `.desc`",
+  "zh": "客户端名保留"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:117",
+  "en": "`` `running on :${settings.mcpHttpPort}` ``（运行态后缀）",
+  "key": "`settings.mcp.runningOn`，`{{port}}`",
+  "zh": "建议“运行于 :{{port}}”"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:190",
+  "en": "`Auto-start MCP HTTP transport on app launch`（开关）",
+  "key": "`settings.mcp.autostart`",
+  "zh": "建议“随应用启动自动启动 MCP HTTP 传输”"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:197-198",
+  "en": "`Browser engine` + desc `Global startup setting. Restart the app to apply; switching engines keeps each engine's saved configuration.`",
+  "key": "`settings.engine.title` / `.desc`",
+  "zh": "建议“浏览器引擎 / 全局启动设置，重启应用生效；切换引擎保留各自已存配置。”"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:204-219",
+  "en": "引擎选项卡（CloakBrowser / Chromix / Chrome for Testing，`selected` pill :219）",
+  "key": "`settings.engine.options.*` + `settings.engine.selected`",
+  "zh": "引擎名永不翻译；`selected` 建议“已选”；选项描述见 :405-415"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:233-234",
+  "en": "`Chromix SDK configuration` + desc `Full SDK JSON, Node.js runtime and environment overrides. Changes apply after the next app restart.`",
+  "key": "`settings.chromix.title` / `.desc`",
+  "zh": "—"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:249-252",
+  "en": "`Browser binary` + desc 二态（chromix 引擎版 / 其他引擎版，`Row desc={cond ? … : …}` 条件段落，原文以源码为准）",
+  "key": "`settings.binary.title` / `.descChromix` / `.descDefault`",
+  "zh": "路径/下载器名为 protocol"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:256,260",
+  "en": "aria `Browser binary path` + placeholder 二态 `Default (Chromix SDK resolution)` / `Default (auto-download)`",
+  "key": "`settings.binary.pathAria` / `.phChromix` / `.phDefault`",
+  "zh": "—"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:292-293",
+  "en": "复选框二态：`Skip Chromix SDK auto-download (use a local or SDK-cached binary)` / `Skip auto-download (use cached binary or the custom path above)`",
+  "key": "`settings.binary.skipDownload` / `.skipDownloadLegacy`",
+  "zh": "—"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:297-298",
+  "en": "配套说明二态（离线启动长段落）",
+  "key": "`settings.binary.offlineNote` / `.offlineNoteLegacy`",
+  "zh": "`CLOAKBROWSER_BINARY_PATH`、SDK 缓存等 protocol 保留"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:304-305",
+  "en": "`Archives` + desc `.mzar files are encrypted bundles of profiles — cookies, login state, fingerprints, notes — protected with a passphrase you set at export time.`",
+  "key": "`settings.archives.title` / `.desc`",
+  "zh": "`.mzar` 为 protocol"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:312",
+  "en": "`Import .mzar archive`（按钮；onImport 回调）",
+  "key": "`archive.importAction`",
+  "zh": "与 palette:73 同 key"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:320",
+  "en": "`Read archive format docs`（外链按钮，URL 为 protocol）",
+  "key": "`settings.archives.readDocs`",
+  "zh": "建议“阅读归档格式文档”"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:328,331-332",
+  "en": "`Updates` + desc 二态（macOS :331 / 其他 :332）",
+  "key": "`settings.updates.title` / `.descMacos` / `.descDefault`",
+  "zh": "macOS 为 keep-original（OS 名）"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:345",
+  "en": "`Check for updates`（按钮）",
+  "key": "`update.check`",
+  "zh": "建议“检查更新”"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:347",
+  "en": "`{updateLabel(updateStatus)}`（状态行：`You're on the latest version` :424 / `v${version} available` :426 / `Downloading v${version}… ${percent}%` :428 / `v${version} ready — restart to update` :430 / `Check failed: ${message}` :432）",
+  "key": "`update.status.*`（5 key）",
+  "zh": "版本号/百分比为数据；message 为 external-raw"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:350",
+  "en": "`Last checked: {relativeTime(…)",
+  "key": "\"never\"}`（:45 `last checked` label、`never` 见 §Q）",
+  "zh": "translate"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:359",
+  "en": "`Automatically check for updates`（复选框）",
+  "key": "`settings.updates.autoCheck`",
+  "zh": "建议“自动检查更新”"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:366-367",
+  "en": "`Anonymous usage` + desc `Off by default. Help gauge how many people run Cloaksession.`",
+  "key": "`settings.telemetry.title` / `.desc`",
+  "zh": "—"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:375,378,380-383",
+  "en": "`Send an anonymous daily heartbeat`（开关）+ `When on, sends once a day: app version, OS family, and a random single-use token — <b>no</b> account, <b>no</b> persistent ID, and your IP is …` + `<code>MULTIZEN_NO_TELEMETRY=1</code> to force it off.`",
+  "key": "`settings.telemetry.heartbeat` / `.heartbeatDesc`",
+  "zh": "`MULTIZEN_NO_TELEMETRY=1` 为 protocol；`no/account` 为强调片段，随整句翻译"
+ },
+ {
+  "sec": "K",
+  "loc": "Settings.tsx:387",
+  "en": "`About`（Row title）",
+  "key": "`settings.about.title`",
+  "zh": "建议“关于”"
+ },
+ {
+  "sec": "L",
+  "loc": "UpdateBanner.tsx:46",
+  "en": "`` `Downloading Cloaksession {version}…` ``（下载中横幅；另有 :9 `Restart to update` 主按钮）",
+  "key": "`update.downloading`，`{{version}}`",
+  "zh": "Cloaksession 为 brand"
+ },
+ {
+  "sec": "L",
+  "loc": "UpdateBanner.tsx:9",
+  "en": "`Restart to update`",
+  "key": "`update.restart`",
+  "zh": "建议“重启以更新”"
+ },
+ {
+  "sec": "L",
+  "loc": "UpdateBanner.tsx:10,72-79",
+  "en": "`Download`（macOS 可用态主按钮）+ `Cloaksession {version} is available.`",
+  "key": "`update.download` / `update.availableBanner`",
+  "zh": "后者建议“Cloaksession {{version}} 可用。”"
+ },
+ {
+  "sec": "L",
+  "loc": "UpdateBanner.tsx:55-64",
+  "en": "`Cloaksession {version} is ready to install.` + `Restart now`",
+  "key": "`update.readyBanner` / `update.restartNow`",
+  "zh": "建议“… 已就绪，可安装。/ 立即重启”"
+ },
+ {
+  "sec": "L",
+  "loc": "`commands/update.rs:397-398`",
+  "en": "原生对话框：title `Download update` + message `` `Download Cloaksession {version} from:\\n{url}` ``",
+  "key": "`update.nativeDownloadTitle` / `.nativeDownloadBody`",
+  "zh": "Rust 侧小字典（设计）；URL 为 protocol；Cloaksession 为 brand"
+ },
+ {
+  "sec": "L",
+  "loc": "`commands/update.rs:267`",
+  "en": "`Download client build failed: {e}`（StatusEvent message）",
+  "key": "`update.statusFailed`",
+  "zh": "e 为 external-raw"
+ },
+ {
+  "sec": "L",
+  "loc": "`commands/update.rs:277,285`",
+  "en": "`Download failed: {e}` / `Download HTTP {status}`",
+  "key": "`update.downloadFailed` / `.downloadHttp`",
+  "zh": "同上"
+ },
+ {
+  "sec": "L",
+  "loc": "`commands/update.rs:301,313,328`",
+  "en": "`Cannot create temp file: {e}` / `Write failed: {e}` / `Download stream error: {e}`",
+  "key": "`update.ioFailed.*`",
+  "zh": "同上"
+ },
+ {
+  "sec": "L",
+  "loc": "`commands/update.rs:358,369`",
+  "en": "`No downloaded installer to install` / `Installer not found: {path}`",
+  "key": "`update.noInstaller` / `.installerMissing`",
+  "zh": "path 为 user-data"
+ },
+ {
+  "sec": "M",
+  "loc": "FirstRun.tsx:9,194",
+  "en": "`My first profile`（DEFAULT_NAME，预填 + placeholder）",
+  "key": "`onboarding.defaultProfileName`",
+  "zh": "新用户首个配置的默认名（user-data 默认值，进字典以便中英一致）"
+ },
+ {
+  "sec": "M",
+  "loc": "FirstRun.tsx:104-109",
+  "en": "`A library of isolated browsers.` / `Cookies, login, fingerprint, and proxy isolated per profile. Drive them yourself or via any MCP agent.`",
+  "key": "`onboarding.heroTitle` / `.heroSubtitle`",
+  "zh": "—"
+ },
+ {
+  "sec": "M",
+  "loc": "FirstRun.tsx:140-146",
+  "en": "`Help improve Cloaksession?` / `Optionally send an anonymous daily heartbeat: just app version and OS family. No account, no persistent ID, and your IP is never stored. No profiles, proxies, or browsing — ever. Off unless you enable it; change it anytime in Settings.`",
+  "key": "`onboarding.telemetryTitle` / `.telemetryBody`",
+  "zh": "Settings 引用随 nav key"
+ },
+ {
+  "sec": "M",
+  "loc": "FirstRun.tsx:206",
+  "en": "`Creating…` / `Create profile`（提交按钮二态）",
+  "key": "`onboarding.creating` / `.create`",
+  "zh": "建议“创建中… / 创建配置”"
+ },
+ {
+  "sec": "M",
+  "loc": "ChromiumBootstrapModal.tsx:65",
+  "en": "`Setting up Cloaksession`（标题）",
+  "key": "`onboarding.bootstrap.title`",
+  "zh": "brand 保留"
+ },
+ {
+  "sec": "M",
+  "loc": "ChromiumBootstrapModal.tsx:67-75",
+  "en": "状态机 label：`Looking up the browser runtime` / `Downloading browser runtime` / `Verifying download` / `Installing browser runtime` / `Setup failed`",
+  "key": "`onboarding.bootstrap.status.*`（5 key）",
+  "zh": "—"
+ },
+ {
+  "sec": "M",
+  "loc": "ChromiumBootstrapModal.tsx:84",
+  "en": "`First-run download. About 150-550 MB.`（说明）",
+  "key": "`onboarding.bootstrap.firstRunNote`",
+  "zh": "数字保留"
+ },
+ {
+  "sec": "M",
+  "loc": "ChromiumBootstrapModal.tsx:86-94",
+  "en": "进度行：`Resolving the latest compatible build` / `Runtime ${version}` / `Checking integrity (SHA-256 + macOS code signature)` / `Unpacking runtime ${version}…` / `We could not download the Chromium binary.`",
+  "key": "`onboarding.bootstrap.progress.*`",
+  "zh": "SHA-256/macOS/Chromium 为 protocol/brand/keep"
+ },
+ {
+  "sec": "M",
+  "loc": "ChromiumBootstrapModal.tsx:104-160",
+  "en": "子状态行：`Preparing download…` / `Resolving latest stable version…` / `Unpacking and verifying signature…` / `Verifying SHA-256 checksum…`",
+  "key": "`onboarding.bootstrap.substatus.*`",
+  "zh": "—"
+ },
+ {
+  "sec": "M",
+  "loc": "ChromiumBootstrapModal.tsx:195",
+  "en": "`Retry download`（按钮）",
+  "key": "`onboarding.bootstrap.retry`",
+  "zh": "建议“重试下载”"
+ },
+ {
+  "sec": "N",
+  "loc": "CommandPalette.tsx:53",
+  "en": "`` `{p.isRunning ? \"Open\" : \"Launch\"} · {p.name}` ``（标题模板）",
+  "key": "`palette.openItem` / `.launchItem`，`{{name}}`",
+  "zh": "name 为 user-data；ProfileRow:188 `Launch`、ProfileTile:225 `Launch`/`Launching…`（`palette.launching`）、Row:198/Tile:236 `Stop`（`palette.stop`）、Row:175/Tile:55 `Terminating…`（`palette.terminating`）统一到 palette/profile key"
+ },
+ {
+  "sec": "N",
+  "loc": "CommandPalette.tsx:65",
+  "en": "`Create new profile · \"`（创建行前缀）",
+  "key": "`palette.createNew`",
+  "zh": "后接用户输入（user-data）"
+ },
+ {
+  "sec": "N",
+  "loc": "CommandPalette.tsx:67,74",
+  "en": "`Actions`（分组头；:74 第二组同词）",
+  "key": "`palette.actions`",
+  "zh": "建议“操作”"
+ },
+ {
+  "sec": "N",
+  "loc": "CommandPalette.tsx:55",
+  "en": "`Profiles`（分组头）",
+  "key": "`nav.profiles`（复用）",
+  "zh": "—"
+ },
+ {
+  "sec": "N",
+  "loc": "CommandPalette.tsx:73",
+  "en": "`Import .mzar archive`",
+  "key": "`archive.importAction`（复用）",
+  "zh": "—"
+ },
+ {
+  "sec": "N",
+  "loc": "CommandPalette.tsx:80,88,96",
+  "en": "`Go to Profiles` / `Go to MCP` / `Settings`（导航项；后两者文本为 `Go to MCP`/`Settings`？:96 为 `Settings`）",
+  "key": "`palette.goToProfiles` / `.goToMcp` / nav.settings（复用）",
+  "zh": "建议“前往浏览器配置 / 前往 MCP / 设置”"
+ },
+ {
+  "sec": "N",
+  "loc": "CommandPalette.tsx:82,90,98",
+  "en": "`Navigate`（hint 三处）",
+  "key": "`palette.navigate`",
+  "zh": "建议“导航”"
+ },
+ {
+  "sec": "N",
+  "loc": "CommandPalette.tsx:185",
+  "en": "`Search profiles, tags, actions…`（placeholder）",
+  "key": "`palette.searchPlaceholder`",
+  "zh": "建议“搜索配置、标签、操作…”"
+ },
+ {
+  "sec": "N",
+  "loc": "CommandPalette.tsx:245-246",
+  "en": "`No matches. Press … to create a new profile.`（多段：`No matches. Press` + kbd + `to create a new profile.`）",
+  "key": "`palette.noMatchPrefix` / `.noMatchSuffix`",
+  "zh": "kbd 为 keep-original"
+ },
+ {
+  "sec": "O",
+  "loc": "App.tsx:528-529",
+  "en": "`Import profile archive` / `Choose a .mzar file. Provide the passphrase used at export time.`",
+  "key": "`archive.importTitle` / `.importDesc`",
+  "zh": "—"
+ },
+ {
+  "sec": "O",
+  "loc": "App.tsx:530,532",
+  "en": "`Passphrase`（label + placeholder）",
+  "key": "`archive.passphrase` / `.passphrasePlaceholder`",
+  "zh": "建议“口令”"
+ },
+ {
+  "sec": "O",
+  "loc": "App.tsx:533",
+  "en": "`Choose file & import`（确认按钮）",
+  "key": "`archive.chooseAndImport`",
+  "zh": "建议“选择文件并导入”"
+ },
+ {
+  "sec": "O",
+  "loc": "App.tsx:540-541",
+  "en": "`Export profile archive` / `Choose a passphrase to encrypt the archive. You'll need it to import this profile elsewhere. Minimum 8 characters.`",
+  "key": "`archive.exportTitle` / `.exportDesc`",
+  "zh": "—"
+ },
+ {
+  "sec": "O",
+  "loc": "App.tsx:542",
+  "en": "`New passphrase`（label）",
+  "key": "`archive.newPassphrase`",
+  "zh": "建议“新口令”"
+ },
+ {
+  "sec": "O",
+  "loc": "App.tsx:544",
+  "en": "`At least 8 characters`（placeholder）",
+  "key": "`archive.passphrasePlaceholderMin`",
+  "zh": "—"
+ },
+ {
+  "sec": "O",
+  "loc": "App.tsx:545",
+  "en": "`Encrypt & save…`（确认按钮）",
+  "key": "`archive.encryptAndSave`",
+  "zh": "建议“加密并保存…”"
+ },
+ {
+  "sec": "O",
+  "loc": "App.tsx:557-559",
+  "en": "`Delete this profile?` / `Cookies, login state, and on-disk data will be erased permanently. This cannot be undone.` / `Yes, delete`",
+  "key": "`profile.deleteTitle` / `.deleteBody` / `.deleteConfirm`",
+  "zh": "Row:372 `Delete profile`、Tile:452 `Delete profile` 菜单项 → `profile.deleteMenu`（translate，建议“删除配置”）；Row:368/Tile:448 `Export archive…` → `archive.exportMenu`"
+ },
+ {
+  "sec": "O",
+  "loc": "App.tsx:89",
+  "en": "`Export`（顶栏/菜单导出动作）",
+  "key": "`archive.exportAction`",
+  "zh": "建议“导出”"
+ },
+ {
+  "sec": "O",
+  "loc": "App.tsx:365,368,372 / Tile:445,448,452",
+  "en": "菜单项：`Edit profile` / `Export archive…` / `Delete profile`",
+  "key": "见上（复用）",
+  "zh": "—"
+ },
+ {
+  "sec": "O",
+  "loc": "`commands/archive.rs:201`",
+  "en": "`Passphrase must be at least 8 characters`（后端 reason）",
+  "key": "`archive.passphraseMinLength`（与前端同 key）",
+  "zh": "前后端同文，字典统一"
+ },
+ {
+  "sec": "O",
+  "loc": "`commands/archive.rs:221-222,354`",
+  "en": "原生对话框 filter `Cloaksession archive`（`&[\"mzar\"]`）+ 默认文件名",
+  "key": "`archive.nativeFilter`",
+  "zh": "Rust 侧小字典；扩展名 `mzar` 为 protocol"
+ },
+ {
+  "sec": "O",
+  "loc": "`commands/archive.rs:367,370,374`",
+  "en": "`File too small` / `Not a Cloaksession archive` / `` `Unsupported archive version {version}` ``（ResultImport reason）",
+  "key": "`archive.importReason.*`（3 key）",
+  "zh": "经 `errors.importFailed` 模板展示"
+ },
+ {
+  "sec": "O",
+  "loc": "`commands/archive.rs:392,396,400`",
+  "en": "`Wrong passphrase or corrupted archive.` / `Corrupted archive (too small)` / `Corrupted archive (manifest truncated)`",
+  "key": "`archive.importReason.*`",
+  "zh": "同上"
+ },
+ {
+  "sec": "O",
+  "loc": "`commands/archive.rs:404,410,415,431,446`",
+  "en": "`Corrupted archive (manifest JSON): {e}` / `(file length truncated)` / `(file content truncated)` / `Checksum mismatch: {path}`（×2）",
+  "key": "`archive.importReason.*`（操作级）/ path 为 user-data，`{e}` 为 external-raw",
+  "zh": "技术细节部分保留原文（设计：操作级中文 + 原始详情）"
+ },
+ {
+  "sec": "P",
+  "loc": "ProfileTable.tsx:24-28",
+  "en": "表头：`Name` / `Status` / `Tags` / `Last opened` / `Proxy`",
+  "key": "`profile.table.*`（5 key）",
+  "zh": "建议“名称 / 状态 / 标签 / 上次打开 / 代理”"
+ },
+ {
+  "sec": "P",
+  "loc": "ProfileTile.tsx:199",
+  "en": "`never opened`（未打开过）",
+  "key": "`profile.list.neverOpened`",
+  "zh": "建议“从未打开”"
+ },
+ {
+  "sec": "P",
+  "loc": "ProfileTile.tsx:312",
+  "en": "`proxy`（卡片 proxy 行 label 片段）",
+  "key": "`profile.list.proxyLabel`",
+  "zh": "建议“代理”"
+ },
+ {
+  "sec": "P",
+  "loc": "ProfileTile.tsx:340-343",
+  "en": "状态 pill：`ai-driven` / `running` / `error` / `idle`",
+  "key": "见 §J（统一）",
+  "zh": "Tile:217 `title={profile.lastTool ?? \"ai-driven\"}` 中 `ai-driven` 为 fallback 显示，`lastTool` 为 protocol（工具名）"
+ },
+ {
+  "sec": "P",
+  "loc": "ProfileRow.tsx:336 / Tile:423",
+  "en": "`More actions`（aria-label，⋯ 菜单）",
+  "key": "`profile.list.moreActions`",
+  "zh": "建议“更多操作”"
+ },
+ {
+  "sec": "P",
+  "loc": "Constellation.tsx:23-27",
+  "en": "筛选 chips：`All` / `Running` / `AI-driven` / `Errors` / `Idle`",
+  "key": "`profile.filter.*`（5 key）",
+  "zh": "与 pills 措辞统一"
+ },
+ {
+  "sec": "P",
+  "loc": "Constellation.tsx:155",
+  "en": "`All profiles`（标题）",
+  "key": "`profile.list.allProfiles`",
+  "zh": "建议“全部浏览器配置”"
+ },
+ {
+  "sec": "P",
+  "loc": "Constellation.tsx:158",
+  "en": "`` ` · ${aiCount} driven by Claude` ``（AI 计数后缀）",
+  "key": "`profile.list.aiCount`，`{{n}}`",
+  "zh": "Claude 为 brand"
+ },
+ {
+  "sec": "P",
+  "loc": "Constellation.tsx:180,196",
+  "en": "title `Grid view` / `List view`",
+  "key": "`profile.list.gridView` / `.listView`",
+  "zh": "建议“网格视图 / 列表视图”"
+ },
+ {
+  "sec": "P",
+  "loc": "Constellation.tsx:206",
+  "en": "`New profile`（新建按钮）",
+  "key": "`profile.new.title`（复用）",
+  "zh": "—"
+ },
+ {
+  "sec": "P",
+  "loc": "Constellation.tsx:301",
+  "en": "aria `搜索环境与账号档案` + placeholder `搜索环境、姓名、快手ID或身份证号`",
+  "key": "`profile.list.searchAria` / `.searchPlaceholder`",
+  "zh": "已中文，进字典并补 en"
+ },
+ {
+  "sec": "P",
+  "loc": "Constellation.tsx:312",
+  "en": "`No profiles match the current filter.`",
+  "key": "`profile.list.noFilterMatch`",
+  "zh": "建议“当前筛选下没有匹配的配置。”"
+ },
+ {
+  "sec": "P",
+  "loc": "EmptyState.tsx:36-37,45",
+  "en": "`No profiles yet` / `Each profile is its own browser — cookies, login, fingerprint, proxy. Create one to get started.` / `New profile`（按钮）",
+  "key": "`profile.empty.title` / `.body` / `profile.new.title`（复用）",
+  "zh": "—"
+ },
+ {
+  "sec": "P",
+  "loc": "ProfileRow.tsx:188",
+  "en": "`…`（省略号按钮片段）+ `Launch`",
+  "key": "`palette.launch`（复用）",
+  "zh": "—"
+ },
+ {
+  "sec": "P",
+  "loc": "ProfileTile.tsx:225",
+  "en": "`Launching…` / `Launch`（按钮二态）",
+  "key": "`palette.launching` / `.launch`",
+  "zh": "建议“启动中… / 启动”"
+ },
+ {
+  "sec": "Q",
+  "loc": ":14-18",
+  "en": "类型选项：`快手小店` / `快手直播` / `快手直播伴侣` / `快手子账号` / `磁力金牛`",
+  "key": "`account.scope.*`（5 key）",
+  "zh": "平台名保留原文（快手/磁力金牛为品牌），en 补译"
+ },
+ {
+  "sec": "Q",
+  "loc": ":94",
+  "en": "`` `无法加载账号登记：${cause…}` ``（toast）",
+  "key": "`errors.accountLoadFailed`，`{{cause}}`",
+  "zh": "cause 为 external-raw"
+ },
+ {
+  "sec": "Q",
+  "loc": ":165-166",
+  "en": "toast：`账号登记已保存；这不代表已登录平台。` / `已解绑。登记记录已保留，未清除 Cookie；环境专用用途仍保留。`",
+  "key": "`account.savedToast` / `.unboundToast`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": ":171-172",
+  "en": "toast：`操作已完成，但最新状态读取失败，请重新加载，不要重复提交：${detail}` / `操作失败：${detail}`",
+  "key": "`account.staleToast` / `.failedToast`，`{{detail}}`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": ":183,185",
+  "en": "aria + 标题 `业务账号登记`",
+  "key": "`account.sectionTitle`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": ":186",
+  "en": "`账号信息未验证，仅手工登记类型、别名与平台用户 ID，不代表已登录或免登录，不共享 Cookie。 每个 Profile 同时只能关联一个登记记录，不会自动覆盖、移动或合并账号。`（须知段落）",
+  "key": "`account.disclaimer`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": ":190",
+  "en": "`本分区需单独保存；切换分区保留草稿，关闭编辑页会丢弃未保存的登记修改。`",
+  "key": "`account.saveNote`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": ":197-198",
+  "en": "按钮 `重新加载 / 重试`（title `重新加载状态`）+ 提示 `重新加载会丢弃未保存的登记修改。`",
+  "key": "`account.reload` / `.reloadTitle` / `.reloadHint`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": ":205,207,209",
+  "en": "金牛专用三段提示（磁力金牛专用环境 / 已用于快手业务 / 必须独立 Profile）",
+  "key": "`account.jinniu.*`（3 key）",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": ":211",
+  "en": "`绑定、修改和解绑前必须停用 Profile；运行状态仅供提示，最终由后台校验。`",
+  "key": "`account.stoppedRequired`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": ":220,228-229",
+  "en": "`登记方式` / `新建登记并绑定` / `绑定已有未关联记录`",
+  "key": "`account.mode.*`（3 key）",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": ":233,241,248",
+  "en": "`已有未关联记录` / `请选择未关联记录` / `包含删除环境后保留的登记；已关联其他 Profile 的记录不会出现在这里。`",
+  "key": "`account.existing.*`（3 key）",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": ":244,255",
+  "en": "`（需要独立环境）`（选项后缀 ×2）",
+  "key": "`account.needsIsolatedEnv`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": ":252,258,260,262,266",
+  "en": "`账号类型` / `账号类型创建后不可修改；…` / `保存后此 Profile 将标记为磁力金牛专用…` / `账号别名（必填）` / `平台ID（可选，手填不代表已登录）`",
+  "key": "`account.field.*`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": ":270-271",
+  "en": "提交按钮三态：`保存登记修改` / `绑定已有登记` / `创建并绑定登记` + `解绑登记`（:271）",
+  "key": "`account.save.*`（4 key）",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": ":275,278-279",
+  "en": "`确认解绑登记`（aria）/ `确认解绑` / `取消`（后者复用 common.cancel）",
+  "key": "`account.unbindConfirm.aria` / `.confirm`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouIdentity.tsx:18,21-22",
+  "en": "alt `快手平台头像` / aria `平台头像不可用` / fallback 字 `快`",
+  "key": "`identity.avatarAlt` / `.avatarUnavailable` / `.avatarFallback`",
+  "zh": "平台名保留"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouIdentity.tsx:34",
+  "en": "title 二态：`浏览器已关闭或正在关闭；运行状态最终由后台判定` / `请后台重新检测当前小店页面身份`",
+  "key": "`identity.statusTitle.*`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouIdentity.tsx:36",
+  "en": "`检测中…` / `重新检测`",
+  "key": "`identity.detecting` / `.redetect`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouIdentity.tsx:52,54",
+  "en": "`已打开小店登录页，请在浏览器中扫码；此操作不代表已登录。` / `` `小店扫码入口未完成：${…}` ``",
+  "key": "`identity.scanOpened` / `identity.scanFailed`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouIdentity.tsx:62-63",
+  "en": "title `启动此环境并新开小店扫码页；不改起始页或登录数据，金牛环境不可用` + 按钮二态 `正在打开小店…` / `快手小店扫码`",
+  "key": "`identity.openShop.*`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouIdentity.tsx:78,113",
+  "en": "` · 上次识别` / `上次识别` / `本轮识别`",
+  "key": "`identity.lastDetected` / `.thisRound`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouIdentity.tsx:87,117,149",
+  "en": "`快手详情`（按钮/标题 ×3）",
+  "key": "`identity.details`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouIdentity.tsx:101-102",
+  "en": "`刷新检测状态` / `读取 Rust 后台结果 · 不代表已登录或初始化完成`",
+  "key": "`identity.refresh` / `.refreshNote`",
+  "zh": "Rust 为 brand 保留"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouIdentity.tsx:114-116,168",
+  "en": "冲突/展示三段：`登记冲突：手填平台ID与识别结果不同；…` / `登记冲突：后台报告身份登记冲突，…` / `识别结果仅展示，不会填入或保存到人工登记。` + 168 长段",
+  "key": "`identity.conflict.*`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouIdentity.tsx:144,146",
+  "en": "`快手ID已复制` / `复制失败，请手动选择快手ID复制`",
+  "key": "`identity.copied` / `.copyFailed`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouIdentity.tsx:150,156",
+  "en": "aria `快手身份检测详情` / ` · 以下为上次识别信息`",
+  "key": "`identity.detailsAria` / `.lastInfoSuffix`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouIdentity.tsx:161-164",
+  "en": "明细行：`快手ID` / `检测时间` / `最后识别时间` / `检测来源` + 值 `Rust 后台 · 小店页面身份检测（本地结果）`",
+  "key": "`identity.rows.*`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouIdentity.tsx:170-178",
+  "en": "`复制快手ID` / `刷新检测状态` / 说明三段（176-178：仅展示声明/自动补做声明/分开保存声明）",
+  "key": "`identity.actionsNotes.*`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "Provider:100,138",
+  "en": "`` `检测状态未知，读取失败：${errorText(cause)}` `` / `` `检测状态未知，重新检测失败，可重试：${errorText(cause)}` ``",
+  "key": "`identity.unknownRead` / `.unknownRedetect`",
+  "zh": "cause 为 external-raw"
+ },
+ {
+  "sec": "Q",
+  "loc": "Provider:191-196",
+  "en": "状态 label：`检测状态未知 / 读取失败` / `等待本次运行重新检测` / `未检测` / `本轮已识别` / `本轮未检测到` / `登记冲突` / `已关闭` / `已跳过` / `检测失败` / `检测中…`",
+  "key": "`identity.statusLabels.*`（10 key）",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "`lib/kuaishouIdentity.ts:17,22,30,35`",
+  "en": "校验 throw：`身份检测结果格式无效` / `身份检测结果字段无效` / `身份检测列表格式无效` / `身份检测结果与请求的 Profile 不符`",
+  "key": "`errors.identityInvalid.*`（4 key）",
+  "zh": "经 errorText 进 toast"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouSubject.tsx:6-7",
+  "en": "步骤态：`待执行` / `执行中` / `已完成` / `未完成`；错误码 label：`上次中断，需重新验证` / `账号或会话已改变` / `执行超时` / `页面结构不支持` / `浏览器页面已崩溃并重建` / `照片不可用` / `中文 OCR 不可用` / `识别失败` / `自动校验未通过` / `平台保存尚未验证`",
+  "key": "`subject.step.*`（4）+ `subject.errorLabels.*`（10，对应 `KuaishouInitErrorCode` 10 码，码本身为 protocol）",
+  "zh": "OCR 为 brand 保留"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouSubject.tsx:9,13-14",
+  "en": "aria `持久初始化状态` / `主体采集` / `切片权限` / `尚未初始化` / `需重试` + 模板 ` · ${label}` / ` · 下次重试 ${time}`",
+  "key": "`subject.*`",
+  "zh": "时间为数据"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouSubject.tsx:17,30",
+  "en": "`身份识别不等于初始化完成；采集完成不等于人工已核对。` / `初始化状态读取失败，请在详情刷新`",
+  "key": "`subject.noteDetectVsInit` / `subject.readFailed`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouSubject.tsx:52",
+  "en": "alt 三态：`照片读取失败，请刷新档案` / `照片加载中…` / `` `主体证件照片 ${index+1}` ``",
+  "key": "`subject.photo.*`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouSubject.tsx:60-62",
+  "en": "执行说明长段 + `执行 / 补做初始化` + `需运行中的环境与新鲜身份；重新检测仅为只读检测。`",
+  "key": "`subject.run.*`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouSubject.tsx:92-93,106",
+  "en": "toast：`档案读取失败，请刷新重试。` / `本地中文 OCR 状态不可用，请检查系统语言资源；不会自动下载或上传。` / `补做请求已提交，请刷新查看持久状态；不代表执行完成。`",
+  "key": "`subject.toast.*`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouSubject.tsx:118,124-125",
+  "en": "`修正已保存并重新校验，请对照照片后确认。` / `重新识别已完成，仍需人工核对。` / `已核对` / `版本冲突：…` / `操作未完成，未强制确认。…` / `操作未完成，刷新也失败；…`",
+  "key": "`subject.save.*`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouSubject.tsx:130-131,133-134",
+  "en": "aria `主体档案` / 标题 `主体档案与账号初始化` / `刷新档案` / `处理中…`",
+  "key": "`subject.archTitle` 等",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouSubject.tsx:138,140",
+  "en": "`无关联环境 / 环境已删除` / `历史关联环境：${names}` / 来源三项 `主体信息明文` / `达人主体明文` / `本地 OCR`",
+  "key": "`subject.source.*`",
+  "zh": "names 为 user-data"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouSubject.tsx:144,146-147",
+  "en": "`尚无可用照片，不能确认。` / `姓名`（aria `主体姓名`）/ `身份证号`（aria `主体身份证号`）",
+  "key": "`subject.form.*`",
+  "zh": "输入值为 user-data"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouSubject.tsx:149,152",
+  "en": "aria `自动校验六项` + 说明 `自动校验不是法律身份真实性证明。…`",
+  "key": "`subject.validation.*`",
+  "zh": "校验项 label 见下"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouSubject.tsx:154-157",
+  "en": "`保存修正并校验` / `确认已核对` / `重新识别（本地 OCR）` / `复制主体资料` + toast `主体资料已复制[，包含未核对标记]` / `复制失败，请手动选择复制。`",
+  "key": "`subject.actions.*`",
+  "zh": "复制模板含 `${reviewStatus…}\\n快手ID…`（:50），字段名为数据"
+ },
+ {
+  "sec": "Q",
+  "loc": "KuaishouSubject.tsx:159",
+  "en": "`暂无主体档案；身份已识别不代表资料已采集。`",
+  "key": "`subject.noArchive`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "`lib/kuaishouSubject.ts:31`",
+  "en": "校验项：`姓名` / `18位结构` / `校验码` / `出生日期` / `页面可见姓名` / `页面可见证件号`",
+  "key": "`subject.checks.*`（6 key）",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "`lib/kuaishouSubject.ts:37,42,55,62,77`",
+  "en": "throw/校验：`主体档案响应无效，请刷新` / `初始化状态响应无效` / `档案列表响应无效` / `档案详情响应无效` / `OCR 状态不可用`（+ :70 `照片不可用`）",
+  "key": "`errors.subjectInvalid.*`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "`lib/kuaishouSubject.ts:50`",
+  "en": "`已核对` / `未核对`（`reviewStatus` 显示；SubjectArchives:39 `待核对（未核对）`同义）",
+  "key": "`subject.reviewed` / `.unreviewed`（统一）",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "SubjectArchives.tsx:28",
+  "en": "aria `独立账号档案`（标题）",
+  "key": "`subject.archivesTitle`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "SubjectArchives.tsx:31,33-36",
+  "en": "`刷新档案列表` / `按姓名、快手ID、身份证号搜索；删除环境仍保留档案。环境筛选不影响档案结果。` / `正在查询档案…` / `档案查询失败，请刷新重试。` / `没有匹配的账号档案。`",
+  "key": "`subject.archives.*`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "SubjectArchives.tsx:38-41",
+  "en": "行模板：`{realName} · 快手ID：{id} · {nickname ?? \"未读出昵称\"}` / `{maskedIdCard} · {已核对/待核对}` / `{无关联环境 / 环境已删除 / 历史关联环境：…}` / `查看账号档案` / 分页 `上一页档案` / `下一页档案` / `{offset+1}–{…} / {total}` / title `账号档案`",
+  "key": "`subject.archiveRow.*`",
+  "zh": "姓名/ID/身份证号为数据"
+ },
+ {
+  "sec": "Q",
+  "loc": "SubjectArchives.tsx:48",
+  "en": "title `账号档案`",
+  "key": "`subject.archiveTitle`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "`local-ocr/src/lib.rs:31-46`",
+  "en": "`OcrError` 8 条 Display：`本平台不支持 Windows 本地 OCR` / `本机中文 OCR 语言资源不可用；不会自动安装或转云端` / `本地 OCR 运行时不可用` / `图片为空或无法完整解码` / `仅支持静态 PNG、JPEG、WebP 图片` / `不接受动画图片` / `图片字节数超限` / `图片尺寸、像素数或解码内存超限`（+ 后续变体，见源码全文）",
+  "key": "`ocr.errors.*`（按变体分 key）",
+  "zh": "已中文，补 en；按设计 Display 不改，后续实现 possible 方案：UI 层操作级映射或后端小字典（implement 阶段定，清单仅登记）"
+ },
+ {
+  "sec": "Q",
+  "loc": "`commands/kuaishou_init.rs:28`",
+  "en": "`系统中文OCR可用；仅本地识别`（`OcrAvailability.message`）",
+  "key": "`ocr.availableLocal`",
+  "zh": "—"
+ },
+ {
+  "sec": "Q",
+  "loc": "`commands/profiles.rs:97,99`",
+  "en": "`` `浏览器已启动，小店扫码页未打开，可重试：{e}` `` / `` `小店扫码页已打开但未激活，请切换标签页：{e}` ``",
+  "key": "`identity.shopNotOpened` / `.shopNotActive`",
+  "zh": "e 为 external-raw"
+ },
+ {
+  "sec": "Q",
+  "loc": "`commands/business_accounts.rs:9`",
+  "en": "`` `业务账号操作失败：{error}。请核对输入及Profile状态、刷新列表后重试；数据库或线程错误请重启应用后重试。` ``",
+  "key": "`errors.businessOpFailed`",
+  "zh": "已中文，补 en；error 为 external-raw"
+ },
+ {
+  "sec": "R",
+  "loc": "`lib/relativeTime.ts:4,6`",
+  "en": "`never`（空/非法时间 ×2）",
+  "key": "`time.never`",
+  "zh": "建议“从未”；Settings:350 `Last checked: … / never` 复用"
+ },
+ {
+  "sec": "R",
+  "loc": "`lib/relativeTime.ts:6-14`",
+  "en": "`just now` / `` `${s}s ago` `` / `` `${m}m ago` `` / `` `${h}h ago` `` / `` `${days}d ago` ``",
+  "key": "`time.justNow` / `.secondsAgo` / `.minutesAgo` / `.hoursAgo` / `.daysAgo`（`{{n}}`）",
+  "zh": "建议“刚刚 / {{n}} 秒前 …”；`toLocaleDateString()`（:15，无 locale）与 `formatTime` 的 `\"en-GB\"`（:21）需改传应用语言（实施点，非文案）"
+ },
+ {
+  "sec": "R",
+  "loc": "`components/atoms/Flag.tsx:118-126`",
+  "en": "`Intl.DisplayNames([\"en\"], { type: \"region\" })` + `United States` / `Luxembourg`（用例/回退显示？:121）",
+  "key": "`locale.countryName`（经 Intl 按应用语言）",
+  "zh": "`[\"en\"]` 需改传应用语言（实施点）；国别显示名由 Intl 本地化，不进自建字典"
+ },
+ {
+  "sec": "R",
+  "loc": "`components/profile/EmojiField.tsx:96`",
+  "en": "`` `Auto — classifier picks ${derived}` ``（title 模板）",
+  "key": "`profile.emoji.autoTitle`，`{{emoji}}`",
+  "zh": "derived 为数据"
+ },
+ {
+  "sec": "R",
+  "loc": "`components/profile/EmojiField.tsx:12`",
+  "en": "`Auto`（emoji 选项）",
+  "key": "`profile.emoji.auto`",
+  "zh": "建议“自动”"
+ },
+ {
+  "sec": "R",
+  "loc": "`components/profile/EmojiField.tsx:63,65`",
+  "en": "title `Set an emoji avatar` / aria `Choose emoji avatar`",
+  "key": "`profile.emoji.setTitle` / `.chooseAria`",
+  "zh": "—"
+ },
+ {
+  "sec": "R",
+  "loc": "`components/profile/EmojiField.tsx:82`",
+  "en": "`Emoji avatar`（picker 标题行）",
+  "key": "`profile.emoji.title`",
+  "zh": "—"
+ },
+ {
+  "sec": "R",
+  "loc": "`components/profile/ProfileTile.tsx:133`",
+  "en": "title `Click to set an emoji`",
+  "key": "`profile.emoji.clickToSet`",
+  "zh": "建议“点击设置 emoji”"
+ },
+ {
+  "sec": "S",
+  "loc": "`commands/dialog.rs:22`",
+  "en": "原生 filter `Browser binary`（`&[\"exe\",\"app\",\"sh\"]`）",
+  "key": "`dialog.browserBinaryFilter`",
+  "zh": "Rust 侧小字典；扩展名/系统按钮为 protocol/OS 例外"
+ },
+ {
+  "sec": "S",
+  "loc": "`commands/extensions.rs:353,520`",
+  "en": "原生 filter `Extension`（`&[\"crx\",\"zip\"]` ×2）",
+  "key": "`dialog.extensionFilter`",
+  "zh": "同上"
+ },
+ {
+  "sec": "S",
+  "loc": "`commands/extensions.rs:50`",
+  "en": "`` `Could not parse a 32-char extension ID from: {input}` ``",
+  "key": "`errors.extIdUnparseable`（UI 操作级）",
+  "zh": "input 为 user-data"
+ },
+ {
+  "sec": "S",
+  "loc": "`commands/extensions.rs:77,82,91,97,100`",
+  "en": "`HTTP client build failed: {e}` / `Web Store download failed: {e}` / `Web Store returned HTTP {status} for extension {id}` / `Failed to read CRX body: {e}` / `Extension {id} isn't available from the Web Store (empty response). Try uploading the .crx/.zip instead.`（:86 同文）",
+  "key": "`errors.extDownload.*`（UI 操作级模板）",
+  "zh": "Web Store 为 brand"
+ },
+ {
+  "sec": "S",
+  "loc": "`commands/extensions.rs:86`",
+  "en": "`Extension {id} isn't available from the Web Store (it may be delisted or region-restricted). Try uploading the .crx/.zip instead.`",
+  "key": "`errors.extUnavailable`",
+  "zh": "同上"
+ },
+ {
+  "sec": "S",
+  "loc": "`commands/extensions.rs:366,528`",
+  "en": "`Failed to read file: {e}`",
+  "key": "`errors.extReadFailed`（UI 操作级）",
+  "zh": "—"
+ },
+ {
+  "sec": "S",
+  "loc": "`commands/companion.rs:146,153`",
+  "en": "`Invalid companion signal` / `No extension ID in companion signal`（install-error 事件文案）",
+  "key": "`errors.companionSignal`（UI 操作级）",
+  "zh": "底层原因原文可附"
+ },
+ {
+  "sec": "S",
+  "loc": "`commands/companion.rs:203,226`",
+  "en": "`` `Added it, but couldn't reopen the profile — launch it again. ({e})` `` / `` `Added it, but the profile didn't reopen — launch it again. ({e})` ``",
+  "key": "`extensions.addedNoReopen`（二态统一一 key）",
+  "zh": "—"
+ }
+]

@@ -9,6 +9,7 @@ Owns desktop startup/state, launcher-thread integration, IPC/events, embedded MC
 - [Kuaishou initialization, concurrency and archive contract](./kuaishou-initialization.md)
 - [IPC, events, and verification](./ipc.md)
 - [Archives, extensions, and updates](./resources.md)
+- [Internationalization (i18n)](./i18n.md)
 
 ## Pre-Development Checklist
 
