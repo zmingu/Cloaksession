@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 import { Search, Settings as SettingsIcon } from "lucide-react";
 import { Cube, Pill, Kbd } from "../atoms";
+import { useT } from "../../i18n/LanguageProvider";
 
 interface Props {
   totalCount: number;
@@ -11,6 +12,15 @@ interface Props {
 }
 
 export function TopBar({ totalCount, runningCount, mcpUrl, onCmdK, onSettings }: Props): JSX.Element {
+  const t = useT();
+  let mcpSuffix = t("settings.mcp.off");
+  if (mcpUrl) {
+    try {
+      mcpSuffix = `· :${new URL(mcpUrl).port}`;
+    } catch {
+      mcpSuffix = t("settings.mcp.off");
+    }
+  }
   return (
     <div
       className="drag-region flex items-center gap-3.5 relative flex-shrink-0 surface-material"
@@ -48,7 +58,7 @@ export function TopBar({ totalCount, runningCount, mcpUrl, onCmdK, onSettings }:
       >
         <Search size={14} className="text-slate-500" />
         <span className="flex-1 text-left text-[13px] text-slate-500">
-          Search profiles, tags, urls…
+          {t("nav.topbar.searchPlaceholder")}
         </span>
         <Kbd>⌘ K</Kbd>
       </button>
@@ -57,19 +67,19 @@ export function TopBar({ totalCount, runningCount, mcpUrl, onCmdK, onSettings }:
       <div className="no-drag flex items-center gap-3">
         <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
           <span className="mono text-slate-300 text-[12px]">{runningCount}</span>
-          <span>running</span>
+          <span>{t("nav.topbar.running")}</span>
           <span className="text-slate-600">·</span>
           <span className="mono text-slate-400 text-[12px]">{totalCount}</span>
-          <span>total</span>
+          <span>{t("nav.topbar.total")}</span>
         </div>
         <Pill kind={mcpUrl ? "running" : "idle"} dot={!!mcpUrl}>
-          MCP {mcpUrl ? `· :${new URL(mcpUrl).port}` : "off"}
+          MCP {mcpSuffix}
         </Pill>
         <button
           type="button"
           onClick={onSettings}
           className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white/5 hover:text-slate-200 transition-colors"
-          aria-label="Settings"
+          aria-label={t("nav.settings")}
         >
           <SettingsIcon size={14} />
         </button>

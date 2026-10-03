@@ -1,12 +1,15 @@
 use std::path::{Path, PathBuf};
 
-use multizen_core::{AppSettings, BrowserEngine, ChromixSettings, Result};
+use multizen_core::{AppLanguage, AppSettings, BrowserEngine, ChromixSettings, Result};
 use serde::Deserialize;
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RawSettings {
     theme: Option<String>,
+    /// `Value` (not `String`) so a wrong-typed language can never fail the
+    /// whole-file parse and wipe other valid settings; normalized below.
+    language: Option<serde_json::Value>,
     mcp_http_enabled: Option<bool>,
     mcp_http_port: Option<u16>,
     browser_engine: Option<String>,
@@ -45,6 +48,12 @@ impl SettingsStore {
         if let Some(v) = raw.theme {
             merged.theme = v;
         }
+        // Tolerant language read: missing/null/unknown/wrong-type only falls
+        // back to the default language, never clears other valid settings.
+        merged.language = match raw.language.as_ref().and_then(|v| v.as_str()) {
+            Some("en") => AppLanguage::En,
+            _ => AppLanguage::default(),
+        };
         if let Some(v) = raw.mcp_http_enabled {
             merged.mcp_http_enabled = v;
         }

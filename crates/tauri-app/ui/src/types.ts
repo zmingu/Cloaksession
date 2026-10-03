@@ -207,6 +207,9 @@ export interface LaunchedProfile {
 
 export type BrowserEngine = "cft" | "cloakbrowser" | "chromix";
 
+/** App UI language wire values (`multizen_core::AppLanguage`). No system mode. */
+export type AppLanguage = "zh-CN" | "en";
+
 export interface ChromixSettings {
   nodePath: string;
   options: Record<string, unknown>;
@@ -215,6 +218,7 @@ export interface ChromixSettings {
 
 export interface AppSettings {
   theme: string;
+  language: AppLanguage;
   mcpHttpEnabled: boolean;
   mcpHttpPort: number;
   browserEngine: BrowserEngine;

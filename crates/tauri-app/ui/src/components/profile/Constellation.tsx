@@ -5,6 +5,7 @@ import { Kbd } from "../atoms";
 import { ProfileTile, deriveTileState, type TileData, type TileState } from "./ProfileTile";
 import { ProfileTable } from "./ProfileTable";
 import { usePersistedState } from "../../lib/persisted";
+import { useT } from "../../i18n/LanguageProvider";
 import { useScrollFade } from "../../lib/useScrollFade";
 import { cn } from "../../lib/cn";
 import { KuaishouIdentityToolbar } from "./KuaishouIdentity";
@@ -15,17 +16,24 @@ type ViewMode = "grid" | "list";
 
 interface FilterChip {
   id: "all" | TileState;
-  label: string;
   kind?: TileState;
 }
 
 const FILTERS: FilterChip[] = [
-  { id: "all", label: "All" },
-  { id: "running", label: "Running", kind: "running" },
-  { id: "ai", label: "AI-driven", kind: "ai" },
-  { id: "error", label: "Errors", kind: "error" },
-  { id: "idle", label: "Idle", kind: "idle" },
+  { id: "all" },
+  { id: "running", kind: "running" },
+  { id: "ai", kind: "ai" },
+  { id: "error", kind: "error" },
+  { id: "idle", kind: "idle" },
 ];
+
+const FILTER_LABEL_KEYS = {
+  all: "profile.filter.all",
+  running: "profile.filter.running",
+  ai: "profile.filter.aiDriven",
+  error: "profile.filter.errors",
+  idle: "profile.filter.idle",
+} as const;
 
 const DOT_COLOR: Record<TileState, string> = {
   running: "var(--success)",
@@ -104,6 +112,7 @@ export function Constellation({
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [viewMode, setViewMode] = usePersistedState<ViewMode>("profilesView", "grid");
   const scrollRef = useScrollFade<HTMLDivElement>();
+  const t = useT();
 
   const tileData: TileData[] = useMemo(
     () =>
@@ -152,10 +161,10 @@ export function Constellation({
     <div className="flex-1 flex flex-col min-w-0 min-h-0">
       {/* Title row */}
       <div className="flex items-center gap-3.5 px-6 pt-4 pb-3">
-        <div className="text-lg font-bold tracking-tight text-slate-100">All profiles</div>
+        <div className="text-lg font-bold tracking-tight text-slate-100">{t("profile.list.allProfiles")}</div>
         <div className="mono text-[11px] text-slate-600">
-          ·  {profiles.length} total · {counts.running + counts.ai} running
-          {aiCount > 0 && ` · ${aiCount} driven by Claude`}
+          ·  {profiles.length} {t("nav.topbar.total")} · {counts.running + counts.ai} {t("nav.topbar.running")}
+          {aiCount > 0 && ` · ${aiCount} ${t("profile.list.aiCount")}`}
         </div>
         <div className="flex-1" />
         <div
@@ -177,7 +186,7 @@ export function Constellation({
             style={{
               background: viewMode === "grid" ? "rgba(255,255,255,0.06)" : undefined,
             }}
-            title="Grid view"
+            title={t("profile.list.gridView")}
           >
             <Grid3x3 size={13} strokeWidth={1.5} />
           </button>
@@ -193,7 +202,7 @@ export function Constellation({
             style={{
               background: viewMode === "list" ? "rgba(255,255,255,0.06)" : undefined,
             }}
-            title="List view"
+            title={t("profile.list.listView")}
           >
             <List size={13} strokeWidth={1.5} />
           </button>
@@ -204,7 +213,7 @@ export function Constellation({
           className="btn-brand rounded-[9px] text-[12px] px-3 py-[7px]"
         >
           <Plus size={12} strokeWidth={2} />
-          New profile
+          {t("profile.new.title")}
           <Kbd variant="on-brand">⌘ N</Kbd>
         </button>
       </div>
@@ -212,7 +221,7 @@ export function Constellation({
       {/* Group tabs row */}
       <div className="flex items-center gap-1.5 px-6 pb-2 flex-wrap">
         <GroupTab
-          label="All"
+          label={t("group.filter.all")}
           count={tileData.length}
           active={groupFilter === "all"}
           onSelect={() => onGroupFilterChange("all")}
@@ -229,7 +238,7 @@ export function Constellation({
             />
           ))}
         <GroupTab
-          label="Ungrouped"
+          label={t("group.filter.ungrouped")}
           count={ungroupedCount}
           active={groupFilter === "ungrouped"}
           onSelect={() => onGroupFilterChange("ungrouped")}
@@ -260,7 +269,7 @@ export function Constellation({
                   style={{ background: DOT_COLOR[c.kind] }}
                 />
               )}
-              {c.label}
+              {t(FILTER_LABEL_KEYS[c.id])}
               <span className={cn("mono text-[10px]", isActive ? "text-slate-400" : "text-slate-600")}>
                 {counts[c.id]}
               </span>
@@ -298,7 +307,7 @@ export function Constellation({
       </div>
 
       <div className="px-6 pb-3">
-        <input aria-label="搜索环境与账号档案" placeholder="搜索环境、姓名、快手ID或身份证号" maxLength={128}
+        <input aria-label={t("profile.list.searchAria")} placeholder={t("profile.list.searchPlaceholder")} maxLength={128}
           value={search} onChange={event => setSearch(event.target.value)} autoComplete="off"
           className="w-full rounded-lg border border-white/10 bg-white/5 p-2 text-sm text-slate-200" />
       </div>
@@ -310,7 +319,7 @@ export function Constellation({
       <div ref={scrollRef} className="flex-1 overflow-auto scroll-fade px-6 pb-6 pt-3">
         {profiles.length === 0 ? <ProfilesEmptyState onCreate={onCreate} /> : filtered.length === 0 ? (
           <div className="text-sm text-slate-500 py-12 text-center">
-            No profiles match the current filter.
+            {t("profile.list.noFilterMatch")}
           </div>
         ) : viewMode === "list" ? (
           <ProfileTable

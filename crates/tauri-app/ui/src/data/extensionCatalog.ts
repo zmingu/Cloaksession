@@ -1,3 +1,5 @@
+import type { TranslationKey } from "../i18n/en";
+
 /**
  * Curated, MV3-only Chrome Web Store catalog powering the in-app "Discover"
  * extension picker. Static + bundled: no runtime network, no scraping, no
@@ -11,7 +13,8 @@
 
 export interface CatalogCategory {
   id: string;
-  label: string;
+  /** Translation key for the app-owned category label (see i18n). */
+  labelKey: TranslationKey;
 }
 
 export interface CatalogExtension {
@@ -25,13 +28,13 @@ export interface CatalogExtension {
 }
 
 export const CATALOG_CATEGORIES: CatalogCategory[] = [
-  { id: "adblock", label: "Ad blocking" },
-  { id: "privacy", label: "Privacy & anti-track" },
-  { id: "productivity", label: "Productivity & tabs" },
-  { id: "password", label: "Passwords & wallets" },
-  { id: "developer", label: "Developer tools" },
-  { id: "utility", label: "Utilities" },
-  { id: "social", label: "Social & shopping" },
+  { id: "adblock", labelKey: "catalog.categories.adBlocking" },
+  { id: "privacy", labelKey: "catalog.categories.privacyAntiTrack" },
+  { id: "productivity", labelKey: "catalog.categories.productivityTabs" },
+  { id: "password", labelKey: "catalog.categories.passwordsWallets" },
+  { id: "developer", labelKey: "catalog.categories.developerTools" },
+  { id: "utility", labelKey: "catalog.categories.utilities" },
+  { id: "social", labelKey: "catalog.categories.socialShopping" },
 ];
 
 // Verified curation pass (2026-07-05): each entry confirmed against its live

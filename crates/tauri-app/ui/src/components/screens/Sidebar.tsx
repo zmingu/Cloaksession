@@ -2,6 +2,7 @@ import type { JSX } from "react";
 import { Boxes, Command, Plug, Settings } from "lucide-react";
 import { cn } from "../../lib/cn";
 import type { ProfileGroup } from "../../types";
+import { useT } from "../../i18n/LanguageProvider";
 
 export type Section = "profiles" | "mcp" | "settings";
 
@@ -11,14 +12,13 @@ export type GroupFilter = "all" | "ungrouped" | (string & {});
 interface NavItem {
   id: Section;
   icon: typeof Boxes;
-  label: string;
   kbd: string;
 }
 
 const NAV: NavItem[] = [
-  { id: "profiles", icon: Boxes, label: "Profiles", kbd: "1" },
-  { id: "mcp", icon: Plug, label: "MCP", kbd: "2" },
-  { id: "settings", icon: Settings, label: "Settings", kbd: "," },
+  { id: "profiles", icon: Boxes, kbd: "1" },
+  { id: "mcp", icon: Plug, kbd: "2" },
+  { id: "settings", icon: Settings, kbd: "," },
 ];
 
 interface Props {
@@ -40,6 +40,9 @@ export function Sidebar({
   onGroupFilterChange,
   onDeleteGroup,
 }: Props): JSX.Element {
+  const t = useT();
+  const navLabel = (id: Section): string =>
+    id === "profiles" ? t("nav.profiles") : id === "settings" ? t("nav.settings") : "MCP";
   const namedGroups = groups.filter((g) => g.name != null);
   const ungrouped = groups.find((g) => g.name == null);
   const ungroupedCount = ungrouped?.count ?? 0;
@@ -63,7 +66,7 @@ export function Sidebar({
             <button
               key={it.id}
               type="button"
-              title={`${it.label} · ⌘${it.kbd}`}
+              title={t("nav.item.shortcutTitle", { label: navLabel(it.id), kbd: it.kbd })}
               onClick={() => onChange(it.id)}
               className={cn(
                 "flex items-center gap-2.5 px-2.5 h-8 rounded-[9px] text-[13px] font-medium transition-colors",
@@ -73,7 +76,7 @@ export function Sidebar({
               )}
             >
               <Icon size={15} strokeWidth={1.5} />
-              {it.label}
+              {navLabel(it.id)}
             </button>
           );
         })}
@@ -82,11 +85,11 @@ export function Sidebar({
       {active === "profiles" && (
         <div className="mt-4 px-3">
           <div className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Groups
+            {t("nav.groups")}
           </div>
           <div className="flex flex-col gap-0.5">
             <GroupRow
-              label="All"
+              label={t("group.filter.all")}
               count={totalCount}
               active={groupFilter === "all"}
               onSelect={() => onGroupFilterChange("all")}
@@ -102,7 +105,7 @@ export function Sidebar({
               />
             ))}
             <GroupRow
-              label="Ungrouped"
+              label={t("group.filter.ungrouped")}
               count={ungroupedCount}
               active={groupFilter === "ungrouped"}
               onSelect={() => onGroupFilterChange("ungrouped")}
@@ -115,7 +118,7 @@ export function Sidebar({
       <div className="px-3">
         <button
           type="button"
-          title="Command palette · ⌘K"
+          title={t("nav.commandPalette.title")}
           onClick={onCmdK}
           className={cn(
             "flex items-center gap-2.5 w-full px-2.5 h-8 rounded-[9px] text-[13px] font-medium transition-colors",
@@ -123,7 +126,7 @@ export function Sidebar({
           )}
         >
           <Command size={15} strokeWidth={1.5} />
-          Command
+          {t("nav.commandPalette")}
         </button>
       </div>
     </nav>
@@ -143,6 +146,7 @@ function GroupRow({
   onSelect: () => void;
   onDelete?: (name: string) => void;
 }): JSX.Element {
+  const t = useT();
   return (
     <div
       className={cn(
@@ -166,10 +170,10 @@ function GroupRow({
       {onDelete && (
         <button
           type="button"
-          title={`Delete group "${label}"`}
+          title={t("group.delete.title", { label })}
           onClick={() => onDelete(label)}
           className="opacity-0 group-hover:opacity-100 px-1.5 mr-1 text-muted-foreground hover:text-destructive transition-opacity"
-          aria-label={`Delete group ${label}`}
+          aria-label={t("group.delete.aria", { label })}
         >
           ×
         </button>

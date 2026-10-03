@@ -2,6 +2,7 @@ import { update, onUpdateStatus } from "../lib/ipc";
 import { useEffect, useState, type JSX, type ReactNode } from "react";
 import { Download, RefreshCw, X } from "lucide-react";
 import type { UpdateStatus } from "../types";
+import { useT } from "../i18n/LanguageProvider";
 
 /**
  * Full-width, non-intrusive update bar shown under the TopBar. Only renders for
@@ -17,6 +18,7 @@ import type { UpdateStatus } from "../types";
  * modal is up, so the two never compete.
  */
 export function UpdateBanner({ suppressed }: { suppressed?: boolean }): JSX.Element | null {
+  const t = useT();
   const [status, setStatus] = useState<UpdateStatus | null>(null);
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
 
@@ -36,14 +38,14 @@ export function UpdateBanner({ suppressed }: { suppressed?: boolean }): JSX.Elem
   if (suppressed || !status) return null;
 
   const version = "version" in status ? status.version : "";
-  const key = `${status.kind}:${version}`;
+  const key = status.kind + ":" + version;
   if (dismissedKey === key) return null;
 
   if (status.kind === "downloading") {
     return (
       <Bar tone="info">
         <RefreshCw size={13} className="animate-spin text-accent-foreground shrink-0" />
-        <span>Downloading Cloaksession {version}…</span>
+        <span>{t("update.downloading", { version })}</span>
         <span className="mono text-[11px] text-slate-400">{status.percent}%</span>
         <div className="flex-1" />
       </Bar>
@@ -54,14 +56,12 @@ export function UpdateBanner({ suppressed }: { suppressed?: boolean }): JSX.Elem
     return (
       <Bar tone="brand">
         <Download size={13} className="text-accent-foreground shrink-0" />
-        <span>
-          Cloaksession <b className="font-semibold">{version}</b> is ready to install.
-        </span>
+        <span>{t("update.readyBanner", { version })}</span>
         <div className="flex-1" />
         <BannerButton primary onClick={() => void update.install()}>
-          Restart now
+          {t("update.restartNow")}
         </BannerButton>
-        <BannerButton onClick={() => setDismissedKey(key)}>Later</BannerButton>
+        <BannerButton onClick={() => setDismissedKey(key)}>{t("common.later")}</BannerButton>
       </Bar>
     );
   }
@@ -71,14 +71,12 @@ export function UpdateBanner({ suppressed }: { suppressed?: boolean }): JSX.Elem
     return (
       <Bar tone="brand">
         <Download size={13} className="text-accent-foreground shrink-0" />
-        <span>
-          Cloaksession <b className="font-semibold">{version}</b> is available.
-        </span>
+        <span>{t("update.availableBanner", { version })}</span>
         <div className="flex-1" />
         <BannerButton primary onClick={() => void update.download(version)}>
-          Download
+          {t("update.download")}
         </BannerButton>
-        <BannerButton aria-label="Dismiss" onClick={() => setDismissedKey(key)}>
+        <BannerButton aria-label={t("common.dismiss.aria")} onClick={() => setDismissedKey(key)}>
           <X size={13} />
         </BannerButton>
       </Bar>

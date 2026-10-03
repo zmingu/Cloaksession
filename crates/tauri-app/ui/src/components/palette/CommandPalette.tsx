@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from "
 import { Boxes, Command, Download, Play, Plug, Plus, Settings as SettingsIcon } from "lucide-react";
 import type { ProfileSummary } from "../../types";
 import { Kbd } from "../atoms";
+import { useT } from "../../i18n/LanguageProvider";
 
 export type CommandAction =
   | { kind: "launch"; profileId: string }
@@ -33,6 +34,7 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
   const [query, setQuery] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const t = useT();
 
   useEffect(() => {
     if (open) {
@@ -50,9 +52,9 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
       const launchRow: Row = {
         id: `launch:${p.id}`,
         icon: <Play size={14} strokeWidth={1.5} className="text-current" />,
-        title: <>{p.isRunning ? "Open" : "Launch"} · {p.name}</>,
+        title: <>{t(p.isRunning ? "palette.openItem" : "palette.launchItem")} · {p.name}</>,
         sub: `${p.id.slice(0, 12)} · ${p.tags.join(", ") || "no tags"}`,
-        group: "Profiles",
+        group: t("nav.profiles"),
         action: { kind: p.isRunning ? "open" : "launch", profileId: p.id },
       };
       return [launchRow];
@@ -62,40 +64,40 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
       {
         id: "create",
         icon: <Plus size={14} strokeWidth={1.5} />,
-        title: q ? <>Create new profile · "<span className="mono text-[var(--accent-foreground)]">{query}</span>"</> : "Create new profile",
+        title: q ? <>{t("palette.createNew")}<span className="mono text-[var(--accent-foreground)]">{query}</span>"</> : "Create new profile",
         kbd: <Kbd>⌘ N</Kbd>,
-        group: "Actions",
+        group: t("palette.actions"),
         action: { kind: "create" },
       },
       {
         id: "import",
         icon: <Download size={14} strokeWidth={1.5} />,
-        title: "Import .mzar archive",
-        group: "Actions",
+        title: t("archive.importAction"),
+        group: t("palette.actions"),
         action: { kind: "import" },
       },
       {
         id: "section:profiles",
         icon: <Boxes size={14} strokeWidth={1.5} />,
-        title: "Go to Profiles",
+        title: t("palette.goToProfiles"),
         kbd: <Kbd>⌘ 1</Kbd>,
-        group: "Navigate",
+        group: t("palette.navigate"),
         action: { kind: "section", id: "profiles" },
       },
       {
         id: "section:mcp",
         icon: <Plug size={14} strokeWidth={1.5} />,
-        title: "Go to MCP",
+        title: t("palette.goToMcp"),
         kbd: <Kbd>⌘ 2</Kbd>,
-        group: "Navigate",
+        group: t("palette.navigate"),
         action: { kind: "section", id: "mcp" },
       },
       {
         id: "settings",
         icon: <SettingsIcon size={14} strokeWidth={1.5} />,
-        title: "Settings",
+        title: t("nav.settings"),
         kbd: <Kbd>⌘ ,</Kbd>,
-        group: "Navigate",
+        group: t("palette.navigate"),
         action: { kind: "settings" },
       },
     ];
@@ -105,7 +107,7 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
       return [...profileRows, ...filteredActions];
     }
     return [...profileRows.slice(0, 6), ...actionRows];
-  }, [profiles, query]);
+  }, [profiles, query, t]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Row[]>();
@@ -182,7 +184,7 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search profiles, tags, actions…"
+            placeholder={t("palette.searchPlaceholder")}
             className="flex-1 bg-transparent outline-none text-[14px] text-slate-100 placeholder:text-slate-500"
           />
           <Kbd>esc</Kbd>
@@ -243,7 +245,7 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
           ))}
           {rows.length === 0 && (
             <div className="px-6 py-10 text-center text-[12px] text-slate-500">
-              No matches. Press <Kbd>⌘ N</Kbd> to create a new profile.
+              {t("palette.noMatchSuffix")} <Kbd>⌘ N</Kbd> to create a new profile.
             </div>
           )}
         </div>
@@ -256,7 +258,7 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
           <span className="flex items-center gap-1.5">
             <Kbd>↑</Kbd>
             <Kbd>↓</Kbd>
-            navigate
+            {t("palette.navigate")}
           </span>
           <span className="flex items-center gap-1.5">
             <Kbd>⏎</Kbd> select

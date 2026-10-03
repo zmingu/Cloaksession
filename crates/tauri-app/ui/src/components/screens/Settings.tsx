@@ -9,6 +9,7 @@ import {
   Eye,
   EyeOff,
   FileSearch,
+  Languages,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -18,13 +19,17 @@ import { Pill } from "../atoms";
 import { ChromixSettingsEditor } from "./ChromixSettingsEditor";
 import { relativeTime } from "../../lib/relativeTime";
 import { useScrollFade } from "../../lib/useScrollFade";
-import type { AppSettings, SystemInfo, UpdateStatus } from "../../types";
+import { useLanguage, useT } from "../../i18n/LanguageProvider";
+import type { Translator } from "../../i18n/translate";
+import type { AppLanguage, AppSettings, SystemInfo, UpdateStatus } from "../../types";
 
 interface Props {
   onImport: () => void;
 }
 
 export function Settings({ onImport }: Props): JSX.Element {
+  const t = useT();
+  const { language, setLanguage } = useLanguage();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [info, setInfo] = useState<SystemInfo | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
@@ -33,6 +38,8 @@ export function Settings({ onImport }: Props): JSX.Element {
   const [tokenShown, setTokenShown] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
   const [lastChecked, setLastChecked] = useState<number>(0);
+  const [languageSaving, setLanguageSaving] = useState(false);
+  const [languageError, setLanguageError] = useState<string | null>(null);
   const scrollRef = useScrollFade<HTMLDivElement>();
 
   useEffect(() => {
@@ -63,7 +70,28 @@ export function Settings({ onImport }: Props): JSX.Element {
       setSettings(next);
       setSettingsError(null);
     } catch (error) {
-      setSettingsError(`Could not save settings: ${String(error)}`);
+      setSettingsError(t("settings.saveFailed", { error: String(error) }));
+    }
+  }
+
+  /**
+   * Switch the interface language through the existing settings IPC. The
+   * global language is updated by `LanguageProvider` only after the server
+   * confirms the save, and repeated submits are disabled while in flight, so
+   * the UI never claims a change that was not persisted. Switching language
+   * does not unmount `App`, so unsaved form input and the current section are
+   * preserved.
+   */
+  async function changeLanguage(next: AppLanguage): Promise<void> {
+    if (languageSaving || next === language) return;
+    setLanguageSaving(true);
+    setLanguageError(null);
+    try {
+      await setLanguage(next);
+    } catch (error) {
+      setLanguageError(t("settings.language.saveFailed", { error: String(error) }));
+    } finally {
+      setLanguageSaving(false);
     }
   }
 
@@ -90,31 +118,73 @@ export function Settings({ onImport }: Props): JSX.Element {
     return (
       <div className="flex-1 overflow-auto p-8">
         <div className="max-w-[720px] mx-auto text-[13px] text-slate-500">
-          {settingsError ? <p role="alert" className="text-red-300">{settingsError}</p> : "Loading…"}
+          {settingsError
+            ? <p role="alert" className="text-red-300">{t("settings.loadFailed", { error: settingsError })}</p>
+            : t("settings.loading")}
         </div>
       </div>
     );
   }
 
   return (
-    <div ref={scrollRef} role="region" aria-label="Settings" className="flex-1 min-w-0 overflow-auto scroll-fade px-3 py-5 sm:px-8 sm:py-6">
+    <div ref={scrollRef} role="region" aria-label={t("nav.settings")} className="flex-1 min-w-0 overflow-auto scroll-fade px-3 py-5 sm:px-8 sm:py-6">
       <div className="max-w-[720px] mx-auto">
-        <div className="text-lg font-bold tracking-tight text-slate-100 mb-1.5">Settings</div>
+        <div className="text-lg font-bold tracking-tight text-slate-100 mb-1.5">{t("nav.settings")}</div>
         <div className="text-[13px] text-slate-500 mb-5">
-          MCP server, browser startup, archives and build info. Configuration is stored locally.
-          Chromix SDK downloads and optional GeoIP lookups follow your SDK settings.
+          {t("settings.intro")}
         </div>
 
         {settingsError && <p role="alert" className="text-[12px] text-red-300 mb-3 break-words">{settingsError}</p>}
 
         <Row
+          icon={<Languages size={16} strokeWidth={1.5} />}
+          title={t("settings.language.title")}
+          desc={t("settings.language.desc")}
+        >
+          <div className="flex flex-wrap gap-2" role="group" aria-label={t("settings.language.label")}>
+            {languageOptions.map((option) => {
+              const selected = language === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  lang={option.value}
+                  aria-pressed={selected}
+                  disabled={languageSaving}
+                  onClick={() => void changeLanguage(option.value)}
+                  className="px-3 py-[7px] text-[12px] rounded-[9px] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{
+                    boxShadow: selected
+                      ? "inset 0 0 0 1px var(--ring)"
+                      : "inset 0 0 0 1px rgba(255,255,255,0.07)",
+                    background: selected ? "var(--accent)" : "rgba(255,255,255,0.025)",
+                  }}
+                >
+                  {t(option.labelKey)}
+                </button>
+              );
+            })}
+            {languageSaving && (
+              <span className="text-[12px] text-slate-500 self-center">
+                {t("settings.language.saving")}
+              </span>
+            )}
+          </div>
+          {languageError && (
+            <p role="alert" className="text-[12px] text-red-300 mt-2 break-words">{languageError}</p>
+          )}
+        </Row>
+
+        <Row
           icon={<Zap size={16} strokeWidth={1.5} />}
-          title="MCP server"
-          desc="Local HTTP transport that Cursor / Claude Desktop / Cline / any MCP client connects to. Requires the auth token below. The MCP tab has ready-to-paste client configs."
+          title={t("settings.mcp.title")}
+          desc={t("settings.mcp.desc")}
         >
           <div className="flex gap-2 items-center flex-wrap">
             <Pill kind={info?.mcpHttpUrl ? "running" : "idle"} dot={!!info?.mcpHttpUrl}>
-              {info?.mcpHttpUrl ? `running on :${settings.mcpHttpPort}` : "off"}
+              {info?.mcpHttpUrl
+                ? t("settings.mcp.runningOn", { port: settings.mcpHttpPort })
+                : t("settings.mcp.off")}
             </Pill>
 
             {info?.mcpHttpUrl && (
@@ -134,7 +204,7 @@ export function Settings({ onImport }: Props): JSX.Element {
                   type="button"
                   onClick={copyMcpUrl}
                   className="text-[var(--accent-foreground)] hover:opacity-80 transition-colors"
-                  aria-label="Copy URL"
+                  aria-label={t("settings.mcp.copyUrlAria")}
                 >
                   {copied ? <Check size={13} /> : <Copy size={13} />}
                 </button>
@@ -145,9 +215,7 @@ export function Settings({ onImport }: Props): JSX.Element {
           {info?.mcpAuthToken && (
             <div className="mt-2">
               <div className="text-[11px] text-slate-500 mb-1">
-                Auth token — required. Send as{" "}
-                <span className="mono text-slate-400">Authorization: Bearer &lt;token&gt;</span>. Keep
-                it secret.
+                {t("settings.mcp.tokenHint")}
               </div>
               <div
                 className="flex items-center gap-2"
@@ -165,7 +233,7 @@ export function Settings({ onImport }: Props): JSX.Element {
                   type="button"
                   onClick={() => setTokenShown((v) => !v)}
                   className="text-slate-400 hover:text-slate-200 transition-colors"
-                  aria-label={tokenShown ? "Hide token" : "Reveal token"}
+                  aria-label={tokenShown ? t("settings.mcp.hideToken") : t("settings.mcp.revealToken")}
                 >
                   {tokenShown ? <EyeOff size={13} /> : <Eye size={13} />}
                 </button>
@@ -173,7 +241,7 @@ export function Settings({ onImport }: Props): JSX.Element {
                   type="button"
                   onClick={copyMcpToken}
                   className="text-[var(--accent-foreground)] hover:opacity-80 transition-colors"
-                  aria-label="Copy token"
+                  aria-label={t("settings.mcp.copyTokenAria")}
                 >
                   {tokenCopied ? <Check size={13} /> : <Copy size={13} />}
                 </button>
@@ -188,14 +256,14 @@ export function Settings({ onImport }: Props): JSX.Element {
               onChange={(e) => void patch({ mcpHttpEnabled: e.target.checked })}
               className="w-3.5 h-3.5 rounded accent-[var(--ring)]"
             />
-            Auto-start MCP HTTP transport on app launch
+            {t("settings.mcp.autostart")}
           </label>
         </Row>
 
         <Row
           icon={<Chrome size={16} strokeWidth={1.5} />}
-          title="Browser engine"
-          desc="Global startup setting. Restart the app to apply; switching engines keeps each engine’s saved configuration."
+          title={t("settings.engine.title")}
+          desc={t("settings.engine.desc")}
         >
           <div className="grid gap-2 sm:grid-cols-2">
             {engineOptions.map((option) => {
@@ -216,10 +284,10 @@ export function Settings({ onImport }: Props): JSX.Element {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[13px] font-medium text-slate-100">{option.label}</span>
-                    {selected && <Pill kind="running">selected</Pill>}
+                    {selected && <Pill kind="running">{t("settings.engine.selected")}</Pill>}
                   </div>
                   <div className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    {option.description}
+                    {t(option.descKey)}
                   </div>
                 </button>
               );
@@ -230,8 +298,8 @@ export function Settings({ onImport }: Props): JSX.Element {
         {settings.browserEngine === "chromix" && (
           <Row
             icon={<Chrome size={16} strokeWidth={1.5} />}
-            title="Chromix SDK configuration"
-            desc="Full SDK JSON, Node.js runtime and environment overrides. Changes apply after the next app restart."
+            title={t("settings.chromix.title")}
+            desc={t("settings.chromix.desc")}
           >
             <ChromixSettingsEditor
               value={settings.chromix}
@@ -246,18 +314,18 @@ export function Settings({ onImport }: Props): JSX.Element {
 
         <Row
           icon={<FileSearch size={16} strokeWidth={1.5} />}
-          title="Browser binary"
+          title={t("settings.binary.title")}
           desc={settings.browserEngine === "chromix"
-            ? "Use a matching Chromix executable. With no custom path, binary resolution and downloads are handled by the Chromix SDK, not the CloakBrowser / Chrome for Testing downloader. Restart the app to apply."
-            : "Point Cloaksession at your own Chromium / CloakBrowser executable instead of auto-downloading. Restart the app to apply."}
+            ? t("settings.binary.descChromix")
+            : t("settings.binary.descDefault")}
         >
           <div className="flex flex-wrap items-center gap-2">
             <input
-              aria-label="Browser binary path"
+              aria-label={t("settings.binary.pathAria")}
               type="text"
               value={settings.browserBinaryPath ?? ""}
               onChange={(e) => void patch({ browserBinaryPath: e.target.value })}
-              placeholder={settings.browserEngine === "chromix" ? "Default (Chromix SDK resolution)" : "Default (auto-download)"}
+              placeholder={settings.browserEngine === "chromix" ? t("settings.binary.phChromix") : t("settings.binary.phDefault")}
               className="flex-1 basis-[180px] min-w-0 h-8 px-2.5 text-[12px] text-slate-200 rounded-lg bg-white/[0.03] outline-none"
               style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)" }}
             />
@@ -269,7 +337,7 @@ export function Settings({ onImport }: Props): JSX.Element {
                 if (p) await patch({ browserBinaryPath: p });
               }}
             >
-              Browse…
+              {t("settings.binary.browse")}
             </button>
             {settings.browserBinaryPath && (
               <button
@@ -277,7 +345,7 @@ export function Settings({ onImport }: Props): JSX.Element {
                 className="btn-ghost px-2.5 h-8 text-[12px] rounded-[9px]"
                 onClick={() => void patch({ browserBinaryPath: "" })}
               >
-                Reset
+                {t("settings.binary.reset")}
               </button>
             )}
           </div>
@@ -289,20 +357,20 @@ export function Settings({ onImport }: Props): JSX.Element {
               className="w-3.5 h-3.5 rounded accent-[var(--ring)]"
             />
             {settings.browserEngine === "chromix"
-              ? "Skip Chromix SDK auto-download (use a local or SDK-cached binary)"
-              : "Skip auto-download (use cached binary or the custom path above)"}
+              ? t("settings.binary.skipDownload")
+              : t("settings.binary.skipDownloadLegacy")}
           </label>
           <div className="text-[11px] text-slate-600 mt-2 leading-relaxed">
             {settings.browserEngine === "chromix"
-              ? "For offline Chromix launches, use an installed SDK cache entry, a custom binary path or CLOAKBROWSER_BINARY_PATH in Environment JSON. Launch fails if no local binary is available. The SDK’s cache and download settings are separate from the legacy engines."
-              : "When on, Cloaksession never fetches a browser runtime. Launch fails with a clear error if no binary is available. Pair with a custom path for fully offline setups."}
+              ? t("settings.binary.offlineNote")
+              : t("settings.binary.offlineNoteLegacy")}
           </div>
         </Row>
 
         <Row
           icon={<Boxes size={16} strokeWidth={1.5} />}
-          title="Archives"
-          desc=".mzar files are encrypted bundles of profiles — cookies, login state, fingerprints, notes — protected with a passphrase you set at export time."
+          title={t("settings.archives.title")}
+          desc={t("settings.archives.desc")}
         >
           <div className="flex flex-wrap gap-2">
             <button
@@ -310,7 +378,7 @@ export function Settings({ onImport }: Props): JSX.Element {
               className="btn-secondary px-3 py-[7px] text-[12px] rounded-[9px]"
               onClick={onImport}
             >
-              Import .mzar archive
+              {t("settings.archives.import")}
             </button>
             <a
               href="https://github.com/multizenteam/multizen-browser#archives"
@@ -318,18 +386,18 @@ export function Settings({ onImport }: Props): JSX.Element {
               rel="noopener"
               className="btn-ghost px-3 py-[7px] text-[12px] rounded-[9px]"
             >
-              Read archive format docs
+              {t("settings.archives.readDocs")}
             </a>
           </div>
         </Row>
 
         <Row
           icon={<DownloadCloud size={16} strokeWidth={1.5} />}
-          title="Updates"
+          title={t("settings.updates.title")}
           desc={
             info?.platform === "darwin"
-              ? "Auto-install isn't available on macOS yet — we'll notify you in-app to download the new version."
-              : "Cloaksession checks for updates in the background and installs them on restart."
+              ? t("settings.updates.descMacos")
+              : t("settings.updates.descDefault")
           }
         >
           <div className="flex items-center gap-2.5 flex-wrap">
@@ -343,12 +411,16 @@ export function Settings({ onImport }: Props): JSX.Element {
                 size={12}
                 className={updateStatus?.kind === "checking" ? "animate-spin" : ""}
               />
-              Check for updates
+              {t("settings.updates.check")}
             </button>
-            <span className="text-[12px] text-slate-400">{updateLabel(updateStatus)}</span>
+            <span className="text-[12px] text-slate-400">{updateLabel(t, updateStatus)}</span>
           </div>
           <div className="text-[11px] text-slate-600 mt-2">
-            Last checked: {lastChecked ? relativeTime(new Date(lastChecked).toISOString()) : "never"}
+            {t("settings.updates.lastChecked", {
+              time: lastChecked
+                ? relativeTime(new Date(lastChecked).toISOString())
+                : t("settings.updates.never"),
+            })}
           </div>
           <label className="flex items-center gap-2.5 mt-3 text-[12px] text-slate-400 cursor-pointer">
             <input
@@ -357,14 +429,14 @@ export function Settings({ onImport }: Props): JSX.Element {
               onChange={(e) => void patch({ autoUpdate: e.target.checked })}
               className="w-3.5 h-3.5 rounded accent-[var(--ring)]"
             />
-            Automatically check for updates
+            {t("settings.updates.autoCheck")}
           </label>
         </Row>
 
         <Row
           icon={<ShieldCheck size={16} strokeWidth={1.5} />}
-          title="Anonymous usage"
-          desc="Off by default. Help gauge how many people run Cloaksession."
+          title={t("settings.telemetry.title")}
+          desc={t("settings.telemetry.desc")}
         >
           <label className="flex items-center gap-2.5 text-[12px] text-slate-400 cursor-pointer">
             <input
@@ -373,20 +445,19 @@ export function Settings({ onImport }: Props): JSX.Element {
               onChange={(e) => void patch({ usageReporting: e.target.checked })}
               className="w-3.5 h-3.5 rounded accent-[var(--ring)]"
             />
-            Send an anonymous daily heartbeat
+            {t("settings.telemetry.heartbeat")}
           </label>
           <div className="text-[11px] text-slate-600 mt-2 leading-relaxed">
-            When on, sends once a day: app version, OS family, and a random
-            single-use token — <b>no</b> account, <b>no</b> persistent ID, and your IP is
-            never stored (a coarse country is derived server-side then discarded). No
-            profiles, proxies, or browsing are ever included. Set{" "}
-            <code className="text-slate-500">MULTIZEN_NO_TELEMETRY=1</code> to force it off.
+            {t("settings.telemetry.heartbeatDesc")}
           </div>
         </Row>
 
-        <Row icon={<Sparkles size={16} strokeWidth={1.5} />} title="About" desc="">
+        <Row icon={<Sparkles size={16} strokeWidth={1.5} />} title={t("settings.about.title")} desc="">
           <div className="mono text-[12px] text-slate-400 leading-relaxed">
-            Cloaksession v{info?.appVersion ?? "0.0.0"} · {info?.platform ?? "—"} · Tauri 2.x
+            {t("settings.about.version", {
+              version: info?.appVersion ?? "0.0.0",
+              platform: info?.platform ?? "—",
+            })}
           </div>
         </Row>
       </div>
@@ -394,42 +465,47 @@ export function Settings({ onImport }: Props): JSX.Element {
   );
 }
 
+const languageOptions: Array<{ value: AppLanguage; labelKey: "settings.language.option.zhCN" | "settings.language.option.en" }> = [
+  { value: "zh-CN", labelKey: "settings.language.option.zhCN" },
+  { value: "en", labelKey: "settings.language.option.en" },
+];
+
 const engineOptions: Array<{
   value: AppSettings["browserEngine"];
   label: string;
-  description: string;
+  descKey: "settings.engine.cloakbrowserDesc" | "settings.engine.chromixDesc" | "settings.engine.cftDesc";
 }> = [
   {
     value: "cloakbrowser",
     label: "CloakBrowser",
-    description: "Source-patched Chromium from CloakHQ releases. Primary runtime.",
+    descKey: "settings.engine.cloakbrowserDesc",
   },
   {
     value: "chromix",
     label: "Chromix",
-    description: "Chromix Node SDK with full JSON options and environment configuration.",
+    descKey: "settings.engine.chromixDesc",
   },
   {
     value: "cft",
     label: "Chrome for Testing",
-    description: "Compatibility fallback using Google's official automation build.",
+    descKey: "settings.engine.cftDesc",
   },
 ];
 
-function updateLabel(status: UpdateStatus | null): string {
+function updateLabel(t: Translator, status: UpdateStatus | null): string {
   switch (status?.kind) {
     case "checking":
-      return "Checking…";
+      return t("update.status.checking");
     case "up-to-date":
-      return "You're on the latest version";
+      return t("update.status.upToDate");
     case "available":
-      return `v${status.version} available`;
+      return t("update.status.available", { version: status.version });
     case "downloading":
-      return `Downloading v${status.version}… ${status.percent}%`;
+      return t("update.status.downloading", { version: status.version, percent: status.percent });
     case "ready":
-      return `v${status.version} ready — restart to update`;
+      return t("update.status.ready", { version: status.version });
     case "error":
-      return `Check failed: ${status.message}`;
+      return t("update.status.error", { message: status.message });
     default:
       return "";
   }

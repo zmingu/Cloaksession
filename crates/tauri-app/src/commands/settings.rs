@@ -6,8 +6,13 @@
 //! non-null fields from the patch, and writes the result back. This
 //! prevents toggling one field from resetting others (e.g. flipping
 //! `autoUpdate` must not clear `browserBinaryPath`).
+//!
+//! `language` accepts only the known wire values (`zh-CN`, `en`); an
+//! explicit unknown or wrong-typed value rejects the whole update.
+//! Omitting `language` (or sending null) keeps the stored value, so old
+//! clients keep working.
 
-use multizen_core::AppSettings;
+use multizen_core::{AppLanguage, AppSettings};
 use tauri::State;
 
 use crate::AppState;
@@ -27,6 +32,16 @@ pub async fn settings_update(
 ) -> Result<AppSettings, String> {
     let mut store = state.settings.lock().await;
     let current = store.load().map_err(|e| e.to_string())?;
+
+    // Strict explicit language update: validate against the single source of
+    // truth (`AppLanguage`) before merging, so the rejection error names the
+    // offending value instead of surfacing a generic struct error.
+    if let Some(lang) = patch.get("language") {
+        if !lang.is_null() {
+            serde_json::from_value::<AppLanguage>(lang.clone())
+                .map_err(|_| format!("unsupported language: {lang}"))?;
+        }
+    }
 
     // Merge: start from current settings as JSON, override with non-null
     // fields from the patch, then deserialize back to AppSettings.

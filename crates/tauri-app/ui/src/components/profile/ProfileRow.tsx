@@ -16,6 +16,7 @@ import { cn } from "../../lib/cn";
 import { profileEmoji } from "../../lib/profileEmoji";
 import { emojiTint } from "../../lib/emojiTint";
 import { useProxyHealth } from "../../lib/proxyHealth";
+import { useT } from "../../i18n/LanguageProvider";
 import type { TileData, TileState } from "./ProfileTile";
 import { KuaishouIdentitySummary } from "./KuaishouIdentity";
 import { PROFILE_TABLE_GRID_TEMPLATE } from "./ProfileTable";
@@ -242,12 +243,13 @@ function PillForState({ profile }: { profile: TileData }): JSX.Element {
  * instead of opening the row's Edit.
  */
 function RowProxyHealth({ profile }: { profile: TileData }): JSX.Element {
+  const t = useT();
   const { health, recheck } = useProxyHealth(profile.id, profile.proxy, profile.proxyCountry);
 
   if (health.status === "direct") {
     return (
       <div className="flex items-center gap-1.5 mono text-[11px] text-slate-600 min-w-0">
-        <span className="truncate">direct</span>
+        <span className="truncate">{t("proxy.direct")}</span>
       </div>
     );
   }
@@ -256,15 +258,15 @@ function RowProxyHealth({ profile }: { profile: TileData }): JSX.Element {
   const isError = health.status === "error";
   const label =
     health.status === "ok"
-      ? (health.country ?? countryNameFromCc(cc) ?? "connected")
+      ? (health.country ?? countryNameFromCc(cc) ?? t("proxy.connected"))
       : isError
-        ? "unreachable"
-        : (countryNameFromCc(cc) ?? "checking…");
+        ? t("proxy.unreachable")
+        : (countryNameFromCc(cc) ?? t("proxy.checking"));
   const title = isError
-    ? `${health.error} — click to retry`
+    ? t("proxy.healthRetry", { error: health.error })
     : health.status === "ok"
-      ? `${label}${cc ? ` · ${cc.toUpperCase()}` : ""} — click to re-check`
-      : "checking proxy…";
+      ? t("proxy.healthRecheck", { label: `${label}${cc ? ` · ${cc.toUpperCase()}` : ""}` })
+      : t("proxy.checking");
 
   return (
     <button

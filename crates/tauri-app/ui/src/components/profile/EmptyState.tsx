@@ -1,12 +1,14 @@
 import type { JSX } from "react";
 import { Boxes } from "lucide-react";
 import { Kbd } from "../atoms";
+import { useT } from "../../i18n/LanguageProvider";
 
 interface Props {
   onCreate: () => void;
 }
 
 export function ProfilesEmptyState({ onCreate }: Props): JSX.Element {
+  const t = useT();
   return (
     <div className="flex-1 flex items-center justify-center" style={{ padding: 48 }}>
       <div
@@ -33,9 +35,9 @@ export function ProfilesEmptyState({ onCreate }: Props): JSX.Element {
         >
           <Boxes size={22} strokeWidth={1.5} />
         </div>
-        <div className="text-[14px] font-semibold text-slate-100 mt-3.5">No profiles yet</div>
+        <div className="text-[14px] font-semibold text-slate-100 mt-3.5">{t("profile.empty.title")}</div>
         <div className="text-[12px] text-slate-500 mt-1.5 leading-relaxed">
-          Each profile is its own browser — cookies, login, fingerprint, proxy. Create one to get started.
+          {t("profile.empty.body")}
         </div>
         <div className="flex items-center justify-center gap-2 mt-4">
           <button
@@ -43,7 +45,7 @@ export function ProfilesEmptyState({ onCreate }: Props): JSX.Element {
             onClick={onCreate}
             className="btn-brand text-[12px] px-3.5 py-2 rounded-[10px]"
           >
-            New profile
+            {t("profile.new.title")}
           </button>
           <Kbd>⌘ N</Kbd>
         </div>

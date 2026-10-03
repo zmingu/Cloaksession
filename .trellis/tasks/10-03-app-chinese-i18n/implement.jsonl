@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/settings-store/backend/index.md", "reason": "Settings store owns AppSettings/RawSettings; language field must follow its persistence/normalization contract"}
+{"file": ".trellis/spec/tauri-app/backend/index.md", "reason": "Tauri IPC, settings integration, dialog/update native prompts in scope"}
+{"file": ".trellis/spec/multizen-core/backend/index.md", "reason": "Shared AppSettings/Error model owner; language enum and Display boundaries"}
+{"file": ".trellis/tasks/10-03-app-chinese-i18n/research/localization-audit.md", "reason": "String inventory, file:line anchors, in-scope vs out-of-scope exceptions"}

@@ -9,6 +9,18 @@ pub enum BrowserEngine {
     Chromix,
 }
 
+/// Application UI language. Wire values are exactly `zh-CN` or `en`;
+/// there is no system-follow mode. Isolated from `Profile` fingerprint
+/// locale: this only selects the management UI language.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum AppLanguage {
+    #[default]
+    #[serde(rename = "zh-CN")]
+    ZhCn,
+    #[serde(rename = "en")]
+    En,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ChromixSettings {
@@ -42,6 +54,9 @@ impl Default for ChromixSettings {
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
     pub theme: String,
+    /// Missing in pre-i18n configs; old files deserialize to zh-CN.
+    #[serde(default)]
+    pub language: AppLanguage,
     pub mcp_http_enabled: bool,
     pub mcp_http_port: u16,
     pub browser_engine: BrowserEngine,
@@ -58,6 +73,7 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             theme: "dark".into(),
+            language: AppLanguage::default(),
             mcp_http_enabled: true,
             mcp_http_port: 7777,
             browser_engine: BrowserEngine::Cloakbrowser,
