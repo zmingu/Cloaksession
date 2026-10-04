@@ -4,9 +4,11 @@
 
 `crates/multizen-core/src/profile.rs` owns `Profile`, `ProfileSummary`, fingerprint/proxy/extension types, create/update inputs, and `LaunchedProfile`. `crates/multizen-core/src/settings.rs` owns `AppSettings`, `BrowserEngine`, and `ChromixSettings`. Keep persistence and runtime policy in their consumer crates.
 
-- Public serde structs use camelCase; `ProxyConfig.proxy_type` is explicitly `type`. `DeviceFamily` uses explicit kebab-case spellings; `BrowserEngine` serializes as `cft`, `cloakbrowser`, or `chromix`.
+- Public serde structs use camelCase; `ProxyConfig.proxy_type` is explicitly `type`. `DeviceFamily` uses explicit kebab-case spellings.
+- **`BrowserEngine` is a single-variant enum**: `Chromix` (`#[default]`). The former `Cft`/`Cloakbrowser` variants were removed (see [engine decision](../../browser-launcher/backend/lifecycle.md#architecture-decision-chromix-is-the-only-engine)). The enum and the `browser_engine` field are **kept for compatibility** (stable `settings.json` field shape and unchanged function signatures); deserialization is `rename_all = "lowercase"` so the only valid wire value is `"chromix"`. Legacy strings `"cft"`/`"cloakbrowser"` are only accepted by the tolerant raw loader (normalized to Chromix), not by this typed enum.
+- `FingerprintConfig` and its `Profile.fingerprint` field are **retained for wire/serde compatibility only** — the Chromix launch path does **not** consume them (no flag injection, no CDP bootstrap). See [fingerprint ownership](../../browser-launcher/backend/chromix.md#fingerprint-ownership-host-does-not-inject-flags).
 - `ProfileId` is a `String`, not a validated UUID wrapper. `ProfileManager::create` supplies a UUID; imported IDs require validation at the importing boundary.
-- `FingerprintConfig.storage_quota` is bytes end-to-end (not GB); screen dimensions are integer sizes, `dpr` is `f64`, `device_memory` is the GB-like persona value later clamped for CloakBrowser's API. See `crates/browser-launcher/src/args.rs::build_cloak_fingerprint_args` and `crates/browser-launcher/tests/args.rs::cloak_storage_quota_preserves_custom_values_in_bytes`.
+- `FingerprintConfig.storage_quota` is bytes end-to-end (not GB); screen dimensions are integer sizes, `dpr` is `f64`, `device_memory` is the GB-like persona value (the former CloakBrowser API clamp no longer applies). The `build_cloak_fingerprint_args` builder that used to consume these was deleted; the fields survive as serialized profile data.
 - Model timestamps are strings; `crates/profile-manager/src/manager.rs` and `crates/browser-launcher/src/driver.rs` produce UTC RFC3339. Do not substitute Unix numbers on the wire.
 - UI types in `crates/tauri-app/ui/src/types.ts` are manually maintained, not generated. For example, Rust `ProfileSummary` includes `chromixOptions` while the current TS summary does not. Check actual command/event adapters rather than trusting that file's historical comments.
 
@@ -32,6 +34,8 @@ config
 
 This is a **shallow top-level override** of global options by profile options. Arrays and nested objects replace; environment and node path remain global. Evidence: `crates/settings-store/tests/chromix.rs::profile_options_override_global_values_without_merging_arrays_or_objects` and `crates/profile-manager/tests/manager.rs::chromix_options_update_replaces_preserves_omitted_and_clears_with_empty_object`.
 
+`chromixOptions` is also where the app requests SDK-side identity alignment via **`geoip`** (the shop-account wizard adds it when a proxy is entered so the SDK aligns locale/timezone to the proxy exit region). The bridge adds **no** default `geoip`; it is opt-in through these options. `geoip` is an opaque SDK key here — the host does not interpret it.
+
 ## Business account metadata (independent wire contract)
 
 `business.rs` owns BusinessAccountKind (kuaishou-shop, kuaishou-live, kuaishou-mate, kuaishou-sub, jinniu), BusinessProfileScope (jinniu/kuaishou), BusinessAccount, BusinessProfileState and SaveBusinessAccountInput. All struct fields are camelCase; account/state Options serialize explicit null (not missing). Input id defaults to None for omitted/null. Timestamps remain RFC3339 strings. Neither Profile nor ProfileSummary gains fields, and records have no credentials/login status. Persistence validates limits/uniqueness/scope; launcher validates runtime and directories. See [storage contract](../../profile-manager/backend/business-accounts.md).
@@ -42,7 +46,7 @@ This is a **shallow top-level override** of global options by profile options. A
 
 ## Defaults and errors
 
-- `AppSettings::default`: dark theme, MCP enabled on 7777, Cloakbrowser, no binary override, download allowed, auto-update false, usage reporting false. `ChromixSettings::default`: node executable `node`, empty options and environment. Only selected new fields have serde defaults; `AppSettings` itself is not a blanket missing-field merge.
+- `AppSettings::default`: dark theme, MCP enabled on 7777, **Chromix** (the only engine), no binary override, download allowed, auto-update false, usage reporting false. `ChromixSettings::default`: node executable `node`, empty options and environment. Only selected new fields have serde defaults; `AppSettings` itself is not a blanket missing-field merge.
 - File-loading defaults differ: `SettingsStore::load` sets missing `autoUpdate` to **true**. See [settings guidance](../../settings-store/backend/persistence.md); do not infer persisted defaults solely from `AppSettings::default`.
 - `crates/multizen-core/src/error.rs::MultizenError` wraps rusqlite, IO, and serde errors with `#[from]`, plus NotFound, AlreadyExists, Config, Launch, Cdp, and Mcp strings. Use its `Result<T>` alias internally; conversion to IPC strings or MCP envelopes belongs to adapters. `McpToolError` existing as a type does not mean HTTP uses it.
 - This crate installs no logging subscriber or persistence layer. Do not add a parallel model or error hierarchy to solve a consumer-only concern.

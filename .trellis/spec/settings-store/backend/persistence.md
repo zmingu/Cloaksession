@@ -19,7 +19,7 @@ Source: `crates/settings-store/src/defaults.rs::SettingsStore::update`. Serializ
 
 ## Load-time compatibility
 
-- Missing/unrecognized engine strings normalize to `BrowserEngine::default()` (Cloakbrowser); known strings are cft/cloakbrowser/chromix.
+- **Chromix is the only engine.** The raw loader reads `browserEngine` as `Option<String>` and **always** yields `BrowserEngine::Chromix`: any present string (historical `"cloakbrowser"`/`"cft"`, an unknown value) normalizes to Chromix, and a missing field falls back to `BrowserEngine::default()` (also Chromix). This is tolerant migration so old `settings.json` files keep loading; there is no live support for those engines. Evidence: `crates/settings-store/tests/store.rs::load_normalizes_invalid_browser_engine` and `load_normalizes_legacy_engine_values_to_chromix`.
 - A blank/whitespace-only binary path becomes `None`. Nonblank paths are kept as supplied, not trimmed or validated as executables.
 - Missing Chromix configuration becomes `ChromixSettings::default()`; its own serde defaults supply `node`, empty options, and empty string-valued environment map. Opaque option values survive intact.
 - **Default mismatch:** `AppSettings::default().auto_update` is false, but `load` uses `raw.auto_update.unwrap_or(true)`. Missing/corrupt files therefore load auto-update true. Do not describe these two defaults as identical.

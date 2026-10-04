@@ -6,8 +6,8 @@
 - `crates/cdp-driver/src/tools.rs`: legacy active-page tool wrappers and consuming `close`.
 - `crates/cdp-driver/src/bound_page.rs`: borrowed fixed-target API; `page_ops.rs`: shared page-scoped implementation with explicit Legacy/Bound compatibility policy.
 - `crates/cdp-driver/src/task_page.rs`: cooperative session/target leases, cancellation, typed operation deadlines, selector waits. See [TaskPage control contract](./task-control.md); ordinary BoundPage remains nonexclusive.
-- `crates/cdp-driver/src/bootstrap.rs` / `crates/cdp-driver/src/scripts.rs`: engine-aware script installation and generated JS.
-- `crates/cdp-driver/src/safe_cdp.rs`: local refcounts and CloakBrowser risky-domain policy, **not full enforcement**.
+- `crates/cdp-driver/src/bootstrap.rs` / `crates/cdp-driver/src/scripts.rs`: bootstrap entry point and generated JS. **For Chromix (the only engine) `bootstrap_targets` is a no-op** — the SDK bridge owns identity/context emulation, so nothing is installed at CDP level. `scripts.rs` still contains the generated JS builders (fingerprint preload, WebRTC block/spoof) but they are no longer invoked by the launch path; treat them as retained code, not live behaviour.
+- `crates/cdp-driver/src/safe_cdp.rs`: local refcounts and a now-unconditional domain policy, **not full enforcement** (see below).
 
 `BrowserSession::connect` expects an HTTP CDP base endpoint, fetches `/json/version` (20 attempts separated by 500 ms), obtains `webSocketDebuggerUrl`, attaches with `ignore_invalid_messages`, and spawns the handler stream pump. This is not a hard ten-second deadline: HTTP requests have no explicit per-attempt timeout here. Connection errors become contextual `MultizenError::Cdp` values; handler stream items/errors are currently ignored.
 
@@ -109,14 +109,10 @@ page.extract().await?;
 
 `BrowserSession::cdp_send` builds a `RawCdpCommand` whose serialization is just params (absent params become JSON null). It first requires an active page even for browser-level methods, rejects an explicit session ID that differs from that page's session, routes four Target operations through the browser, and routes everything else through the page. It does **not** enforce an allowlist despite its doc comment. MCP opt-in/denylist/URL checks belong upstream; direct internal callers bypass them. `crates/tauri-app/src/driver.rs` delegates arbitrary method strings here and ignores its `_safe` argument.
 
-`safe_enable_check` combines `SafeEnableRefcount::should_enable` with `cloak_allows_domain`; `Runtime`/`Network` are rejected by policy for CloakBrowser but allowed for CFT/Chromix. The tools only log when the gate would block. chromiumoxide's automatic enables are not intercepted, and paired disable bookkeeping does not undo a browser crash. Tests in `crates/cdp-driver/tests/safe_cdp.rs` prove only the local policy/refcount functions.
+`safe_enable_check` combines `SafeEnableRefcount::should_enable` with `cloak_allows_domain`. **Since Chromix is the only engine, `cloak_allows_domain` is now unconditionally `true`** — the old CloakBrowser rule that rejected `Runtime`/`Network` is gone (the patched CloakBrowser build tripped a `DCHECK` there; Chromix has no such restriction). The function name is kept as a named API so call sites stay explicit. The tools only log when the gate would block. chromiumoxide's automatic enables are not intercepted, and paired disable bookkeeping does not undo a browser crash. Tests in `crates/cdp-driver/tests/safe_cdp.rs` prove only the local policy/refcount functions.
 
-## Bootstrap engine split
+## Bootstrap: no CDP-level engine split (Chromix owns identity)
 
-`bootstrap_targets` immediately returns for Chromix (SDK owns identity). For existing pages:
+`bootstrap_targets` **immediately returns `Ok(())` for Chromix** (the only engine) — the SDK bridge owns identity and context emulation, so there is no CDP bootstrap to apply. The former CFT/CloakBrowser branches (WebRTC spoof, fingerprint preload, UA override, locale evaluate) were **removed with those engines**; the function signature (`session`, `fp`, `engine`, `webrtc_spoof_ip`) is kept so callers did not have to change, but every parameter is ignored. `crates/tauri-app/src/driver.rs` still calls it after attach (with `webrtc_spoof_ip = None`); it is a no-op for Chromix. `crates/cdp-driver/src/scripts.rs` retains the generated-JS builders but nothing in the launch path invokes them.
 
-- CFT registers fingerprint preload on future documents **of those pages**, evaluates it immediately, and applies UA/Accept-Language/platform. Structured client-hint metadata is not supplied.
-- Optional WebRTC spoofing is evaluated only for CFT when an IP is supplied. The block-script branch under that condition is unreachable; Tauri currently passes None. Do not describe this as universal WebRTC protection.
-- CloakBrowser skips full emulation and relies on launch flags, but evaluates document language. Language/WebRTC evaluation failures are ignored; CFT preload/UA failures propagate.
-
-There is no target-created listener to bootstrap every future tab. `crates/cdp-driver/tests/scripts.rs` checks text-generation properties; real browser effects require separately authorized runtime testing. `poll_companion_signal` evaluates matching pages, substring-filters URLs, reads/clears the DOM attribute and skips evaluation failures; it is not an authenticated browser-origin channel.
+There is no target-created listener to bootstrap every future tab. `crates/cdp-driver/tests/scripts.rs` checks text-generation properties of the retained builders; real browser effects require separately authorized runtime testing. `poll_companion_signal` evaluates matching pages, substring-filters URLs, reads/clears the DOM attribute and skips evaluation failures; it is not an authenticated browser-origin channel.

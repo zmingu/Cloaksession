@@ -1,5 +1,16 @@
 # Chromix Sidecar Contract
 
+## Chromix is the only engine
+
+Chromix is the sole supported engine (CFT/CloakBrowser were removed — see [Engine lifecycle](./lifecycle.md#architecture-decision-chromix-is-the-only-engine)). `BrowserLauncher::launch_with_chromix` is the only launch entry; there is no engine selector and no second launch path.
+
+## Fingerprint ownership (host does NOT inject flags)
+
+Identity/anti-detection is owned **entirely by the SDK bridge**. The host no longer injects `--fingerprint-*`, `--user-agent` or `--test-type` args; `crates/browser-launcher/src/args.rs::build_spawn_args` produces only the CDP endpoint contract, and `build_cloak_fingerprint_args` was deleted.
+
+- Chromix receives its identity config through `chromixOptions` in the launch request (see below), including `geoip` when a proxy exit region should drive the locale/timezone alignment.
+- The application's `multizen_core::FingerprintConfig` (`Profile.fingerprint`) is **retained only for wire/serde compatibility** (field shape, MCP `fingerprint` input, UI catalogs). It is **not consumed by the Chromix launch path** — it is not translated to SDK options, not sent in the launch request, and not used for CDP bootstrap. Do not add code that reads `Profile.fingerprint` to derive launch behaviour for Chromix.
+
 ## Host versus SDK
 
 `crates/browser-launcher/src/chromix.rs::start` starts the configured Node executable with only the canonical `bridge.mjs` path on argv. It sends one line-delimited JSON launch request on stdin; configured environment is passed via `Command::envs`. Proxy secrets/options stay off argv. `crates/tauri-app/resources/chromix/bridge.mjs` is project-owned glue around the pinned SDK; do not document vendored SDK internals as host policy.
@@ -12,8 +23,8 @@ The request carries options, binaryPath, skipDownload, host cdpPort, default use
 
 - Allows only native mode and Playwright adapter if supplied; rejects `devicePool` through this sidecar.
 - Reserves debug port/address flags and profile-directory/user-data-dir arguments across top-level, launchOptions and contextOptions, including ignoreDefaultArgs arrays. A top-level `userDataDir` override is permitted; nested overrides are rejected.
-- Adds loopback remote-debugging flags to every effective args layer, without injecting CloakBrowser fingerprint or proxy-leak flags.
-- Defaults headless to false only if no layer sets it; adds profile proxy/extensions only if options/args have not explicitly overridden them. No default geoip is added.
+- Adds loopback remote-debugging flags to every effective args layer, without injecting any host fingerprint flags (the app's `FingerprintConfig` is never translated to args) or proxy-leak flags.
+- Defaults headless to false only if no layer sets it; adds profile proxy/extensions only if options/args have not explicitly overridden them. **No default `geoip` is added by the bridge** — the app supplies `geoip` through `chromixOptions` when it wants the SDK to align locale/timezone with the proxy exit region (the shop-account wizard does this when a proxy is entered).
 
 Hidden launches bypass the legacy argument builder. `launch_with_chromix` injects the off-screen window by merging `--window-position=-32000,-32000` into the effective `launchOptions.args`: read the existing array, **append** the switch, then write the merged `launchOptions` back. Never `insert`/replace the whole `launchOptions.args` array — that silently drops a profile's own args (the regression is covered by `crates/browser-launcher/tests/chromix.rs::hidden_launch_merges_window_position_into_existing_launch_args`, which also asserts no `--headless`). Headless is never set; the SDK keeps its `headless=false` default.
 

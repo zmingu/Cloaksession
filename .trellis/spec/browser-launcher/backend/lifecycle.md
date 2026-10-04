@@ -1,57 +1,64 @@
-# Engine Lifecycle and Legacy Launch
+# Engine Lifecycle (Chromix-only)
+
+## Architecture decision: Chromix is the only engine
+
+**This project supports exactly one browser engine: Chromix.** The former `Cft` and `Cloakbrowser` engines were deleted from the codebase; `multizen_core::BrowserEngine` is now a **single-variant** enum (`Chromix`, `#[default]`). Do not reintroduce an engine selector, a second launch path, or engine-conditional branches.
+
+Why (do not undo without re-deciding):
+- CloakBrowser's free tier allowed **1 concurrent** instance, which blocked the multi-profile/business use case.
+- The patched CloakBrowser build tripped a **CDP `DCHECK` crash** when `Runtime`/`Network` were enabled (this is what the old `CLOAK_RISKY_ENABLE_DOMAINS` policy guarded).
+- Chromix is the **open edition of the same engine**, so it keeps the anti-detect behaviour without those two constraints.
+
+The enum/field shape (`browser_engine` in `settings.json`, `AppSettings.browser_engine`, function signatures) is **kept for compatibility** even though it has one value. Legacy serialized strings `"cft"`/`"cloakbrowser"` and unknown strings are tolerated on load and normalized to `Chromix` (see [settings persistence](../../settings-store/backend/persistence.md)); this is tolerant-read compatibility, not live support for those engines.
 
 ## Ownership and data flow
 
-`crates/browser-launcher/src/driver.rs::BrowserLauncher` owns a `RunningRegistry`, monotonically allocated legacy CDP ports starting at 9222, and an `Arc<ProfileManager>`. Its `BrowserHandle` owns either a Tokio child + optional bridge, or a Chromix supervisor. `crates/browser-launcher/src/registry.rs` protects handles with an async mutex. The application keeps this launcher on one dedicated thread; an Arc does not make rusqlite's connection `Sync`.
+`crates/browser-launcher/src/driver.rs::BrowserLauncher` owns a `RunningRegistry` and an `Arc<ProfileManager>`. Its `BrowserHandle` owns a Chromix supervisor (`chromix: Option<ChromixProcess>`); there is no longer a legacy Tokio-child/bridge variant. `crates/browser-launcher/src/registry.rs` protects handles with an async mutex. The application keeps this launcher on one dedicated thread; an Arc does not make rusqlite's connection `Sync`.
 
 | Engine | Default browser data directory | Launch owner | Fingerprint policy |
 | --- | --- | --- | --- |
-| CFT | Profile `data_dir` | `launch` + `build_spawn_args` | UA argument, then CFT CDP bootstrap |
-| CloakBrowser | `data_dir/engines/cloakbrowser` | `launch` + `build_spawn_args` | Native `--fingerprint-*` flags; limited CDP bootstrap |
-| Chromix | `data_dir/engines/chromix`, overridable | `launch_with_chromix` + SDK sidecar | SDK options only; no legacy fingerprint translation |
+| Chromix | `data_dir/engines/chromix`, overridable by top-level `userDataDir` | `launch_with_chromix` + SDK sidecar | SDK `chromixOptions` only; the app's `FingerprintConfig` is **not** translated or consumed |
 
-Source: `crates/browser-launcher/src/driver.rs`, `crates/browser-launcher/src/args.rs`, `crates/browser-launcher/src/chromix.rs`, `crates/cdp-driver/src/bootstrap.rs`. Keep these paths distinct; see [Chromix contract](./chromix.md).
+The **only** public launch entry is `BrowserLauncher::launch_with_chromix(profile_id, binary_path, companion_dir, config, runtime_dir, skip_download, hidden)`; the old `launch(...)`/`build_spawn_args`-driven native path is **removed** (the `build_spawn_args` signature survives as a stub, see below). Source: `crates/browser-launcher/src/driver.rs`, `crates/browser-launcher/src/chromix.rs`, `crates/browser-launcher/src/data_dir.rs`. See [Chromix contract](./chromix.md).
 
-## Legacy launch and close
+## Launch and close
 
-`launch` rejects Chromix, reuses registered endpoint info, loads the profile, **marks opened before spawn**, chooses a port/directory, synchronizes managed UA version if detected, prepares proxy/session state, builds args, spawns, and records the handle. It returns an HTTP CDP endpoint without waiting for CDP readiness; `BrowserSession::connect` later retries. Port allocation is not a socket reservation.
+`launch_with_chromix` reuses a live registry entry, closes any stale entry for the profile, loads the profile, computes the effective data dir, starts the Node SDK sidecar, and **marks opened after ready** (if `mark_opened` fails it closes the process before returning the error). It records the `BrowserHandle`. `data_dir.rs::effective_data_dir` is called with `BrowserEngine::Chromix` (with a `debug_assert!` on that invariant) and respects a top-level nonempty `userDataDir` override.
 
-`BrowserHandle::is_alive` checks the supervisor flag only for Chromix; legacy handles return true even if the child exited. Registry reuse is not proof of OS liveness, nor atomic concurrent launch protection. `close` removes the handle, closes a Chromix process or stops a legacy bridge, and uses child kill/wait operations with two-second waits. Despite an old comment, it does not implement a verified SIGTERM-then-SIGKILL graceful sequence. `close_all` iterates stored IDs and ignores individual close errors.
+`BrowserHandle::is_alive` checks the Chromix supervisor liveness flag. Registry reuse is not proof of OS liveness, nor atomic concurrent launch protection. `close` removes the handle and closes the Chromix process (the supervisor bounds child shutdown with a platform-specific termination fallback); despite an old comment it is **not** a verified SIGTERM-then-SIGKILL graceful sequence. `close_all` iterates stored IDs and ignores individual close errors.
 
-`crates/browser-launcher/src/session_restore.rs::ensure_session_restore` writes a minimal `Default/Preferences` via a temporary sibling + rename; it **replaces**, rather than merges, existing preferences. `clean_stale_singleton_locks` removes existing lock files without PID validation. `has_restorable_session` exists but `build_spawn_args` still appends any permitted start URL unconditionally. Do not copy these limitations into stronger recovery promises.
+## Native spawn args (Chromix stub) and leftover legacy helpers
 
-## Argument and fingerprint contracts
-
-Keep string arguments as a `Vec<String>` passed to `Command::args`; don't assemble a shell command. `build_spawn_args` includes persistent user data, session restore, locale/window/DPR; CFT adds `--user-agent`/`--test-type=gpu`, CloakBrowser adds native fingerprint flags. It does not add guest/incognito. Start URL accepts http/https prefixes or exact about:blank. Legacy extension args select enabled, nonempty paths without checking directory existence (Chromix does check).
-
-`build_cloak_fingerprint_args` hashes profile seed (or ID) into a five-digit seed, clamps the device-memory API value, includes GPU/persona fields and `--fingerprint-noise=false`. Quota is **bytes** and omitted when absent or zero. Real excerpt from `crates/browser-launcher/src/args.rs`:
+`crates/browser-launcher/src/args.rs::build_spawn_args` is **kept only for signature/back-compat**. Since Chromix is the only engine, the native spawn args are the CDP endpoint contract alone — it now returns exactly:
 
 ```rust
-if let Some(q) = fp.storage_quota {
-    if q > 0 {
-        // The browser flag and persisted quota both use bytes.
-        args.push(format!("--fingerprint-storage-quota={q}"));
-    }
-}
+vec![
+    format!("--user-data-dir={browser_data_dir}"),
+    "--remote-debugging-address=127.0.0.1".into(),
+    format!("--remote-debugging-port={port}"),
+]
 ```
 
-Tests: `crates/browser-launcher/tests/args.rs` covers engine separation, custom UA, seed shape, memory clamp and quota round trips. `crates/browser-launcher/src/version.rs::detect_chromium_version` reads Windows executable metadata and returns None elsewhere; **do not execute the browser with `--version`**. `synchronize_managed_fingerprint_version` uses a UA/client-hints matching heuristic, not an explicit user-customized flag. See `crates/browser-launcher/tests/version.rs` and `crates/browser-launcher/tests/version_detect.rs` when adjusting it.
+All other parameters (`_profile`, `_engine`, `_proxy_bridge_url`, `_geo_coords`, `_companion_dir`, `_hidden`) are **ignored**. In particular there is **no** `--fingerprint-*` injection, no CFT `--user-agent`/`--test-type=gpu`, and no proxy/DNS-leak flags. `build_cloak_fingerprint_args` and the CFT-specific arg assembly were **deleted**. Regression lock: `crates/browser-launcher/tests/args.rs::chromix_args_are_only_the_cdp_endpoint_contract` and `chromix_args_ignore_hidden_and_fingerprint_inputs` (asserting no `--fingerprint*`, no `--user-agent`, no `--test-type=gpu`, no `--proxy-server`, and that hidden/fingerprint inputs do not change the vector).
+
+Now-unused legacy helpers remain in the crate but are **not** on the Chromix launch path — do not document them as live behaviour:
+- `crates/browser-launcher/src/session_restore.rs` (`ensure_session_restore` / `has_restorable_session` / `clean_stale_singleton_locks`) has no production caller after the legacy launch path was removed. It wrote a minimal `Default/Preferences` by temp-sibling + rename (**replaces**, not merges) and removed lock files without PID validation.
+- `crates/browser-launcher/src/version.rs::detect_chromium_version` (reads Windows executable metadata, returns None elsewhere; **never** execute the browser with `--version`) and `synchronize_managed_fingerprint_version` (UA/client-hints heuristic) are likewise not invoked by the Chromix path — the SDK owns identity/versioning. `crates/browser-launcher/tests/version.rs` / `version_detect.rs` still exercise them.
 
 ## Hidden (off-screen) launch
 
-`BrowserLauncher::launch(profile_id, binary_path, engine, companion_dir, hidden: bool)` and `build_spawn_args(..., hidden: bool)` take a trailing `hidden` flag. It is the supported way to capture a page (e.g. a login QR) without a browser window appearing on screen.
+`BrowserLauncher::launch_with_chromix(..., hidden: bool)` takes a trailing `hidden` flag; it is the supported way to capture a page (e.g. a login QR) without a browser window appearing on screen.
 
-- `hidden: true` appends exactly one argument, `--window-position=-32000,-32000`, to the CloakBrowser/CFT argument list. It never adds `--headless` (or `--headless=new`): the window stays headed, so the fingerprint/session is identical to a normal launch and must not diverge for anti-detection reasons.
-- `hidden` is the **last** positional parameter, so every existing caller must pass `false` explicitly; `false` reproduces the previous argument vector byte for byte (visible launches carry no `--window-position`).
-- Chromix does not go through `build_spawn_args`; it gets the equivalent off-screen window through `launchOptions` (see [Chromix contract](./chromix.md)) and likewise must not set `headless`.
+- Chromix does **not** go through `build_spawn_args`. `launch_with_chromix` injects the off-screen window by merging `--window-position=-32000,-32000` into the effective `launchOptions.args` (read the existing array, **append**, write back — see [Chromix contract](./chromix.md)). It never sets `headless`; the SDK keeps its `headless=false` default, so the session is identical to a normal launch.
+- `build_spawn_args`'s own `hidden` parameter is now ignored (the flag is handled in the SDK options layer instead).
 - Unverified ceiling: whether `--window-position=-32000,-32000` is truly invisible on a real desktop and still renders the page is a native/manual acceptance item, not proven by argument tests.
 
-Tests: `crates/browser-launcher/tests/args.rs::hidden_launch_moves_the_window_off_screen_without_headless` asserts the visible vector has no `--window-position`, the hidden vector adds exactly that switch, no `--headless` appears, and stripping the switch reproduces the visible vector.
+Tests: `crates/browser-launcher/tests/chromix.rs::hidden_launch_merges_window_position_into_existing_launch_args` (also asserts no `--headless`); `crates/browser-launcher/tests/args.rs::chromix_args_ignore_hidden_and_fingerprint_inputs`.
 
 ## Proxy and error boundaries
 
-`crates/browser-launcher/src/socks5_bridge.rs::Socks5Bridge::start` exposes a loopback no-auth SOCKS listener for legacy engines; HTTP CONNECT supports Basic credentials when both supplied. Upstream SOCKS currently negotiates no-auth only. It has simplified IPv6 formatting, fixed SOCKS reply reading, and incomplete HTTP CONNECT header draining. `stop` stops acceptance; the unused live-socket list means it does not prove all active tunnels are closed. Existing `crates/browser-launcher/tests/socks5_bridge.rs` tests greeting/error replies, not successful end-to-end tunneling.
+`crates/browser-launcher/src/socks5_bridge.rs::Socks5Bridge` is a **leftover legacy helper** (no production caller after the legacy engine removal; only its own tests exercise it). It exposed a loopback no-auth SOCKS listener; HTTP CONNECT supports Basic credentials when both supplied. Chromix handles its own proxy inside the SDK bridge (`chromixOptions`/`proxy` object) — see [Chromix contract](./chromix.md). Do not describe `Socks5Bridge` as part of the live proxy path.
 
-`crates/browser-launcher/src/proxy_geo.rs::probe_proxy_geo` contacts ipapi.co through the proxy; `parse_ipapi_response` is separately testable and returns lowercase country codes. Legacy launch treats geo/cache update failure as best effort, unlike bridge-start failure. Proxy-related flags are implementation intent, not independently verified DNS/WebRTC leak prevention.
+`crates/browser-launcher/src/proxy_geo.rs::probe_proxy_geo` contacts ipapi.co through the proxy; `parse_ipapi_response` is separately testable and returns lowercase country codes. It **is** still live: `crates/tauri-app/src/lib.rs` probes missing proxy countries at startup (6000 ms) and `crates/tauri-app/src/commands/proxy.rs` uses it on demand. Geo/cache update failure is best effort. Proxy-related flags are implementation intent, not independently verified DNS/WebRTC leak prevention.
 
 Use `MultizenError::Launch` for contextual launch failures, existing Config errors for geo parsing/request failures, and `?` for owned IO/serde operations. `tracing::debug!` records detected versions; subscriber setup belongs to Tauri. Never log proxy credentials or treat missing tests as guarantees.
