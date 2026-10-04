@@ -7,6 +7,7 @@ import { NewProfileSheet } from "./components/profile/NewProfileSheet";
 import { ProfileEditSheet } from "./components/profile/ProfileEditSheet";
 import type { Profile, ProfileGroup } from "./types";
 import { ActivityDrawer } from "./components/activity/ActivityDrawer";
+import { BusinessSection } from "./components/business/BusinessSection";
 import { McpPanel } from "./components/mcp/McpPanel";
 import { Settings } from "./components/screens/Settings";
 import { Confirm, Prompt } from "./components/screens/Confirm";
@@ -34,9 +35,12 @@ export function App(): JSX.Element {
   const [drawerOpen, setDrawerOpen] = usePersistedState<boolean>("drawerOpen", false);
 
   // Migrate the legacy "activity" section (renamed to "mcp") from localStorage
-  // so an existing install doesn't land on a blank screen.
+  // so an existing install doesn't land on a blank screen. Unknown values
+  // (e.g. from a newer build) fall back to "profiles" for the same reason.
   useEffect(() => {
     if ((section as string) === "activity") setSection("mcp");
+    else if (!["profiles", "mcp", "business", "settings"].includes(section as string))
+      setSection("profiles");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -249,6 +253,11 @@ export function App(): JSX.Element {
       if (meta && e.key === "2") {
         e.preventDefault();
         setSection("mcp");
+        return;
+      }
+      if (meta && e.key === "3") {
+        e.preventDefault();
+        setSection("business");
         return;
       }
       if (meta && e.key === ",") {
@@ -470,6 +479,8 @@ export function App(): JSX.Element {
                 />
             </>
           )}
+
+          {section === "business" && <BusinessSection profiles={profiles} />}
 
           {section === "mcp" && (
             <McpPanel
