@@ -378,3 +378,227 @@ export interface BindCreatorResult {
   ok: boolean;
   error?: string;
 }
+
+// ---------------------------------------------------------------------------
+// D-group shop (product scripts / shop helper / auto popup)
+//
+// Frontend mirrors of:
+//   crates/profile-manager/src/shop_product_script.rs
+//   crates/tauri-app/src/driver/shop_helper.rs
+//   crates/tauri-app/src/driver/auto_popup.rs
+// All Rust structs use `#[serde(rename_all = "camelCase")]` except
+// `ScriptLineAction` (kebab-case), `KnowledgeField` (kebab-case) and
+// `PopupEventKind` (kebab-case). `None` serializes as `null`.
+// ---------------------------------------------------------------------------
+
+/** 话术行动作：`ScriptLineAction` (kebab-case over IPC). */
+export type ScriptLineAction = "on-shelf" | "off-shelf" | "explain" | "cancel-explain";
+
+/** 商品话术脚本（库条目）。Rust `ShopProductScript`. */
+export interface ShopProductScript {
+  id: string;
+  name: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 脚本明细：脚本 + 按 `sortOrder` 排序的话术行。 */
+export interface ShopProductScriptDetail {
+  script: ShopProductScript;
+  lines: ShopProductScriptLine[];
+}
+
+/** 话术行：动作 + 商品 + 视频时间点 + 提前量 + 话术内容。 */
+export interface ShopProductScriptLine {
+  id: string;
+  scriptId: string;
+  sortOrder: number;
+  action: ScriptLineAction;
+  goodsId: string;
+  goodsName: string | null;
+  videoTimeSec: number;
+  leadSec: number;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 创建脚本入参。`description` 缺省 = 无描述。 */
+export interface CreateShopProductScriptInput {
+  name: string;
+  description?: string | null;
+}
+
+/**
+ * 更新脚本入参（三态 `description`）：
+ * - `undefined`（字段缺省）= 保持原值；
+ * - `null`（`Some(None)`）= 清空描述；
+ * - `string`（`Some(Some(v))`）= 设为新值（空字符串按后端规则归一为 `None`）。
+ */
+export interface UpdateShopProductScriptInput {
+  name?: string;
+  description?: string | null;
+}
+
+/** 新增话术行入参：`sortOrder` 缺省时追加到末尾。 */
+export interface AddShopProductScriptLineInput {
+  scriptId: string;
+  action: ScriptLineAction;
+  goodsId: string;
+  goodsName?: string | null;
+  videoTimeSec: number;
+  leadSec?: number;
+  content?: string;
+  sortOrder?: number | null;
+}
+
+/**
+ * 更新话术行入参：缺省字段保持原值。
+ * `goodsName` 三态：`undefined` = 保持；`null`（`Some(None)`）= 清空；
+ * `string` = 设为新值（空字符串归一为 `None`）。
+ */
+export interface UpdateShopProductScriptLineInput {
+  action?: ScriptLineAction;
+  goodsId?: string;
+  goodsName?: string | null;
+  videoTimeSec?: number;
+  leadSec?: number;
+  content?: string;
+}
+
+/** 商品 Tab：小黄车内商品 / 待上车商品。 */
+export type HelperGoodTab = "inCart" | "toAdd";
+
+/** 商品状态（Rust `HelperGoodStatus`, camelCase）。 */
+export type HelperGoodStatus = "available" | "onShelf" | "offShelf" | "unknown";
+
+/** 跟播助手商品信息。Rust `HelperGoodInfo`. */
+export interface HelperGoodInfo {
+  goodsId: string;
+  goodsName: string;
+  rawText: string;
+  /** 可用动作（`上车`/`下车`子集）。 */
+  availableActions: string[];
+  status: HelperGoodStatus;
+  /** 读取来源 Tab（`inCart`/`toAdd`）。 */
+  sourceTab: string;
+}
+
+/** 上车/下车写动作结果（含操作后重读的商品列表）。 */
+export interface HelperGoodActionResult {
+  ok: boolean;
+  goodsId: string;
+  /** `on`（上车）/`off`（下车）。 */
+  action: string;
+  detail: string;
+  goods: HelperGoodInfo[];
+}
+
+/** `shop-helper:goods-changed` 推送载荷（camelCase）。 */
+export interface ShopHelperGoodsChanged {
+  profileId: string;
+  goodsId: string;
+  action: string;
+  ok: boolean;
+}
+
+/** 增强商品队列项。Rust `AutoPopUpGoodsItem`. */
+export interface AutoPopUpGoodsItem {
+  id: string;
+  repeatCount?: number | null;
+  interval?: [number, number] | null;
+}
+
+/** 失败重试配置。Rust `AutoPopUpRetryConfig`. */
+export interface AutoPopUpRetryConfig {
+  maxRetries?: number | null;
+  retryDelayMs?: number | null;
+}
+
+/** 自动弹品配置。`goodsItems` 优先，缺席时回退到 `goodsIds`。 */
+export interface AutoPopUpConfig {
+  goodsIds?: string[] | null;
+  interval: [number, number];
+  perGoodsInterval?: Record<string, [number, number]> | null;
+  goodsItems?: AutoPopUpGoodsItem[] | null;
+  random?: boolean;
+  retry?: AutoPopUpRetryConfig | null;
+}
+
+/** 配置热更新补丁：`Some` 字段覆盖运行中配置，缺省保持不变。 */
+export interface AutoPopUpConfigPatch {
+  goodsIds?: string[] | null;
+  interval?: [number, number] | null;
+  perGoodsInterval?: Record<string, [number, number]> | null;
+  goodsItems?: AutoPopUpGoodsItem[] | null;
+  random?: boolean | null;
+  retry?: AutoPopUpRetryConfig | null;
+}
+
+/** 商品行。空字符串后端归一为 `None` → 前端 `null`。 */
+export interface PopupGoodsInfo {
+  serial: string;
+  title: string | null;
+  price: string | null;
+}
+
+/** 已入库的商品知识（标题 / 价格）。 */
+export interface GoodsKnowledge {
+  title?: string | null;
+  price?: string | null;
+}
+
+/** 知识差异字段（kebab-case）。 */
+export type KnowledgeField = "title" | "price";
+
+export interface PopupScanDiff {
+  goodsId: string;
+  field: KnowledgeField;
+  current: string | null;
+  candidate: string | null;
+}
+
+export interface PopupScanReport {
+  scannedCount: number;
+  diffs: PopupScanDiff[];
+  candidates: Record<string, GoodsKnowledge>;
+}
+
+export interface ShortcutFailure {
+  accelerator: string;
+  error: string;
+}
+
+export interface ShortcutRegisterResult {
+  ok: boolean;
+  registered: string[];
+  failed: ShortcutFailure[];
+}
+
+/** 运行状态快照（命令返回 + `auto-popup:state` 广播载荷）。 */
+export interface AutoPopUpStatus {
+  profileId: string;
+  running: boolean;
+  queueLen: number;
+  lastGoodsId: string | null;
+  lastError: string | null;
+  updatedAt: string;
+}
+
+/** 广播事件种类（kebab-case）。 */
+export type PopupEventKind =
+  | "started"
+  | "stopped"
+  | "explained"
+  | "explain-failed"
+  | "config-updated"
+  | "shortcut-triggered";
+
+/** 广播事件（`auto-popup:event` 载荷）。 */
+export interface AutoPopUpEvent {
+  profileId: string;
+  kind: PopupEventKind;
+  goodsId?: string | null;
+  reason?: string | null;
+}
