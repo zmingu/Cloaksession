@@ -19,3 +19,11 @@ List includes records whose Profile has been removed or unbound. Profile-state o
 This library cannot inspect browser liveness and must not depend on browser-launcher. Desktop callers use launcher-thread `save_business_account` / `unbind_business_account` and `update_profile_guarded`, not direct manager writes. These require real launcher `is_running_async` before business mutations and validate actual directory policy before saving. Manager methods are storage primitives; calling them directly does not perform runtime validation.
 
 Tests: `tests/business_accounts.rs` covers original/new DB, repeated migration, reopen, explicit null/normalization, unique binding/kind/ID errors, rebind, preserved scope/cookie marker, FK deletion, trigger-induced INSERT/UPDATE rollback. Core `business.rs` has wire tests.
+
+## Shop-account onboarding boundary (账号即环境)
+
+The Kuaishou shop-account wizard does **not** use `business_accounts`. A shop account *is* a browser Profile: the wizard creates a Profile (fingerprint generated and reconciled to the proxy's exit region), signs it in through a hidden window, and reads its Kuaishou ID through the read-only identity path. Keep these consequences:
+
+- No new table, column or migration, and no `business_accounts` row is written by onboarding (`git status --porcelain -- crates/profile-manager/` stays empty).
+- The shop list renders `profiles_list` + identity snapshots, so there is never a second source of account truth.
+- `business_accounts` remains what it was: optional manual registration metadata, never proof of login. Deleting a Profile deletes that shop account (the accepted trade-off), unlike a business record, which survives with `profileId: null`.

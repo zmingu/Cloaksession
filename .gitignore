@@ -20,6 +20,9 @@
 # Tauri dev logs
 tauri-*.log
 
+# Snow App tool runtime (logs / scans), never tracked
+.snow/
+
 # OS
 Thumbs.db
 .DS_Store

@@ -35,6 +35,7 @@ These guides help you **ask the right questions before coding**.
 - [ ] Multiple consumers need the same data
 - [ ] You're not sure where to put some logic
 - [ ] You are adding an event kind, JSONL record, RPC payload, or config field
+- [ ] You are adding an **optional** field to an existing IPC/RPC payload → "optional" must mean the field is *omitted* when unset, not sent with a default value (a default-valued field is a wire-contract change)
 - [ ] UI / command code starts casting raw payload fields directly
 
 → Read [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md)

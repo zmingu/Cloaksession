@@ -2,7 +2,7 @@
 
 ## Architecture and source map
 
-`crates/mcp-server/src/driver.rs::BrowserDriver` is the Send + Sync async interface for browser operations, except **synchronous** `is_running`. `crates/mcp-server/src/server.rs::McpDispatcher` accepts tool name + JSON arguments. These are distinct seams: browser operations versus an application's tool routing.
+`crates/mcp-server/src/driver.rs::BrowserDriver` is the Send + Sync async interface for browser operations, except **synchronous** `is_running`. `launch(&self, profile_id: &str, hidden: bool)` carries the off-screen-window flag from the [launcher lifecycle](../../browser-launcher/backend/lifecycle.md); MCP/embedded callers pass `false` so their behavior is unchanged, and every implementation (incl. `tests/mock_driver.rs`) must accept the extra parameter. `crates/mcp-server/src/server.rs::McpDispatcher` accepts tool name + JSON arguments. These are distinct seams: browser operations versus an application's tool routing.
 
 `crates/mcp-server/src/tools.rs` holds reusable handlers taking `&dyn BrowserDriver`, `&ProfileManager`, `&ActivityLog`, and typed args. SQLite calls are synchronous. `crates/tauri-app/src/mcp_embed.rs::TauriMcpDispatcher` implements production dispatch separately, because its manager lives on the launcher thread. Changes to only the reusable handlers do not change the embedded application.
 

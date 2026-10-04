@@ -37,6 +37,17 @@ if let Some(q) = fp.storage_quota {
 
 Tests: `crates/browser-launcher/tests/args.rs` covers engine separation, custom UA, seed shape, memory clamp and quota round trips. `crates/browser-launcher/src/version.rs::detect_chromium_version` reads Windows executable metadata and returns None elsewhere; **do not execute the browser with `--version`**. `synchronize_managed_fingerprint_version` uses a UA/client-hints matching heuristic, not an explicit user-customized flag. See `crates/browser-launcher/tests/version.rs` and `crates/browser-launcher/tests/version_detect.rs` when adjusting it.
 
+## Hidden (off-screen) launch
+
+`BrowserLauncher::launch(profile_id, binary_path, engine, companion_dir, hidden: bool)` and `build_spawn_args(..., hidden: bool)` take a trailing `hidden` flag. It is the supported way to capture a page (e.g. a login QR) without a browser window appearing on screen.
+
+- `hidden: true` appends exactly one argument, `--window-position=-32000,-32000`, to the CloakBrowser/CFT argument list. It never adds `--headless` (or `--headless=new`): the window stays headed, so the fingerprint/session is identical to a normal launch and must not diverge for anti-detection reasons.
+- `hidden` is the **last** positional parameter, so every existing caller must pass `false` explicitly; `false` reproduces the previous argument vector byte for byte (visible launches carry no `--window-position`).
+- Chromix does not go through `build_spawn_args`; it gets the equivalent off-screen window through `launchOptions` (see [Chromix contract](./chromix.md)) and likewise must not set `headless`.
+- Unverified ceiling: whether `--window-position=-32000,-32000` is truly invisible on a real desktop and still renders the page is a native/manual acceptance item, not proven by argument tests.
+
+Tests: `crates/browser-launcher/tests/args.rs::hidden_launch_moves_the_window_off_screen_without_headless` asserts the visible vector has no `--window-position`, the hidden vector adds exactly that switch, no `--headless` appears, and stripping the switch reproduces the visible vector.
+
 ## Proxy and error boundaries
 
 `crates/browser-launcher/src/socks5_bridge.rs::Socks5Bridge::start` exposes a loopback no-auth SOCKS listener for legacy engines; HTTP CONNECT supports Basic credentials when both supplied. Upstream SOCKS currently negotiates no-auth only. It has simplified IPv6 formatting, fixed SOCKS reply reading, and incomplete HTTP CONNECT header draining. `stop` stops acceptance; the unused live-socket list means it does not prove all active tunnels are closed. Existing `crates/browser-launcher/tests/socks5_bridge.rs` tests greeting/error replies, not successful end-to-end tunneling.

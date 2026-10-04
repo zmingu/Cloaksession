@@ -33,6 +33,19 @@ Shared model names/units belong to [multizen-core](../../multizen-core/backend/c
 
 `profiles_launch({id, entry?: "kuaishou-shop"})` remains a generic launch when entry is omitted/null (including existing UI and MCP callers). The `profiles.launchKuaishou` UI wrapper is exposed by the profile's “快手小店扫码” button. Only that explicit action checks persisted business scope before launch and again after it, rejects Jinniu even after unbinding, and creates/activates a new `https://login.kwaixiaodian.com/` tab. It never updates `startUrl`, closes/replaces restored tabs, clears cookies, scans a QR code, or submits platform actions. The existing launcher directory-isolation gate still applies. A page-open/activation failure leaves the browser open and returns actionable text. Tests: `driver/shop_login_tests.rs`, UI `tests/shop-login.spec.ts`; UI is mocked and is not native end-to-end/platform login evidence.
 
+## Hidden launch and QR capture
+
+`profiles_launch({ id, entry?, hidden?: bool })` gained an **optional** `hidden`. The optionality is a wire contract, not a default value:
+
+- Rust: `hidden: Option<bool>` with `hidden.unwrap_or(false)`; missing/null behaves exactly as before (there is no `#[serde(default)]` needed for a Tauri `Option` parameter).
+- UI wrappers `profiles.launch(id, hidden?)` / `profiles.launchKuaishou(id, hidden?)` must **omit** the field when not requested (`hidden ? { id, hidden: true } : { id }`). Sending `{ id, hidden: false }` is contract drift: existing callers' `toEqual({ id })` assertions (e.g. `tests/shop-login.spec.ts`) catch it.
+- MCP and other callers preserve visible behavior by passing `false` to `BrowserDriver::launch(&self, profile_id, hidden)`.
+- `hidden: true` starts the window off-screen (see [launcher lifecycle](../../browser-launcher/backend/lifecycle.md)); it never changes the saved `startUrl` or the fingerprint.
+
+`kuaishou_login_qr({ profileId }) -> Option<String>` returns the profile's current page as a bare base64 PNG (no data-URI prefix), or `null` when no session is running yet — a polling "not ready" signal, not an error. It reuses the registry session's existing `screenshot`. The design's QR-region crop is not implemented; the whole-page image is returned (the documented fallback), so it stays robust to page redesigns. The shop-account wizard polls this (~2s) together with `kuaishou_identity_detect`, and the **wizard** — not this command — closes the hidden browser on finish/cancel.
+
+Tests: `crates/tauri-app/ui/tests/kuaishou-shop-wizard.spec.ts` (mocked IPC) covers create → QR → detect → done → close-hidden-browser and the cancel-stops-polling case (AC9). It is not native end-to-end/platform-login evidence.
+
 ## Business account commands
 
 `commands/business_accounts.rs` registers `business_accounts_list()` -> BusinessAccount[], `business_accounts_profile_state(profileId)` -> BusinessProfileState, `business_accounts_save({input})` -> BusinessAccount, and `business_accounts_unbind({id})` -> void. All forward to driver async helpers / LauncherCmd on the original launcher thread; no SQLite or platform I/O at the IPC adapter. Errors become strings for UI presentation via `business_error`, retaining the underlying cause with actionable Chinese refresh/input/profile-state/restart guidance. Records are manual metadata, never proof of login. See [models](../../multizen-core/backend/contracts.md), [persistence](../../profile-manager/backend/business-accounts.md) and [directory gate](../../browser-launcher/backend/business-isolation.md).

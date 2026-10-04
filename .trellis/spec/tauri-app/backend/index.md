@@ -18,6 +18,12 @@ Owns desktop startup/state, launcher-thread integration, IPC/events, embedded MC
 - [ ] Follow the relevant owner: [models](../../multizen-core/backend/index.md), [profile DB](../../profile-manager/backend/index.md), [settings](../../settings-store/backend/index.md), [launcher](../../browser-launcher/backend/index.md), [CDP](../../cdp-driver/backend/index.md), [MCP](../../mcp-server/backend/index.md).
 - [ ] Read [shared thinking guides](../../guides/index.md), `crates/tauri-app/ui/src/lib/ipc.ts` and `crates/tauri-app/ui/src/types.ts` for consumed fields, not just Rust signatures.
 
+## UI conventions (`crates/tauri-app/ui`)
+
+- **A closed `Modal` is not an unmounted component.** `components/atoms/Modal` returns `null` when `open` is false, but its children stay mounted, so a `useEffect` whose deps are only `[step]`/`[profileId]` will **not** clean up on close. Any interval/timeout/subscription inside a modal must gate on `open` (and include it in the deps), e.g. the shop-account wizard's QR/identity poll: `if (!open || step !== "waiting" || !profileId) return;`, deps `[open, step, profileId]`. Symptom of missing it: the timer keeps polling (extra `screenshot`/`detect` calls) after the dialog is gone.
+- Optional IPC parameters stay optional **on the wire**: wrappers send the field only when set (see [IPC](./ipc.md)). An optional param that always serializes a default is a contract change, not a no-op.
+- Sidebar/nav buttons carry `title={navLabel(id)}` (the bare label, no shortcut suffix). Playwright tests target them with `getByRole("button", { name: "<label>", exact: true })`, never `getByTitle("Profiles · ⌘1")`.
+
 ## Quality Check
 
 - [ ] Follow the command/prerequisite table in [IPC verification](./ipc.md); do not mistake browser-free tests for a desktop end-to-end check.
