@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { dshopRequests, installDShopMock, openProfileEditor } from "./dShopPopupMock";
+import { dshopRequests, installDShopMock } from "./dShopPopupMock";
 
 // Every navigation is loopback and every D-group command is a local Tauri fake.
 // The base fixture language is English, so assertions use the en dictionary.
@@ -7,13 +7,13 @@ test.beforeEach(async ({ page }) => {
   await installDShopMock(page);
 });
 
-async function gotoSection(page: Page, name: string): Promise<void> {
-  await page.getByRole("dialog").getByRole("button", { name, exact: true }).click();
+// The mock already landed on the business section; switch to the D tab.
+async function gotoTab(page: Page, name: string): Promise<void> {
+  await page.getByRole("tab", { name, exact: true }).click();
 }
 
 test("product scripts render, create, and delete with two-step confirm", async ({ page }) => {
-  await openProfileEditor(page);
-  await gotoSection(page, "Product scripts");
+  await gotoTab(page, "Product scripts");
   await expect(page.getByText("Product script library").first()).toBeVisible();
   await expect(page.getByText("晚场 A")).toBeVisible();
   // React StrictMode double-mounts in dev, so the mount load may fire twice.
@@ -38,8 +38,7 @@ test("product scripts render, create, and delete with two-step confirm", async (
 });
 
 test("product script detail edits lines and reorders", async ({ page }) => {
-  await openProfileEditor(page);
-  await gotoSection(page, "Product scripts");
+  await gotoTab(page, "Product scripts");
   await page.getByRole("button", { name: "Open", exact: true }).first().click();
   await expect(page.getByText("Script detail").first()).toBeVisible();
   await expect(page.getByText("好吃的苹果")).toBeVisible();
@@ -58,8 +57,7 @@ test("product script detail edits lines and reorders", async ({ page }) => {
 });
 
 test("shop helper reads goods, boards with confirm, and shows the event panel", async ({ page }) => {
-  await openProfileEditor(page);
-  await gotoSection(page, "Shop helper");
+  await gotoTab(page, "Shop helper");
   await expect(page.getByText("Shop helper boarding").first()).toBeVisible();
 
   await page.getByPlaceholder("Target id of the helper page").fill("target-1");
@@ -82,8 +80,7 @@ test("shop helper reads goods, boards with confirm, and shows the event panel", 
 });
 
 test("auto popup starts, explains once with confirm, and stops with confirm", async ({ page }) => {
-  await openProfileEditor(page);
-  await gotoSection(page, "Auto popup");
+  await gotoTab(page, "Auto popup");
   await expect(page.getByText("Auto popup (rotating explain)").first()).toBeVisible();
 
   await page.getByRole("button", { name: "Start", exact: true }).click();
@@ -111,8 +108,7 @@ test("auto popup starts, explains once with confirm, and stops with confirm", as
 });
 
 test("auto popup goods, scan, and shortcuts round-trip", async ({ page }) => {
-  await openProfileEditor(page);
-  await gotoSection(page, "Auto popup");
+  await gotoTab(page, "Auto popup");
 
   await page.getByTestId("popup-status").getByRole("button", { name: "Refresh status", exact: true }).click();
   expect(await dshopRequests(page, "auto_popup_status")).toHaveLength(1);

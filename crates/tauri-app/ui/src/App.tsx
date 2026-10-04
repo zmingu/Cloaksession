@@ -9,6 +9,7 @@ import type { Profile, ProfileGroup } from "./types";
 import { ActivityDrawer } from "./components/activity/ActivityDrawer";
 import { McpPanel } from "./components/mcp/McpPanel";
 import { Settings } from "./components/screens/Settings";
+import { BusinessSection } from "./components/business/BusinessSection";
 import { Confirm, Prompt } from "./components/screens/Confirm";
 import { CommandPalette, type CommandAction } from "./components/palette/CommandPalette";
 import { FirstRun } from "./components/onboarding/FirstRun";
@@ -251,6 +252,11 @@ export function App(): JSX.Element {
         setSection("mcp");
         return;
       }
+      if (meta && e.key === "3") {
+        e.preventDefault();
+        setSection("business");
+        return;
+      }
       if (meta && e.key === ",") {
         e.preventDefault();
         setSection("settings");
@@ -481,6 +487,8 @@ export function App(): JSX.Element {
           )}
 
           {section === "settings" && <Settings onImport={() => setModal({ kind: "import-passphrase" })} />}
+
+          {section === "business" && <BusinessSection profiles={profiles} />}
         </div>
 
       </div>

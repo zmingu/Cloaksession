@@ -10,6 +10,10 @@ import { installTauriMock } from "./tauriMock";
  * - auto_popup_*: 10 commands with a minimal running flag.
  */
 export async function installDShopMock(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    localStorage.setItem("multizen.ui.section", JSON.stringify("business"));
+    localStorage.setItem("multizen.ui.onboarded", "true");
+  });
   await installTauriMock(page);
   await page.goto("/");
   await page.evaluate(() => {
@@ -185,7 +189,6 @@ export async function installDShopMock(page: Page): Promise<void> {
       throw new Error(`Unhandled D-shop fixture IPC: ${command}`);
     };
   });
-  await page.getByTitle("Profiles · ⌘1", { exact: true }).click();
 }
 
 export async function dshopRequests(

@@ -543,8 +543,8 @@ export interface PopupGoodsInfo {
   price: string | null;
 }
 
-/** 已入库的商品知识（标题 / 价格）。 */
-export interface GoodsKnowledge {
+/** 已入库的商品知识（标题 / 价格，弹窗扫描用；与 C 组回复预览的同名类型区分）。 */
+export interface PopupGoodsKnowledge {
   title?: string | null;
   price?: string | null;
 }
@@ -562,7 +562,7 @@ export interface PopupScanDiff {
 export interface PopupScanReport {
   scannedCount: number;
   diffs: PopupScanDiff[];
-  candidates: Record<string, GoodsKnowledge>;
+  candidates: Record<string, PopupGoodsKnowledge>;
 }
 
 export interface ShortcutFailure {
@@ -601,4 +601,225 @@ export interface AutoPopUpEvent {
   kind: PopupEventKind;
   goodsId?: string | null;
   reason?: string | null;
+}
+
+// C-group: auto-message / auto-reply / scene-play
+// (crates/tauri-app/src/driver/auto_message.rs, auto_reply.rs, scene_play.rs
+// + profile-manager scenes / auto_reply records).
+//
+// NOTE: the auto-message structs (`MessageLine`, `ScheduledLine`,
+// `AutoMessageState`, `AutoMessageStarted`, `AutoMessageStopped`) have no
+// `#[serde(rename_all)]`, so their wire keys stay snake_case (unlike the
+// camelCase structs elsewhere in this file). Scene / reply structs use
+// camelCase, `TriggerMode` is kebab-case, `SceneLineAction` lowercase.
+// Character-spacing injection is intentionally NOT modeled here:
+// the frontend never enables it.
+// ---------------------------------------------------------------------------
+
+/** One timeline entry: send `message` at `offset_sec` after run start. */
+export interface AutoMessageLine {
+  offset_sec: number;
+  message: string;
+  account_id: string;
+}
+
+/** Options for `auto_message_start` (random-space injection excluded). */
+export interface AutoMessageStartOptions {
+  nickname?: string | null;
+  anchor?: string | null;
+  startAt?: number | null;
+}
+
+/** A line with its absolute fire time resolved. */
+export interface AutoMessageScheduledLine {
+  offset_sec: number;
+  trigger_at: number;
+  message: string;
+  account_id: string;
+}
+
+/** Snapshot emitted on start and after every dispatch. */
+export interface AutoMessageState {
+  started_at: number;
+  total_count: number;
+  sent_count: number;
+  schedule: AutoMessageScheduledLine[];
+}
+
+/** Return value of `auto_message_start`. */
+export interface AutoMessageStarted {
+  run_id: string;
+  started_at: number;
+  scheduled_count: number;
+}
+
+/** Payload of the `auto-message:stopped` push event. */
+export interface AutoMessageStopped {
+  run_id: string;
+  reason: string;
+}
+
+/** One goods' reply knowledge (caller-supplied snapshot for preview). */
+export interface GoodsKnowledge {
+  goodsId: string;
+  title: string;
+  price?: string | null;
+  promotion?: string | null;
+  status?: string | null;
+  highlights?: string[];
+  tokens?: string[];
+  qa?: GoodsQa[];
+}
+
+export interface GoodsQa {
+  question: string;
+  answer: string;
+}
+
+/** Where a reply came from (`Ai` is hook-only, never auto-sent). */
+export type ReplySource = "knowledge" | "ai" | "template";
+
+/** Resolution outcome for one comment. */
+export interface ReplyResult {
+  ok: boolean;
+  reply: string | null;
+  source: ReplySource;
+  goodsId: string | null;
+  intent: string | null;
+  error: string | null;
+  knowledgeHit: boolean;
+}
+
+/** One persisted auto-reply resolution row. */
+export interface AutoReplyRecord {
+  id: number;
+  accountId: string;
+  content: string;
+  reply: string;
+  source: string;
+  goodsId: string | null;
+  createdAt: string;
+}
+
+/** Scene trigger mode (wire: kebab-case). */
+export type SceneTriggerMode = "relative-time" | "local-time";
+
+/** Per-line action (wire: lowercase). */
+export type SceneLineAction = "danmaku" | "like" | "follow";
+
+export interface SceneLine {
+  id: number;
+  sceneId: number;
+  ord: number;
+  message: string;
+  timeOffsetSec: number;
+  actionType: SceneLineAction;
+}
+
+export interface Scene {
+  id: number;
+  name: string;
+  triggerMode: SceneTriggerMode;
+  groupId: string | null;
+  lines: SceneLine[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Tri-state `group_id` patch for `scene_update`, mirroring the Rust
+ * `Option<Option<String>>`: `keep` omits the field, `clear` sends null,
+ * `set` sends the new id.
+ */
+export type SceneGroupIdPatch =
+  | { mode: "keep" }
+  | { mode: "clear" }
+  | { mode: "set"; groupId: string };
+
+/** A line pinned to an account and an absolute fire time (ms epoch). */
+export interface SceneScheduledItem {
+  lineId: number;
+  ord: number;
+  accountId: string;
+  profileId: string;
+  accountName: string;
+  message: string;
+  actionType: SceneLineAction;
+  triggerAtMs: number;
+}
+
+/** Options for `scene_play` (also the `PlaySceneOptions` IPC payload). */
+export interface PlaySceneOptions {
+  startAtMs?: number | null;
+  allowDynamicPool?: boolean;
+  groupId?: string | null;
+}
+
+/** `scene_play` result. */
+export interface PlayStarted {
+  sceneId: number;
+  scheduledCount: number;
+  schedule: SceneScheduledItem[];
+}
+
+/** Payload of the `scene:started` push event. */
+export interface SceneStartedPayload {
+  sceneId: number;
+  schedule: SceneScheduledItem[];
+  startedAt: number;
+}
+
+/** Payload of the `scene:progress` push event. */
+export interface SceneProgressPayload {
+  sceneId: number;
+  sentCount: number;
+  totalCount: number;
+  lastItem: SceneScheduledItem;
+  ok: boolean;
+  error: string | null;
+}
+
+/** Payload of the `scene:finished` push event. */
+export interface SceneFinishedPayload {
+  sceneId: number;
+  stopped: boolean | null;
+  reason: string | null;
+}
+
+// E-group: jinniu promote — crates/tauri-app/src/driver/jinniu_promote.rs
+// (serde `camelCase`; mirrors the Rust structs 1:1)
+// ---------------------------------------------------------------------------
+
+/** One promotable live user (jieger `LiveUserInfo`). */
+export interface JinniuLiveUser {
+  uid: string;
+  displayName: string;
+  fullText: string;
+  isSelected: boolean;
+}
+
+/** `getLiveUsers` result. */
+export interface JinniuLiveUsers {
+  accountId: string;
+  users: JinniuLiveUser[];
+}
+
+/** Opened (or reused) storeCreate tab. */
+export interface StoreCreateTab {
+  accountId: string;
+  url: string;
+  targetId: string;
+}
+
+/**
+ * Phase-1 config (jieger `StoreCreatePhase1Config`). All fields optional;
+ * the backend fills jieger's defaults.
+ */
+export interface StoreCreatePhase1Config {
+  enableNetRoi?: boolean | null;
+  dailyBudget?: string | null;
+  roiCoefficient?: string | null;
+  promoteType?: string | null;
+  roiTargetMode?: string | null;
+  creativeMode?: string | null;
 }
