@@ -3,6 +3,10 @@ import { useState, type JSX } from "react";
 import { useT } from "../../i18n/LanguageProvider";
 import { cn } from "../../lib/cn";
 import type { ProfileSummary } from "../../types";
+import { KuaishouAuthPage } from "./KuaishouAuthPage";
+import { LiveLaunchPage } from "./LiveLaunchPage";
+import { LiveRoomMonitorPage } from "./LiveRoomMonitorPage";
+import { MateLoginPage } from "./MateLoginPage";
 import { BindAuthorizePage } from "./BindAuthorizePage";
 import { CAutoMessagePanel } from "./CAutoMessagePanel";
 import { CAutoReplyPanel } from "./CAutoReplyPanel";
@@ -18,9 +22,13 @@ import { JinniuPromotePage } from "./JinniuPromotePage";
  *
  * 各组按同一模式追加 tab (向 `BUSINESS_TABS` 加一项 + 一个页面组件).
  * E 组: `bind` / `huibo` / `jinniu`; C 组: `msg` / `reply` / `scene`;
- * D 组: `pscript` / `helper` / `popup`.
+ * D 组: `pscript` / `helper` / `popup`; A 组: `auth` / `mate` / `live` / `monitor`.
  */
 export type BusinessTabId =
+  | "auth"
+  | "mate"
+  | "live"
+  | "monitor"
   | "bind"
   | "huibo"
   | "jinniu"
@@ -32,6 +40,10 @@ export type BusinessTabId =
   | "popup";
 
 const BUSINESS_TABS: BusinessTabId[] = [
+  "auth",
+  "mate",
+  "live",
+  "monitor",
   "bind",
   "huibo",
   "jinniu",
@@ -49,10 +61,18 @@ interface Props {
 
 export function BusinessSection({ profiles }: Props): JSX.Element {
   const t = useT();
-  const [tab, setTab] = useState<BusinessTabId>("bind");
+  const [tab, setTab] = useState<BusinessTabId>("auth");
 
   const label = (id: BusinessTabId): string => {
     switch (id) {
+      case "auth":
+        return t("biz.auth.tab");
+      case "mate":
+        return t("biz.mate.tab");
+      case "live":
+        return t("biz.live.tab");
+      case "monitor":
+        return t("biz.monitor.tab");
       case "bind":
         return t("biz.bind.tab");
       case "huibo":
@@ -95,6 +115,10 @@ export function BusinessSection({ profiles }: Props): JSX.Element {
           </button>
         ))}
       </div>
+      {tab === "auth" && <KuaishouAuthPage />}
+      {tab === "mate" && <MateLoginPage />}
+      {tab === "live" && <LiveLaunchPage />}
+      {tab === "monitor" && <LiveRoomMonitorPage />}
       {tab === "bind" && <BindAuthorizePage profiles={profiles} />}
       {tab === "huibo" && <HuiboLivePage profiles={profiles} />}
       {tab === "jinniu" && <JinniuPromotePage profiles={profiles} />}

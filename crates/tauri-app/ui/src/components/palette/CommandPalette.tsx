@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from "react";
-import { Boxes, Command, Download, Play, Plug, Plus, Settings as SettingsIcon } from "lucide-react";
+import { Boxes, Command, Download, Play, Plug, Plus, Settings as SettingsIcon, Store } from "lucide-react";
 import type { ProfileSummary } from "../../types";
 import { Kbd } from "../atoms";
 import { useT } from "../../i18n/LanguageProvider";
@@ -11,7 +11,7 @@ export type CommandAction =
   | { kind: "import" }
   | { kind: "export" }
   | { kind: "settings" }
-  | { kind: "section"; id: "profiles" | "mcp" | "settings" };
+  | { kind: "section"; id: "profiles" | "mcp" | "business" | "settings" };
 
 interface Props {
   open: boolean;
@@ -91,6 +91,14 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
         kbd: <Kbd>⌘ 2</Kbd>,
         group: t("palette.navigate"),
         action: { kind: "section", id: "mcp" },
+      },
+      {
+        id: "section:business",
+        icon: <Store size={14} strokeWidth={1.5} />,
+        title: t("nav.business"),
+        kbd: <Kbd>⌘ 3</Kbd>,
+        group: t("palette.navigate"),
+        action: { kind: "section", id: "business" },
       },
       {
         id: "settings",
