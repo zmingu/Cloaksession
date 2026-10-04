@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type JSX } from "react";
-import { Loader2, Play, Plus, Search, Square } from "lucide-react";
+import { Loader2, Play, Plus, Search, Square, Trash2 } from "lucide-react";
 
 import { useT } from "../../i18n/LanguageProvider";
 import type { TranslationKey } from "../../i18n/en";
@@ -7,7 +7,7 @@ import { cn } from "../../lib/cn";
 import { profiles as profilesApi } from "../../lib/ipc";
 import { useKuaishouIdentities, useKuaishouIdentity } from "../../lib/KuaishouIdentityProvider";
 import type { ProfileSummary } from "../../types";
-import { Avatar, Pill } from "../atoms";
+import { Avatar, Pill, confirm } from "../atoms";
 import { Button } from "../atoms/Button";
 import { IdentityAvatar } from "../profile/KuaishouIdentity";
 import { DataTable, type DataTableColumn } from "../table/DataTable";
@@ -36,7 +36,7 @@ export function KuaishouShopAccounts({ onAddAccount }: { onAddAccount?: () => vo
   const [rows, setRows] = useState<ProfileSummary[]>([]);
   const [rowsError, setRowsError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [busy, setBusy] = useState<Record<string, "launch" | "stop">>({});
+  const [busy, setBusy] = useState<Record<string, "launch" | "stop" | "delete">>({});
   const [actionError, setActionError] = useState<string | null>(null);
   const [firstLoad, setFirstLoad] = useState(true);
   const mounted = useRef(false);
@@ -108,6 +108,36 @@ export function KuaishouShopAccounts({ onAddAccount }: { onAddAccount?: () => vo
     }
   }
 
+  async function remove(row: ProfileSummary): Promise<void> {
+    const ok = await confirm({
+      title: t("kuaishou.shop.deleteTitle"),
+      body: t("kuaishou.shop.deleteBody", { name: row.name }),
+      confirmLabel: t("kuaishou.shop.deleteConfirm"),
+      destructive: true,
+    });
+    if (!ok) return;
+    setBusy((prev) => ({ ...prev, [row.id]: "delete" }));
+    setActionError(null);
+    try {
+      // Stop the hidden browser first so no process keeps the profile's data
+      // dir open, then remove the profile (cookies, login state, disk data).
+      await profilesApi.close(row.id).catch(() => {});
+      await profilesApi.delete(row.id);
+      const list = await profilesApi.list();
+      if (mounted.current) setRows(list);
+    } catch (cause) {
+      setActionError(t("kuaishou.shop.deleteFailed", { error: errorText(cause) }));
+    } finally {
+      if (mounted.current) {
+        setBusy((prev) => {
+          const next = { ...prev };
+          delete next[row.id];
+          return next;
+        });
+      }
+    }
+  }
+
   const columns: ReadonlyArray<DataTableColumn<ProfileSummary>> = useMemo(
     () => [
       {
@@ -166,9 +196,9 @@ export function KuaishouShopAccounts({ onAddAccount }: { onAddAccount?: () => vo
       {
         id: "actions",
         header: "",
-        width: 96,
+        width: 150,
         align: "right",
-        cell: (row) => <ActionCell row={row} busy={busy[row.id]} onAct={act} />,
+        cell: (row) => <ActionCell row={row} busy={busy[row.id]} onAct={act} onDelete={remove} />,
       },
     ],
     // `busy` / `act` are read inside cells; the memo intentionally refreshes
@@ -285,20 +315,25 @@ function StatusCell({ row }: { row: ProfileSummary }): JSX.Element {
   return <Pill kind={kind}>{t(STATUS_KEY[identity.status] ?? STATUS_KEY.unknown)}</Pill>;
 }
 
-/** Launch / stop, mirrored from the profiles list; the write goes to the same backend. */
+/** Launch / stop plus a destructive delete, mirrored from the profiles list;
+ *  the writes go to the same backend. Deleting the account = deleting the
+ *  browser profile (account-as-profile), behind a confirm dialog. */
 function ActionCell({
   row,
   busy,
   onAct,
+  onDelete,
 }: {
   row: ProfileSummary;
-  busy: "launch" | "stop" | undefined;
+  busy: "launch" | "stop" | "delete" | undefined;
   onAct: (row: ProfileSummary, kind: "launch" | "stop") => Promise<void>;
+  onDelete: (row: ProfileSummary) => Promise<void>;
 }): JSX.Element {
   const t = useT();
   const pending = busy !== undefined;
+  const deleting = busy === "delete";
   return (
-    <div className="flex justify-end">
+    <div className="flex items-center justify-end gap-1.5">
       {row.isRunning ? (
         <Button
           size="sm"
@@ -306,7 +341,11 @@ function ActionCell({
           disabled={pending}
           onClick={() => void onAct(row, "stop")}
           leftIcon={
-            pending ? <Loader2 size={10} className="animate-spin" /> : <Square size={9} fill="currentColor" strokeWidth={0} />
+            pending ? (
+              <Loader2 size={10} className="animate-spin" />
+            ) : (
+              <Square size={9} fill="currentColor" strokeWidth={0} />
+            )
           }
         >
           {t("kuaishou.shop.stop")}
@@ -318,12 +357,27 @@ function ActionCell({
           disabled={pending}
           onClick={() => void onAct(row, "launch")}
           leftIcon={
-            pending ? <Loader2 size={10} className="animate-spin" /> : <Play size={10} fill="currentColor" strokeWidth={0} />
+            pending ? (
+              <Loader2 size={10} className="animate-spin" />
+            ) : (
+              <Play size={10} fill="currentColor" strokeWidth={0} />
+            )
           }
         >
           {t("kuaishou.shop.launch")}
         </Button>
       )}
+      <Button
+        size="icon"
+        variant="danger"
+        disabled={pending}
+        title={t("kuaishou.shop.delete")}
+        aria-label={t("kuaishou.shop.delete")}
+        onClick={() => void onDelete(row)}
+        leftIcon={
+          deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />
+        }
+      />
     </div>
   );
 }

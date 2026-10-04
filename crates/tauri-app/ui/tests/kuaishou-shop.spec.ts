@@ -31,4 +31,30 @@ test("shop tab lists browser profiles as shop accounts with a launch control", a
   await expect(row).toBeVisible();
   // Not running in the fixture, so the row offers Launch rather than Stop.
   await expect(row.getByRole("button", { name: "Launch" })).toBeVisible();
+
+  // Account-as-profile: deleting an account removes the browser profile, behind
+  // a destructive confirm dialog.
+  const calls: string[] = [];
+  await page.exposeFunction("__recordShopCall", (command: string) => {
+    calls.push(command);
+  });
+  await page.evaluate(() => {
+    const internals = (window as any).__TAURI_INTERNALS__;
+    const original = internals.invoke;
+    internals.invoke = async (command: string, args: Record<string, any> = {}) => {
+      if (command === "profiles_close" || command === "profiles_delete") {
+        (window as any).__recordShopCall(command);
+      }
+      return original(command, args);
+    };
+  });
+
+  await row.getByRole("button", { name: "Delete" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Delete this account?")).toBeVisible();
+  await expect(dialog.getByText(/Regression profile/)).toBeVisible();
+  await dialog.getByRole("button", { name: "Yes, delete" }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(calls).toContain("profiles_close");
+  expect(calls).toContain("profiles_delete");
 });

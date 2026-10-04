@@ -1,21 +1,41 @@
 import { useEffect, useRef, useState, type JSX } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import {
+  Blocks,
+  Fingerprint,
+  Globe,
+  Loader2,
+  Network,
+  RefreshCw,
+  type LucideIcon,
+} from "lucide-react";
 
 import { useT } from "../../i18n/LanguageProvider";
-import { cn } from "../../lib/cn";
-import { fingerprint as fingerprintApi, profiles as profilesApi, proxy as proxyApi } from "../../lib/ipc";
+import { profiles as profilesApi } from "../../lib/ipc";
 import { kuaishouAuth } from "../../lib/kuaishouAuth";
 import { kuaishouIdentity, type KuaishouIdentitySnapshot } from "../../lib/kuaishouIdentity";
 import { useKuaishouIdentities } from "../../lib/KuaishouIdentityProvider";
 import { parseProxyString } from "../../lib/parseProxy";
-import type { FingerprintConfig, ProxyConfig } from "../../types";
+import type { ExtensionConfig, ProxyConfig } from "../../types";
 import { Modal } from "../atoms";
 import { Button } from "../atoms/Button";
 import { IdentityAvatar } from "../profile/KuaishouIdentity";
 import { ProxyTester } from "../profile/ProxyTester";
+import { BrowserSection } from "../profile/BrowserSection";
+import { ChromixProfileOptions } from "../profile/ChromixProfileOptions";
+import { ExtensionsSection } from "../profile/ExtensionsSection";
+import {
+  Field,
+  Input,
+  SHEET_HEIGHT,
+  SectionRail,
+  type SectionId,
+} from "../profile/profileSheetKit";
 
 /** How often the wizard re-captures the login page while waiting for a scan. */
 const QR_POLL_MS = 2000;
+
+/** Prefilled, editable home page for a shop account: the Kuaishou shop home. */
+const SHOP_HOME_URL = "https://s.kwaixiaodian.com/zone/home";
 
 type Step = "form" | "creating" | "waiting" | "done";
 
@@ -44,9 +64,6 @@ const EMPTY_PROXY: DraftProxy = {
   password: "",
 };
 
-const CONTROL =
-  "w-full min-w-0 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2 text-[12px] text-slate-200 outline-none focus:border-purple-400/60 disabled:opacity-50";
-
 function errorText(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
 }
@@ -55,8 +72,19 @@ function errorText(cause: unknown): string {
  * 小店账号建号向导（快手 › 小店 › 添加账号）。
  *
  * 账号即环境：向导创建的就是一个浏览器环境，列表里一个环境 = 一个小店账号。
- * 流程：命名 + 代理 → 创建环境（指纹自动随机、按代理出口对齐）→ 隐藏启动
- * （窗口移出屏幕）→ 向导内轮询截图二维码 → 自动读出快手ID/昵称/头像 → 完成。
+ * 第一步是 Chromix 风格的分区表单（主页 / 代理 / 扩展 / 指纹，无 General）：
+ *  - 主页预填小店首页 `https://s.kwaixiaodian.com/zone/home`（可编辑）；
+ *  - 代理可选，填了就让 Chromix 按代理出口自动对齐（`chromixOptions.geoip`）；
+ *  - 扩展按 staged 模式收集，创建时一并写入；
+ *  - 指纹直接用 Chromix 指纹组件（`ChromixProfileOptions`）。
+ * 创建时不再传 fingerprint —— 身份由 Chromix 拥有，CloakBrowser 指纹已废弃。
+ *
+ * 流程：填表单 → 创建环境 → 隐藏启动（窗口移出屏幕）→ 向导内轮询取二维码 →
+ * 自动读出快手ID/昵称/头像 → 完成。
+ *
+ * 命名：向导**不**让用户填名字。环境先以「未命名」创建，识别到账号后
+ * 自动用昵称（无昵称则用快手ID）改名。若创建成功但用户提前取消，
+ * 名称保持「未命名」，之后可在列表里改。
  *
  * 初始化（主体采集 / 切片权限）由既有的「识别到有效账号后自动补做」机制处理，
  * 本向导不驱动。
@@ -66,18 +94,35 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
   const { entries } = useKuaishouIdentities();
 
   const [step, setStep] = useState<Step>("form");
-  const [name, setName] = useState("");
+  const [section, setSection] = useState<SectionId>("browser");
+  const [startUrl, setStartUrl] = useState(SHOP_HOME_URL);
   const [proxyDraft, setProxyDraft] = useState<DraftProxy>(EMPTY_PROXY);
+  const [extensions, setExtensions] = useState<ExtensionConfig[]>([]);
+  const [chromixOptions, setChromixOptions] = useState<Record<string, unknown>>({});
   const [profileId, setProfileId] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
   // The wizard drives detection itself rather than waiting on the app-wide
   // 15s poll, so the sign-in completes the moment the QR is scanned.
   const [snapshot, setSnapshot] = useState<KuaishouIdentitySnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Set once the profile has been renamed from the detected account.
+  const [named, setNamed] = useState(false);
 
   const alive = useRef(true);
   // A created profile must survive a close: we only hide/stop the browser.
   const created = useRef(false);
+  // One rename per wizard run; guarded by a ref so the effect cannot double-fire.
+  const renamed = useRef(false);
+
+  // The wizard's own rail: no General, Chinese labels, home / proxy / extensions
+  // / fingerprint. Kept local so the profile sheets' English 5-section rail is
+  // left untouched.
+  const sections: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
+    { id: "browser", label: t("kuaishou.wizard.section.home"), icon: Globe },
+    { id: "proxy", label: t("kuaishou.wizard.section.proxy"), icon: Network },
+    { id: "extensions", label: t("kuaishou.wizard.section.extensions"), icon: Blocks },
+    { id: "chromix", label: t("kuaishou.wizard.section.chromix"), icon: Fingerprint },
+  ];
 
   useEffect(() => {
     alive.current = true;
@@ -90,13 +135,18 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
   useEffect(() => {
     if (!open) return;
     setStep("form");
-    setName("");
+    setSection("browser");
+    setStartUrl(SHOP_HOME_URL);
     setProxyDraft(EMPTY_PROXY);
+    setExtensions([]);
+    setChromixOptions({});
     setProfileId(null);
     setQr(null);
     setSnapshot(null);
     setError(null);
+    setNamed(false);
     created.current = false;
+    renamed.current = false;
   }, [open]);
 
   const platformUserId = snapshot?.platformUserId ?? null;
@@ -106,9 +156,26 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
     if (platformUserId) setStep("done");
   }, [platformUserId]);
 
-  // While waiting, keep re-capturing the hidden page (for the QR) and asking
-  // the backend whether the profile has signed in yet. Stops on "done", on
-  // unmount, and when the wizard closes — so no timer or capture leaks.
+  // Name the account from the detected identity: nickname when present, else the
+  // Kuaishou ID. Best-effort — a failure leaves the placeholder name in place.
+  useEffect(() => {
+    if (!platformUserId || !profileId || renamed.current) return;
+    const next = (snapshot?.nickname || snapshot?.platformUserId || "").trim();
+    if (!next) return;
+    renamed.current = true;
+    void (async () => {
+      try {
+        await profilesApi.update(profileId, { name: next });
+        if (alive.current) setNamed(true);
+      } catch {
+        renamed.current = false;
+      }
+    })();
+  }, [platformUserId, profileId, snapshot]);
+
+  // While waiting, keep re-reading the hidden page (for the QR) and asking the
+  // backend whether the profile has signed in yet. Stops on "done", on unmount,
+  // and when the wizard closes — so no timer or read leaks.
   useEffect(() => {
     // `open` is part of the gate: the wizard component stays mounted (the
     // Modal only renders null), so closing must tear the timer down here.
@@ -117,10 +184,13 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
     let timer = 0;
     const tick = async (): Promise<void> => {
       try {
+        // A `null` means "no valid QR right now" — not rendered yet, or the page
+        // auto-refreshed an expired one — so clear the frame rather than keep a
+        // dead QR on screen.
         const image = await kuaishouAuth.loginQr(profileId);
-        if (active && image) setQr(image);
+        if (active) setQr(image);
       } catch {
-        // A transient capture failure must not abort the wait; keep polling.
+        // A transient read failure must not abort the wait; keep polling.
       }
       try {
         const found = await kuaishouIdentity.detect(profileId);
@@ -161,15 +231,12 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
       : undefined;
 
   async function submit(): Promise<void> {
-    if (!name.trim()) {
-      setError(t("kuaishou.wizard.nameRequired"));
-      return;
-    }
     let built: ProxyConfig | undefined;
     try {
       built = buildProxy();
     } catch (cause) {
       setError(errorText(cause));
+      setSection("proxy");
       return;
     }
 
@@ -177,33 +244,27 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
     setStep("creating");
     let createdId: string | null = null;
     try {
-      // 1. Random-but-coherent fingerprint, aligned to the proxy's exit region
-      //    when a proxy is set — this is the "指纹一致性" requirement.
-      let fingerprint: FingerprintConfig = await fingerprintApi.generate();
-      if (built) {
-        const geo = await proxyApi.detectGeo(built);
-        if (geo.country) {
-          const localeId = await fingerprintApi.localeForCountry(geo.country);
-          fingerprint = await fingerprintApi.reconcile(fingerprint, {
-            ...(localeId ? { localeId } : {}),
-            ...(geo.timezone ? { timezone: geo.timezone } : {}),
-            country: geo.country,
-          });
-        }
-      }
+      // Chromix owns the identity. With a proxy set we ask it to resolve the
+      // exit region (GeoIP) so timezone/locale align automatically — the native
+      // Chromix alignment, no separate fingerprint reconciliation needed.
+      const options = built ? { ...chromixOptions, geoip: true } : chromixOptions;
 
-      // 2. Create the profile (the account itself).
+      // Create the profile with a placeholder name; the real name comes from
+      // the detected account once the scan completes. No `fingerprint` is sent:
+      // the CloakBrowser fingerprint is dead and Chromix holds the identity.
       const profile = await profilesApi.create({
-        name: name.trim(),
+        name: t("kuaishou.shop.unnamed"),
         proxy: built,
-        fingerprint,
+        startUrl: startUrl.trim() || undefined,
+        extensions: extensions.length > 0 ? extensions : undefined,
+        chromixOptions: options,
       });
       createdId = profile.id;
       created.current = true;
       setProfileId(profile.id);
       onCreated?.(profile.id);
 
-      // 3. Launch hidden and open the shop login page in a new tab.
+      // Launch hidden and open the shop login page in a new tab.
       await profilesApi.launchKuaishou(profile.id, true);
 
       if (alive.current) setStep("waiting");
@@ -240,206 +301,256 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
     <Modal
       open={open}
       title={t("kuaishou.wizard.title")}
-      width={560}
+      width={720}
       onClose={() => void close()}
     >
-      <div className="p-5 space-y-4 min-w-0 text-[13px] text-slate-300">
-        {error && (
-          <p role="alert" className="break-words text-[12px] text-red-300">
-            {error}
-          </p>
-        )}
+      {step === "form" ? (
+        <div className="flex flex-col" style={{ height: SHEET_HEIGHT }}>
+          <div className="flex flex-col sm:flex-row flex-1 min-h-0">
+            <SectionRail
+              section={section}
+              onSelect={setSection}
+              sections={sections}
+              badges={{ proxy: proxyDraft.enabled && !proxyDraft.host.trim() }}
+            />
 
-        {step === "form" && (
-          <div className="space-y-3.5">
-            <label className="block space-y-1.5">
-              <span className="text-slate-400">{t("kuaishou.wizard.name")}</span>
-              <input
-                autoFocus
-                className={CONTROL}
-                value={name}
-                onChange={(event) => {
-                  setName(event.target.value);
-                  setError(null);
-                }}
-                placeholder={t("kuaishou.wizard.namePlaceholder")}
-              />
-            </label>
+            {/* Content pane — only this scrolls */}
+            <div className="flex-1 min-h-0 min-w-0 overflow-y-auto px-5 py-4 text-[13px] text-slate-300">
+              {error && (
+                <p role="alert" className="mb-3 break-words text-[12px] text-red-300">
+                  {error}
+                </p>
+              )}
 
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={proxyDraft.enabled}
-                  onChange={(event) => {
-                    setProxyDraft((current) => ({ ...current, enabled: event.target.checked }));
-                    setError(null);
-                  }}
-                  className="w-3.5 h-3.5 rounded accent-[var(--accent)]"
+              {section === "browser" && (
+                <BrowserSection
+                  label={t("kuaishou.wizard.section.home")}
+                  defaultUrl={SHOP_HOME_URL}
+                  hint={t("kuaishou.wizard.homeHint")}
+                  startUrl={startUrl}
+                  onStartUrl={setStartUrl}
                 />
-                {t("kuaishou.wizard.proxy")}
-              </label>
+              )}
 
-              {proxyDraft.enabled && (
+              {section === "proxy" && (
                 <div className="space-y-2.5">
-                  <div className="grid grid-cols-[110px_1fr_90px] gap-2.5">
-                    <select
-                      className={CONTROL}
-                      value={proxyDraft.type}
-                      onChange={(event) =>
-                        setProxyDraft((current) => ({
-                          ...current,
-                          type: event.target.value as "http" | "socks5",
-                        }))
-                      }
-                    >
-                      <option value="http">HTTP</option>
-                      <option value="socks5">SOCKS5</option>
-                    </select>
+                  <label className="flex items-center gap-2 text-[12px] text-slate-300 cursor-pointer">
                     <input
-                      className={cn(CONTROL, "mono")}
-                      value={proxyDraft.host}
+                      type="checkbox"
+                      checked={proxyDraft.enabled}
                       onChange={(event) => {
-                        setProxyDraft((current) => ({ ...current, host: event.target.value }));
+                        setProxyDraft((current) => ({ ...current, enabled: event.target.checked }));
                         setError(null);
                       }}
-                      onPaste={(event) => {
-                        const parsed = parseProxyString(event.clipboardData.getData("text"));
-                        if (!parsed) return;
-                        event.preventDefault();
-                        setProxyDraft((current) => ({
-                          ...current,
-                          type: parsed.type ?? current.type,
-                          host: parsed.host,
-                          port: String(parsed.port),
-                          username: parsed.username ?? "",
-                          password: parsed.password ?? "",
-                        }));
-                      }}
-                      placeholder="host or host:port:user:pass"
+                      className="w-3.5 h-3.5 rounded accent-[var(--accent)]"
                     />
-                    <input
-                      className={cn(CONTROL, "mono")}
-                      value={proxyDraft.port}
-                      onChange={(event) =>
-                        setProxyDraft((current) => ({ ...current, port: event.target.value }))
-                      }
-                      placeholder="8080"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <input
-                      className={cn(CONTROL, "mono")}
-                      value={proxyDraft.username}
-                      onChange={(event) =>
-                        setProxyDraft((current) => ({ ...current, username: event.target.value }))
-                      }
-                      placeholder={t("profile.proxy.username")}
-                    />
-                    <input
-                      type="password"
-                      className={cn(CONTROL, "mono")}
-                      value={proxyDraft.password}
-                      onChange={(event) =>
-                        setProxyDraft((current) => ({ ...current, password: event.target.value }))
-                      }
-                      placeholder={t("profile.proxy.password")}
-                    />
-                  </div>
+                    {t("profile.proxy.useProxy")}
+                  </label>
+
+                  {proxyDraft.enabled && (
+                    <>
+                      <div className="grid grid-cols-[110px_1fr_90px] gap-2.5">
+                        <Field label={t("profile.proxy.type")}>
+                          <select
+                            value={proxyDraft.type}
+                            onChange={(event) =>
+                              setProxyDraft((current) => ({
+                                ...current,
+                                type: event.target.value as "http" | "socks5",
+                              }))
+                            }
+                            className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 outline-none"
+                            style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
+                          >
+                            <option value="http">HTTP</option>
+                            <option value="socks5">SOCKS5</option>
+                          </select>
+                        </Field>
+                        <Field label={t("profile.proxy.host")}>
+                          <Input
+                            value={proxyDraft.host}
+                            onChange={(v) => {
+                              setProxyDraft((current) => ({ ...current, host: v }));
+                              setError(null);
+                            }}
+                            onPaste={(text) => {
+                              const parsed = parseProxyString(text);
+                              if (!parsed) return false; // let the default paste fill host
+                              setProxyDraft((current) => ({
+                                ...current,
+                                type: parsed.type ?? current.type,
+                                host: parsed.host,
+                                port: String(parsed.port),
+                                username: parsed.username ?? "",
+                                password: parsed.password ?? "",
+                              }));
+                              return true;
+                            }}
+                            placeholder="host or host:port:user:pass"
+                            mono
+                          />
+                        </Field>
+                        <Field label={t("profile.proxy.port")}>
+                          <Input
+                            value={proxyDraft.port}
+                            onChange={(v) => setProxyDraft((current) => ({ ...current, port: v }))}
+                            placeholder="8080"
+                            mono
+                          />
+                        </Field>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <Field label={t("profile.proxy.username")}>
+                          <Input
+                            value={proxyDraft.username}
+                            onChange={(v) =>
+                              setProxyDraft((current) => ({ ...current, username: v }))
+                            }
+                            mono
+                          />
+                        </Field>
+                        <Field label={t("profile.proxy.password")}>
+                          <Input
+                            type="password"
+                            value={proxyDraft.password}
+                            onChange={(v) =>
+                              setProxyDraft((current) => ({ ...current, password: v }))
+                            }
+                            mono
+                          />
+                        </Field>
+                      </div>
+                      <ProxyTester proxy={proxyForTester} />
+                    </>
+                  )}
+
                   <p className="text-[11px] text-slate-500">{t("kuaishou.wizard.proxyHint")}</p>
-                  <ProxyTester proxy={proxyForTester} />
+                </div>
+              )}
+
+              {/* Extensions — staged into the shared store and passed to create. */}
+              {section === "extensions" && (
+                <ExtensionsSection
+                  profileId={null}
+                  staged={extensions}
+                  onStagedChange={setExtensions}
+                />
+              )}
+
+              {section === "chromix" && (
+                <div className="space-y-2.5">
+                  <ChromixProfileOptions options={chromixOptions} onChange={setChromixOptions} />
+                  <p className="text-[11px] text-slate-500">{t("kuaishou.wizard.chromixHint")}</p>
                 </div>
               )}
             </div>
           </div>
-        )}
 
-        {(step === "creating" || step === "waiting") && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-[12px] text-accent-foreground">
-              <Loader2 size={14} className="animate-spin" />
-              {step === "creating" ? t("kuaishou.wizard.creating") : t("kuaishou.wizard.opening")}
-            </div>
-
-            <div className="space-y-1.5">
-              <p className="font-medium text-slate-200">{t("kuaishou.wizard.waitingTitle")}</p>
-              <p className="text-[12px] text-slate-400 leading-relaxed">
-                {t("kuaishou.wizard.waitingHint")}
-              </p>
-            </div>
-
-            <div
-              data-testid="wizard-qr"
-              className="flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.02] p-3"
-              style={{ minHeight: 220 }}
-            >
-              {qr ? (
-                <img
-                  src={`data:image/png;base64,${qr}`}
-                  alt={t("kuaishou.wizard.waitingTitle")}
-                  className="max-h-[360px] max-w-full rounded-lg"
-                />
-              ) : (
-                <span className="text-[12px] text-slate-500">{t("kuaishou.wizard.qrPending")}</span>
-              )}
-            </div>
-
-            <Button
-              size="sm"
-              disabled={!profileId}
-              onClick={() => setQr(null)}
-              leftIcon={<RefreshCw size={11} />}
-            >
-              {t("kuaishou.wizard.refreshQr")}
+          {/* Action bar — always visible below the rail + content. */}
+          <div
+            className="shrink-0 flex items-center gap-3 px-5 py-3"
+            style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            <div className="flex-1 min-w-0" />
+            <Button onClick={() => void close()}>{t("common.cancel")}</Button>
+            <Button variant="primary" onClick={() => void submit()}>
+              {t("kuaishou.wizard.create")}
             </Button>
           </div>
-        )}
+        </div>
+      ) : (
+        <div className="p-5 space-y-4 min-w-0 text-[13px] text-slate-300">
+          {error && (
+            <p role="alert" className="break-words text-[12px] text-red-300">
+              {error}
+            </p>
+          )}
 
-        {step === "done" && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <IdentityAvatar snapshot={snapshot} size={44} />
-              <div className="min-w-0">
-                <p className="text-[12px] text-emerald-300">{t("kuaishou.wizard.detected")}</p>
-                <p className="text-[14px] font-semibold text-slate-100 truncate">
-                  {snapshot?.nickname || name}
-                </p>
-                <p className="mono text-[11px] text-slate-400 truncate">
-                  {snapshot?.platformUserId}
+          {(step === "creating" || step === "waiting") && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-[12px] text-accent-foreground">
+                <Loader2 size={14} className="animate-spin" />
+                {step === "creating" ? t("kuaishou.wizard.creating") : t("kuaishou.wizard.opening")}
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="font-medium text-slate-200">{t("kuaishou.wizard.waitingTitle")}</p>
+                <p className="text-[12px] text-slate-400 leading-relaxed">
+                  {t("kuaishou.wizard.waitingHint")}
                 </p>
               </div>
-            </div>
 
-            {duplicateOf && (
-              <p role="alert" className="text-[12px] text-amber-300 break-words">
-                {t("kuaishou.wizard.duplicate", { name: duplicateOf })}
-              </p>
+              <div
+                data-testid="wizard-qr"
+                className="flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.02] p-3"
+                style={{ minHeight: 220 }}
+              >
+                {qr ? (
+                  <img
+                    src={`data:image/png;base64,${qr}`}
+                    alt={t("kuaishou.wizard.waitingTitle")}
+                    className="rounded-lg"
+                    // The page's QR image is only ~125px; upscale with crisp
+                    // (pixelated) rendering so it stays scannable.
+                    style={{ width: 260, height: 260, imageRendering: "pixelated" }}
+                  />
+                ) : (
+                  <span className="text-[12px] text-slate-500">{t("kuaishou.wizard.qrPending")}</span>
+                )}
+              </div>
+
+              <Button
+                size="sm"
+                disabled={!profileId}
+                onClick={() => setQr(null)}
+                leftIcon={<RefreshCw size={11} />}
+              >
+                {t("kuaishou.wizard.refreshQr")}
+              </Button>
+            </div>
+          )}
+
+          {step === "done" && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <IdentityAvatar snapshot={snapshot} size={44} />
+                <div className="min-w-0">
+                  <p className="text-[12px] text-emerald-300">
+                    {named ? t("kuaishou.wizard.named") : t("kuaishou.wizard.detected")}
+                  </p>
+                  <p className="text-[14px] font-semibold text-slate-100 truncate">
+                    {snapshot?.nickname || snapshot?.platformUserId}
+                  </p>
+                  <p className="mono text-[11px] text-slate-400 truncate">
+                    {snapshot?.platformUserId}
+                  </p>
+                </div>
+              </div>
+
+              {duplicateOf && (
+                <p role="alert" className="text-[12px] text-amber-300 break-words">
+                  {t("kuaishou.wizard.duplicate", { name: duplicateOf })}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-1">
+            {step === "done" ? (
+              <Button variant="primary" onClick={() => void close()}>
+                {t("kuaishou.wizard.done")}
+              </Button>
+            ) : (
+              <>
+                <span className="flex-1 self-center text-[11px] text-slate-500">
+                  {created.current ? t("kuaishou.wizard.cancelCreated") : ""}
+                </span>
+                <Button onClick={() => void close()}>{t("common.cancel")}</Button>
+              </>
             )}
           </div>
-        )}
-
-        <div className="flex justify-end gap-2 pt-1">
-          {step === "form" ? (
-            <>
-              <Button onClick={() => void close()}>{t("common.cancel")}</Button>
-              <Button variant="primary" onClick={() => void submit()}>
-                {t("kuaishou.wizard.create")}
-              </Button>
-            </>
-          ) : step === "done" ? (
-            <Button variant="primary" onClick={() => void close()}>
-              {t("kuaishou.wizard.done")}
-            </Button>
-          ) : (
-            <>
-              <span className="flex-1 self-center text-[11px] text-slate-500">
-                {created.current ? t("kuaishou.wizard.cancelCreated") : ""}
-              </span>
-              <Button onClick={() => void close()}>{t("common.cancel")}</Button>
-            </>
-          )}
         </div>
-      </div>
+      )}
     </Modal>
   );
 }

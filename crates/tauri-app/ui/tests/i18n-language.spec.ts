@@ -13,7 +13,7 @@ test("language switch updates Settings-page strings without remounting App", asy
   // English first paint (entry gate read settings before mounting).
   await expect(page.getByRole("region", { name: "Settings", exact: true })).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await expect(page.getByText("Browser engine", { exact: true })).toBeVisible();
+  await expect(page.getByText("Chromix SDK configuration", { exact: true })).toBeVisible();
 
   // Mark the App-owned settings container. A remount would replace the DOM
   // node; a context-only update keeps it (and any unsaved form input with it).
@@ -25,7 +25,7 @@ test("language switch updates Settings-page strings without remounting App", asy
   // Settings page strings re-render in Chinese through context.
   await expect(page.getByRole("region", { name: "设置", exact: true })).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
-  await expect(page.getByText("浏览器引擎", { exact: true })).toBeVisible();
+  await expect(page.getByText("Chromix SDK 配置", { exact: true })).toBeVisible();
   await expect(region(page)).toHaveAttribute("data-remount-probe", "1");
 
   const saved = await storedSettings(page);

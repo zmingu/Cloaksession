@@ -7,14 +7,13 @@ import type { JSX, ReactNode } from "react";
  * Keeping them here means create/edit never drift apart visually.
  */
 
-export type SectionId = "general" | "browser" | "proxy" | "extensions" | "fingerprint" | "chromix";
+export type SectionId = "general" | "browser" | "proxy" | "extensions" | "chromix";
 
 export const SECTIONS: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
   { id: "general", label: "General", icon: IdCard },
   { id: "browser", label: "Browser", icon: Globe },
   { id: "proxy", label: "Proxy", icon: Network },
   { id: "extensions", label: "Extensions", icon: Blocks },
-  { id: "fingerprint", label: "Fingerprint", icon: Fingerprint },
   { id: "chromix", label: "Chromix fingerprint", icon: Fingerprint },
 ];
 
@@ -24,11 +23,14 @@ export const SHEET_HEIGHT = "min(600px, calc(100vh - 168px))";
 export function SectionRail({
   section,
   onSelect,
+  sections = SECTIONS,
   badges,
   footer,
 }: {
   section: SectionId;
   onSelect: (id: SectionId) => void;
+  /** Rail entries to render. Defaults to the create/edit sheets' 5 sections. */
+  sections?: ReadonlyArray<{ id: SectionId; label: string; icon: LucideIcon }>;
   /** Marks sections needing attention (e.g. a required field is empty) with a dot. */
   badges?: Partial<Record<SectionId, boolean>>;
   /** Optional bottom slot, pinned under the list (e.g. the autosave status pill). */
@@ -38,7 +40,7 @@ export function SectionRail({
     <nav
       className="flex flex-row flex-wrap sm:flex-col sm:flex-nowrap w-full sm:w-[168px] shrink-0 py-2 sm:py-3 px-2 gap-0.5 overflow-y-auto min-h-0 border-b sm:border-b-0 sm:border-r border-white/5"
     >
-      {SECTIONS.map(({ id, label, icon: Icon }) => {
+      {sections.map(({ id, label, icon: Icon }) => {
         const active = section === id;
         return (
           <button

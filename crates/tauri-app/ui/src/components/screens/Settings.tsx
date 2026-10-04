@@ -262,62 +262,23 @@ export function Settings({ onImport }: Props): JSX.Element {
 
         <Row
           icon={<Chrome size={16} strokeWidth={1.5} />}
-          title={t("settings.engine.title")}
-          desc={t("settings.engine.desc")}
+          title={t("settings.chromix.title")}
+          desc={t("settings.chromix.desc")}
         >
-          <div className="grid gap-2 sm:grid-cols-2">
-            {engineOptions.map((option) => {
-              const selected = settings.browserEngine === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => void patch({ browserEngine: option.value })}
-                  className="text-left p-3 rounded-lg transition-colors"
-                  style={{
-                    boxShadow: selected
-                      ? "inset 0 0 0 1px var(--ring)"
-                      : "inset 0 0 0 1px rgba(255,255,255,0.07)",
-                    background: selected ? "var(--accent)" : "rgba(255,255,255,0.025)",
-                  }}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[13px] font-medium text-slate-100">{option.label}</span>
-                    {selected && <Pill kind="running">{t("settings.engine.selected")}</Pill>}
-                  </div>
-                  <div className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    {t(option.descKey)}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          <ChromixSettingsEditor
+            value={settings.chromix}
+            onSave={async (chromix) => {
+              const next = await settingsApi.update({ chromix });
+              setSettings(next);
+              setSettingsError(null);
+            }}
+          />
         </Row>
-
-        {settings.browserEngine === "chromix" && (
-          <Row
-            icon={<Chrome size={16} strokeWidth={1.5} />}
-            title={t("settings.chromix.title")}
-            desc={t("settings.chromix.desc")}
-          >
-            <ChromixSettingsEditor
-              value={settings.chromix}
-              onSave={async (chromix) => {
-                const next = await settingsApi.update({ chromix });
-                setSettings(next);
-                setSettingsError(null);
-              }}
-            />
-          </Row>
-        )}
 
         <Row
           icon={<FileSearch size={16} strokeWidth={1.5} />}
           title={t("settings.binary.title")}
-          desc={settings.browserEngine === "chromix"
-            ? t("settings.binary.descChromix")
-            : t("settings.binary.descDefault")}
+          desc={t("settings.binary.descChromix")}
         >
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -325,7 +286,7 @@ export function Settings({ onImport }: Props): JSX.Element {
               type="text"
               value={settings.browserBinaryPath ?? ""}
               onChange={(e) => void patch({ browserBinaryPath: e.target.value })}
-              placeholder={settings.browserEngine === "chromix" ? t("settings.binary.phChromix") : t("settings.binary.phDefault")}
+              placeholder={t("settings.binary.phChromix")}
               className="flex-1 basis-[180px] min-w-0 h-8 px-2.5 text-[12px] text-slate-200 rounded-lg bg-white/[0.03] outline-none"
               style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)" }}
             />
@@ -356,14 +317,10 @@ export function Settings({ onImport }: Props): JSX.Element {
               onChange={(e) => void patch({ skipBrowserDownload: e.target.checked })}
               className="w-3.5 h-3.5 rounded accent-[var(--ring)]"
             />
-            {settings.browserEngine === "chromix"
-              ? t("settings.binary.skipDownload")
-              : t("settings.binary.skipDownloadLegacy")}
+            {t("settings.binary.skipDownload")}
           </label>
           <div className="text-[11px] text-slate-600 mt-2 leading-relaxed">
-            {settings.browserEngine === "chromix"
-              ? t("settings.binary.offlineNote")
-              : t("settings.binary.offlineNoteLegacy")}
+            {t("settings.binary.offlineNote")}
           </div>
         </Row>
 
@@ -468,28 +425,6 @@ export function Settings({ onImport }: Props): JSX.Element {
 const languageOptions: Array<{ value: AppLanguage; labelKey: "settings.language.option.zhCN" | "settings.language.option.en" }> = [
   { value: "zh-CN", labelKey: "settings.language.option.zhCN" },
   { value: "en", labelKey: "settings.language.option.en" },
-];
-
-const engineOptions: Array<{
-  value: AppSettings["browserEngine"];
-  label: string;
-  descKey: "settings.engine.cloakbrowserDesc" | "settings.engine.chromixDesc" | "settings.engine.cftDesc";
-}> = [
-  {
-    value: "cloakbrowser",
-    label: "CloakBrowser",
-    descKey: "settings.engine.cloakbrowserDesc",
-  },
-  {
-    value: "chromix",
-    label: "Chromix",
-    descKey: "settings.engine.chromixDesc",
-  },
-  {
-    value: "cft",
-    label: "Chrome for Testing",
-    descKey: "settings.engine.cftDesc",
-  },
 ];
 
 function updateLabel(t: Translator, status: UpdateStatus | null): string {

@@ -2,13 +2,14 @@ import type { JSX } from "react";
 
 import { useT } from "../../i18n/LanguageProvider";
 import type { KuaishouTab } from "../screens/Sidebar";
+import { KuaishouInteractAccounts } from "./KuaishouInteractAccounts";
 import { KuaishouShopAccounts } from "./KuaishouShopAccounts";
 
 /**
- * 快手三个二级菜单的内容分发（小店 / 直播伴侣 / 互动账号）。
+ * 快手三个二级菜单的内容分发（小店 / 互动账号 / 直播伴侣）。
  *
- * 小店已有内容（账号管理）；直播伴侣与互动账号仍是空壳，
- * 后续按 tab 逐个填充，不在此处堆业务。
+ * 小店与互动账号已有内容；直播伴侣仍是空壳，后续按 tab 填充，
+ * 不在此处堆业务。
  */
 export function KuaishouAccountsPage({
   tab,
@@ -20,6 +21,7 @@ export function KuaishouAccountsPage({
   onAddAccount?: () => void;
 }): JSX.Element {
   if (tab === "shop") return <KuaishouShopAccounts onAddAccount={onAddAccount} />;
+  if (tab === "interact") return <KuaishouInteractAccounts />;
   return <KuaishouShell tab={tab} />;
 }
 

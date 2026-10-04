@@ -6,7 +6,9 @@ export const defaultSettings: AppSettings = {
   language: "en",
   mcpHttpEnabled: true,
   mcpHttpPort: 7777,
-  browserEngine: "cloakbrowser",
+  // The UI no longer exposes an engine selector; Chromix is the only engine.
+  // The stored value is only read (never written) by the UI.
+  browserEngine: "chromix",
   browserBinaryPath: null,
   chromix: { nodePath: "node", options: {}, environment: {} },
   skipBrowserDownload: false,

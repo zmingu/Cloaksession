@@ -8,7 +8,8 @@ const nodeEditor = (page: Page) => page.getByLabel("Node.js executable", { exact
 const save = (page: Page) => page.getByRole("button", { name: "Save Chromix settings", exact: true });
 
 async function chooseChromix(page: Page): Promise<void> {
-  await settingsRegion(page).getByRole("button", { name: /^Chromix / }).click();
+  // Chromix is the only engine, so its SDK editor is always shown — no engine
+  // selector to click any more.
   await expect(nodeEditor(page)).toBeVisible();
 }
 
@@ -44,7 +45,7 @@ test.beforeEach(async ({ page }) => {
 test("explicit save preserves full SDK JSON and unknown keys across navigation and reload", async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await expect(settingsRegion(page).getByRole("button", { name: /^CloakBrowser / })).toHaveAttribute("aria-pressed", "true");
+  await expect(settingsRegion(page).getByText("Chromix SDK configuration", { exact: true })).toBeVisible();
   await chooseChromix(page);
   await expect(nodeEditor(page)).toHaveValue("node");
   await expect(optionsEditor(page)).toHaveValue("{}");
@@ -186,7 +187,7 @@ test("save failure retains the draft and permits retry without false success", a
   expect((await storedSettings(page)).chromix.options).toEqual({ futureOption: "draft" });
 });
 
-test("legacy engines keep their defaults and Chromix data; binary reset sends an empty string", async ({ page }) => {
+test("Chromix stays the only engine and keeps its data; binary reset sends an empty string", async ({ page }) => {
   await chooseChromix(page);
   await optionsEditor(page).fill('{"unknownOption":{"keep":true}}');
   await save(page).click();
@@ -194,17 +195,18 @@ test("legacy engines keep their defaults and Chromix data; binary reset sends an
   const savedChromix = (await storedSettings(page)).chromix;
   await page.getByRole("checkbox", { name: "Automatically check for updates", exact: true }).check();
   await expect(optionsEditor(page)).toHaveValue(JSON.stringify(savedChromix.options, null, 2));
-  for (const engine of ["Chrome for Testing", "CloakBrowser"]) {
-    const button = settingsRegion(page).getByRole("button", { name: new RegExp(`^${engine} `) });
-    await button.click();
-    await expect(button).toHaveAttribute("aria-pressed", "true");
-    await expect(nodeEditor(page)).toHaveCount(0);
-    await expect(page.getByRole("checkbox", { name: "Skip auto-download (use cached binary or the custom path above)", exact: true })).toBeVisible();
-    expect((await storedSettings(page)).chromix).toEqual(savedChromix);
-    await page.reload();
-    await expect(button).toHaveAttribute("aria-pressed", "true");
-  }
-  await chooseChromix(page);
+  // No engine selector remains: Chromix is the sole engine. The stored value is
+  // only read, never written, by the UI.
+  await expect(settingsRegion(page).getByRole("button", { name: /^CloakBrowser / })).toHaveCount(0);
+  await expect(settingsRegion(page).getByRole("button", { name: /^Chrome for Testing / })).toHaveCount(0);
+  await expect(settingsRegion(page).getByText("Browser engine", { exact: true })).toHaveCount(0);
+  await expect(nodeEditor(page)).toBeVisible();
+  expect((await storedSettings(page)).browserEngine).toBe("chromix");
+  expect((await storedSettings(page)).chromix).toEqual(savedChromix);
+  expect((await settingsPatches(page)).some((patch) => "browserEngine" in patch)).toBe(false);
+  await page.reload();
+  await expect(nodeEditor(page)).toHaveValue("node");
+  await expect(settingsRegion(page).getByRole("button", { name: /^CloakBrowser / })).toHaveCount(0);
   expect(JSON.parse(await optionsEditor(page).inputValue())).toEqual(savedChromix.options);
   await expect(page.getByRole("checkbox", { name: /Skip Chromix SDK auto-download/ })).toBeVisible();
   const binary = page.getByRole("textbox", { name: "Browser binary path", exact: true });

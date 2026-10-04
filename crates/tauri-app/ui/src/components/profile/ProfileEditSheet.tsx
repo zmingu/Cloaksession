@@ -1,8 +1,7 @@
 import { profiles } from "../../lib/ipc";
 import { useEffect, useRef, useState, type JSX } from "react";
 import { Check, Loader2, TriangleAlert } from "lucide-react";
-import type { FingerprintConfig, Profile, ProxyConfig, UpdateProfileInput } from "../../types";
-import { FingerprintForm } from "./FingerprintForm";
+import type { Profile, ProxyConfig, UpdateProfileInput } from "../../types";
 import { ChromixProfileOptions } from "./ChromixProfileOptions";
 import { ProxyTester } from "./ProxyTester";
 import { ExtensionsSection } from "./ExtensionsSection";
@@ -43,7 +42,6 @@ interface FormState {
   proxyPort: string;
   proxyUsername: string;
   proxyPassword: string;
-  fingerprint: FingerprintConfig;
   chromixOptions: Record<string, unknown>;
 }
 
@@ -62,7 +60,6 @@ function toForm(p: Profile): FormState {
     proxyPort: p.proxy?.port ? String(p.proxy.port) : "",
     proxyUsername: p.proxy?.username ?? "",
     proxyPassword: p.proxy?.password ?? "",
-    fingerprint: p.fingerprint,
     chromixOptions: p.chromixOptions ?? {},
   };
 }
@@ -92,7 +89,6 @@ function toPatch(f: FormState): UpdateProfileInput {
     icon: f.icon ?? null, // null clears a custom icon (revert to derived default)
     startUrl: f.startUrl.trim() || null, // null → app default start page
     proxy,
-    fingerprint: f.fingerprint,
     chromixOptions: f.chromixOptions,
   };
 }
@@ -345,14 +341,6 @@ export function ProfileEditSheet({ profile, onSaved }: Props): JSX.Element {
           <ChromixProfileOptions
             options={form.chromixOptions}
             onChange={(options) => update("chromixOptions", options)}
-          />
-        )}
-
-        {section === "fingerprint" && (
-          <FingerprintForm
-            fingerprint={form.fingerprint}
-            onChange={(fp) => update("fingerprint", fp)}
-            proxy={proxyForForm}
           />
         )}
       </div>

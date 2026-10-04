@@ -205,7 +205,10 @@ export interface LaunchedProfile {
 // Settings (crates/multizen-core/src/settings.rs)
 // ---------------------------------------------------------------------------
 
-export type BrowserEngine = "cft" | "cloakbrowser" | "chromix";
+/** Browser engine wire values (`multizen_core::BrowserEngine`). Chromix only:
+ *  the CloakBrowser/CFT engines were removed; legacy `"cloakbrowser"`/`"cft"`
+ *  values in old settings files are normalized to `"chromix"` on load. */
+export type BrowserEngine = "chromix";
 
 /** App UI language wire values (`multizen_core::AppLanguage`). No system mode. */
 export type AppLanguage = "zh-CN" | "en";

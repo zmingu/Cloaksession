@@ -19,26 +19,39 @@ export const DEFAULT_START_URL = "https://duckduckgo.com/";
 export function BrowserSection({
   startUrl,
   onStartUrl,
+  label = "Start page",
+  defaultUrl = DEFAULT_START_URL,
+  hint,
 }: {
   startUrl: string;
   onStartUrl: (v: string) => void;
+  /** Field label. Defaults to the English "Start page" the profile sheets use. */
+  label?: string;
+  /** Prefilled/placeholder URL. Defaults to the profile sheets' duckduckgo default. */
+  defaultUrl?: string;
+  /** Optional replacement for the built-in English note (e.g. a localized hint). */
+  hint?: string;
 }): JSX.Element {
   return (
     <div className="space-y-2.5">
-      <SectionField label="Start page">
+      <SectionField label={label}>
         <input
           type="text"
           value={startUrl}
           onChange={(e) => onStartUrl(e.target.value)}
-          placeholder={DEFAULT_START_URL}
+          placeholder={defaultUrl}
           className="w-full px-2.5 h-9 rounded-lg bg-white/[0.03] text-[12px] text-slate-200 outline-none placeholder:text-slate-600"
           style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
         />
       </SectionField>
 
       <p className="text-[10px] text-slate-600 leading-relaxed">
-        Opens on a profile's first launch (later launches restore your tabs). Leave the default
-        or set your own — any http(s) URL, or <code className="text-slate-500">about:blank</code>.
+        {hint ?? (
+          <>
+            Opens on a profile's first launch (later launches restore your tabs). Leave the default
+            or set your own — any http(s) URL, or <code className="text-slate-500">about:blank</code>.
+          </>
+        )}
       </p>
     </div>
   );

@@ -1,14 +1,13 @@
-import { fingerprint as fingerprintApi, profiles } from "../../lib/ipc";
+import { profiles } from "../../lib/ipc";
 import { useEffect, useRef, useState, type JSX, type KeyboardEvent } from "react";
 import { Kbd } from "../atoms";
-import { FingerprintForm } from "./FingerprintForm";
 import { useT } from "../../i18n/LanguageProvider";
 import { ChromixProfileOptions } from "./ChromixProfileOptions";
 import { ProxyTester } from "./ProxyTester";
 import { ExtensionsSection } from "./ExtensionsSection";
 import { EmojiField } from "./EmojiField";
 import { BrowserSection, DEFAULT_START_URL } from "./BrowserSection";
-import type { ExtensionConfig, FingerprintConfig, ProxyConfig } from "../../types";
+import type { ExtensionConfig, ProxyConfig } from "../../types";
 import { parseProxyString } from "../../lib/parseProxy";
 import {
   Field,
@@ -64,7 +63,6 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
   const [proxy, setProxy] = useState<DraftProxy>(EMPTY_PROXY);
   const [notes, setNotes] = useState("");
   const [extensions, setExtensions] = useState<ExtensionConfig[]>([]);
-  const [fingerprint, setFingerprint] = useState<FingerprintConfig | null>(null);
   const [chromixOptions, setChromixOptions] = useState<Record<string, unknown>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,18 +70,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
   // Parsed tags, used both for the create call and to feed the emoji classifier.
   const tagList = tagsRaw.split(",").map((s) => s.trim()).filter(Boolean);
 
-  const initialFingerprintRef = useRef<string | null>(null);
-  // Auto-generate a fingerprint preset on mount so the create call always
-  // has one and the regen button has something to replace.
-  useEffect(() => {
-    void fingerprintApi.generate().then((generated) => {
-      initialFingerprintRef.current = JSON.stringify(generated);
-      setFingerprint(generated);
-    });
-  }, []);
-
-  // Track "dirty" — anything the user typed that's not the default. The
-  // freshly-generated fingerprint isn't user input so we ignore it.
+  // Track "dirty" — anything the user typed that's not the default.
   const dirtyRef = useRef(false);
   useEffect(() => {
     const dirty =
@@ -98,15 +85,12 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
       proxy.username !== "" ||
       proxy.password !== "" ||
       extensions.length > 0 ||
-      Object.keys(chromixOptions).length > 0 ||
-      (fingerprint !== null &&
-        initialFingerprintRef.current !== null &&
-        JSON.stringify(fingerprint) !== initialFingerprintRef.current);
+      Object.keys(chromixOptions).length > 0;
     if (dirty !== dirtyRef.current) {
       dirtyRef.current = dirty;
       onDirtyChange?.(dirty);
     }
-  }, [name, tagsRaw, group, icon, notes, startUrl, proxy, extensions, fingerprint, chromixOptions, onDirtyChange]);
+  }, [name, tagsRaw, group, icon, notes, startUrl, proxy, extensions, chromixOptions, onDirtyChange]);
 
   function buildProxy(): ProxyConfig | undefined {
     if (!proxy.enabled) return undefined;
@@ -122,7 +106,7 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
     };
   }
 
-  // Derive a ProxyConfig snapshot for the FingerprintForm so it can probe geo.
+  // Derive a ProxyConfig snapshot for the proxy tester.
   const proxyForForm: ProxyConfig | undefined = proxy.enabled && proxy.host
     ? {
         type: proxy.type,
@@ -133,17 +117,12 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
       }
     : undefined;
 
-  const canSubmit = name.trim() !== "" && fingerprint !== null && !busy;
+  const canSubmit = name.trim() !== "" && !busy;
 
   async function submit(autoLaunch: boolean): Promise<void> {
     if (!name.trim()) {
       setError(t("profile.validation.nameRequired"));
       setSection("general");
-      return;
-    }
-    if (!fingerprint) {
-      setError(t("profile.new.fingerprintLoading"));
-      setSection("fingerprint");
       return;
     }
     let built: ProxyConfig | undefined;
@@ -165,7 +144,6 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
         notes: notes.trim() || undefined,
         startUrl: startUrl.trim() || undefined,
         proxy: built,
-        fingerprint,
         chromixOptions,
         extensions: extensions.length > 0 ? extensions : undefined,
       };
@@ -346,17 +324,6 @@ export function NewProfileSheet({ onCancel, onCreated, onDirtyChange }: Props): 
           {section === "chromix" && (
             <ChromixProfileOptions options={chromixOptions} onChange={setChromixOptions} />
           )}
-
-          {section === "fingerprint" &&
-            (fingerprint ? (
-              <FingerprintForm
-                fingerprint={fingerprint}
-                onChange={setFingerprint}
-                proxy={proxyForForm}
-              />
-            ) : (
-              <div className="text-[11px] text-slate-600">{t("profile.new.presetLoading")}</div>
-            ))}
         </div>
       </div>
 

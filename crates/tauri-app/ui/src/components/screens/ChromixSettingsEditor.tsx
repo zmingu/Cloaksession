@@ -1,6 +1,8 @@
 import { useState, type JSX } from "react";
 import { Button } from "../atoms/Button";
 import { ChromixFingerprintForm } from "../profile/ChromixFingerprintForm";
+import { useT } from "../../i18n/LanguageProvider";
+import type { Translator } from "../../i18n/translate.ts";
 import type { ChromixSettings } from "../../types";
 
 interface Props {
@@ -49,20 +51,21 @@ const environmentExample = {
   CHROMIX_DOWNLOAD_HOST: "https://github.com/xiaozhou26/Chromix/releases/download",
 };
 
-function parseObject(text: string, label: string): Record<string, unknown> {
+function parseObject(text: string, label: string, t: Translator): Record<string, unknown> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch (error) {
-    throw new Error(`${label}: invalid JSON. ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(t("chromix.editor.invalidJson", { label, error: error instanceof Error ? error.message : String(error) }));
   }
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(`${label} must be a top-level JSON object, not an array, null, or primitive.`);
+    throw new Error(t("chromix.editor.mustBeObject", { label }));
   }
   return parsed as Record<string, unknown>;
 }
 
 export function ChromixSettingsEditor({ value = DEFAULTS, onSave }: Props): JSX.Element {
+  const t = useT();
   const [nodePath, setNodePath] = useState(value.nodePath);
   const [options, setOptions] = useState(() => JSON.stringify(value.options, null, 2));
   const [environment, setEnvironment] = useState(() => JSON.stringify(value.environment, null, 2));
@@ -75,7 +78,7 @@ export function ChromixSettingsEditor({ value = DEFAULTS, onSave }: Props): JSX.
 
   let structuredOptions: Record<string, unknown> | undefined;
   try {
-    structuredOptions = parseObject(options, "SDK options");
+    structuredOptions = parseObject(options, t("chromix.editor.sdkOptions"), t);
   } catch {
     // Keep invalid JSON drafts intact until the user corrects them.
   }
@@ -89,16 +92,16 @@ export function ChromixSettingsEditor({ value = DEFAULTS, onSave }: Props): JSX.
     const nextErrors: typeof errors = {};
     let parsedOptions: Record<string, unknown> = {};
     let parsedEnvironment: Record<string, unknown> = {};
-    if (!nodePath.trim()) nextErrors.nodePath = "Enter a Node.js executable path or node.";
+    if (!nodePath.trim()) nextErrors.nodePath = t("chromix.editor.nodeHint");
     try {
-      parsedOptions = parseObject(options, "SDK options");
+      parsedOptions = parseObject(options, t("chromix.editor.sdkOptions"), t);
     } catch (error) {
       nextErrors.options = (error as Error).message;
     }
     try {
-      parsedEnvironment = parseObject(environment, "Environment");
+      parsedEnvironment = parseObject(environment, t("chromix.editor.environment"), t);
       if (Object.values(parsedEnvironment).some((item) => typeof item !== "string")) {
-        nextErrors.environment = "Environment values must all be strings (including numbers and booleans, written in quotes).";
+        nextErrors.environment = t("chromix.editor.envHint");
       }
     } catch (error) {
       nextErrors.environment = (error as Error).message;
@@ -119,21 +122,20 @@ export function ChromixSettingsEditor({ value = DEFAULTS, onSave }: Props): JSX.
       setEnvironment(JSON.stringify(parsedEnvironment, null, 2));
       setSaved(true);
     } catch (error) {
-      setErrors({ save: `Could not save Chromix settings: ${error instanceof Error ? error.message : String(error)}` });
+      setErrors({ save: t("chromix.editor.save.saveFailed", { error: error instanceof Error ? error.message : String(error) }) });
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="space-y-4 min-w-0" aria-label="Chromix configuration">
+    <div className="space-y-4 min-w-0" aria-label={t("chromix.editor.title")}>
       <div className="text-[12px] text-slate-400 leading-relaxed">
-        Global settings for all Chromix profiles. Save explicitly, then restart the app to apply
-        changes to browser startup. Switching engines does not erase this configuration.
+        {t("chromix.editor.intro")}
       </div>
       <fieldset disabled={saving} className="space-y-4 min-w-0">
         <div>
-          <label htmlFor="chromix-node-path" className="block text-[12px] text-slate-300 mb-1.5">Node.js executable</label>
+          <label htmlFor="chromix-node-path" className="block text-[12px] text-slate-300 mb-1.5">{t("chromix.editor.nodeLabel")}</label>
           <input
             id="chromix-node-path"
             type="text"
@@ -147,23 +149,23 @@ export function ChromixSettingsEditor({ value = DEFAULTS, onSave }: Props): JSX.
             aria-describedby={errors.nodePath ? "chromix-node-error" : "chromix-node-help"}
           />
           <p id="chromix-node-help" className="text-[11px] text-slate-500 mt-1.5">
-            Default: node (from PATH). Use an absolute executable path if the desktop app cannot find Node.js.
+            {t("chromix.editor.nodeDefault")}
           </p>
           {errors.nodePath && <ErrorMessage id="chromix-node-error" message={errors.nodePath} />}
         </div>
         <details className="mz-panel min-w-0 p-3">
-          <summary className="cursor-pointer text-[12px] text-muted-foreground">Global fingerprint parameters</summary>
+          <summary className="cursor-pointer text-[12px] text-muted-foreground">{t("chromix.editor.sections.globalFingerprintParameters")}</summary>
           <div className="mt-3">
             {structuredOptions ? (
               <ChromixFingerprintForm options={structuredOptions} onChange={(next) => {
                 setOptions(JSON.stringify(next, null, 2));
                 edited();
               }} />
-            ) : <p className="text-[12px] text-amber-200">Correct SDK options JSON to edit the structured fingerprint fields. Your draft is preserved.</p>}
+            ) : <p className="text-[12px] text-amber-200">{t("chromix.editor.fixJsonHint")}</p>}
           </div>
         </details>
         <div>
-          <label htmlFor="chromix-options" className="block text-[12px] text-slate-300 mb-1.5">SDK options JSON</label>
+          <label htmlFor="chromix-options" className="block text-[12px] text-slate-300 mb-1.5">{t("chromix.editor.sections.sdkOptionsJson")}</label>
           <textarea
             id="chromix-options"
             value={options}
@@ -176,14 +178,12 @@ export function ChromixSettingsEditor({ value = DEFAULTS, onSave }: Props): JSX.
             aria-describedby={errors.options ? "chromix-options-error" : "chromix-options-help"}
           />
           <p id="chromix-options-help" className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-            A complete SDK options object, not an AppSettings wrapper. All official SDK fields and
-            unknown keys are preserved and passed through without a UI allowlist. Defaults to {"{}"}.
-            The installed SDK validates supported options at launch. JSON cannot store functions or callbacks.
+            {t("chromix.editor.optionsHint")}
           </p>
           {errors.options && <ErrorMessage id="chromix-options-error" message={errors.options} />}
         </div>
         <div>
-          <label htmlFor="chromix-environment" className="block text-[12px] text-slate-300 mb-1.5">Environment JSON</label>
+          <label htmlFor="chromix-environment" className="block text-[12px] text-slate-300 mb-1.5">{t("chromix.editor.sections.environmentJson")}</label>
           <textarea
             id="chromix-environment"
             value={environment}
@@ -196,53 +196,42 @@ export function ChromixSettingsEditor({ value = DEFAULTS, onSave }: Props): JSX.
             aria-describedby={errors.environment ? "chromix-environment-error" : "chromix-environment-help"}
           />
           <p id="chromix-environment-help" className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-            Environment overrides for the Chromix Node process. A JSON object with string values only;
-            defaults to {"{}"}. Stored locally in settings; do not share secrets in screenshots or exports.
+            {t("chromix.editor.environmentHint")}
           </p>
           {errors.environment && <ErrorMessage id="chromix-environment-error" message={errors.environment} />}
         </div>
       </fieldset>
       <div className="flex flex-wrap items-center gap-2.5">
         <Button variant="primary" onClick={() => void save()} disabled={saving}>
-          {saving ? "Saving…" : "Save Chromix settings"}
+          {saving ? t("chromix.editor.save.saving") : t("chromix.editor.save.saveChromixSettings")}
         </Button>
         <span role="status" className="text-[12px] text-slate-400">
-          {saved ? "Saved. Restart the app to apply." : dirty ? "Unsaved changes — save before leaving this page." : "No unsaved changes."}
+          {saved ? t("chromix.editor.save.savedRestartTheApp") : dirty ? t("chromix.editor.save.unsavedChangesSaveBefore") : t("chromix.editor.save.noUnsavedChanges")}
         </span>
       </div>
       {errors.save && <ErrorMessage message={errors.save} />}
       <div className="mz-panel p-3 text-[11px] text-slate-400 leading-relaxed space-y-2 break-words">
         <p>
-          <b className="text-slate-300">Automation boundary:</b> SDK humanize only affects SDK Playwright
-          page objects. Existing MCP/CDP actions still use JiegeGo’s current driver, not the SDK’s
-          humanized mouse or keyboard methods.
+          <b className="text-slate-300">{t("chromix.editor.boundaryLabels.automationBoundary")}</b> {t("chromix.editor.humanizeNote")}
         </p>
         <p>
-          <b className="text-slate-300">Measured devices:</b> devicePool requires the matching Python SDK
-          and matching browser binary through a separate measured-device entry point. JiegeGo's
-          CDP sidecar rejects devicePool and measured mode because that entry point excludes host CDP
-          overrides. The example below is for direct SDK use only.
+          <b className="text-slate-300">{t("chromix.editor.boundaryLabels.measuredDevices")}</b> {t("chromix.editor.devicePoolNote")}
         </p>
         <p>
-          <b className="text-slate-300">Host controls:</b> JiegeGo supplies profile storage by default and reserves
-          debugging arguments, including --remote-debugging-port, --remote-debugging-address and
-          --remote-debugging-pipe. Do not override them in args, launchOptions or contextOptions.
+          <b className="text-slate-300">{t("chromix.editor.boundaryLabels.hostControls")}</b> {t("chromix.editor.reservedArgsNote")}
         </p>
         <a href={SDK_README} target="_blank" rel="noopener noreferrer" className="inline-block text-accent-foreground hover:text-foreground">
-          Official Chromix Node SDK README ↗
+          {t("chromix.editor.sdkReadme")}
         </a>
       </div>
       <details className="mz-panel p-3 text-[12px] min-w-0">
-        <summary className="cursor-pointer text-muted-foreground">Complete SDK JSON examples</summary>
+        <summary className="cursor-pointer text-muted-foreground">{t("chromix.editor.examplesTitle")}</summary>
         <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
-          Reference examples, not defaults or a field whitelist. Replace paths, credentials and persona
-          values before use. Omit userDataDir to keep JiegeGo’s per-profile storage; an explicit
-          path overrides it and must not be shared by concurrent profiles. Availability depends on the
-          installed SDK and matching native binary; consult the official README above.
+          {t("chromix.editor.examplesNote")}
         </p>
-        <Example title="SDK options example" value={optionsExample} />
-        <Example title="Environment example" value={environmentExample} />
-        <Example title="devicePool options example (separate measured-device mode)" value={{
+        <Example title={t("chromix.editor.exampleTitles.sdkOptionsExample")} value={optionsExample} />
+        <Example title={t("chromix.editor.exampleTitles.environmentExample")} value={environmentExample} />
+        <Example title={t("chromix.editor.exampleTitles.devicepoolOptionsExampleSeparate")} value={{
           devicePool: { python: "python", host: "/absolute/path/to/host-record.json", records: ["/absolute/path/to/record.json"], seed: "42" },
         }} />
       </details>

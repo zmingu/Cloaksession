@@ -1,9 +1,22 @@
 import type { Page } from "@playwright/test";
-import { installTauriMock } from "./tauriMock";
+import { defaultSettings, installTauriMock } from "./tauriMock";
 import type { BusinessAccount, BusinessProfileState, SaveBusinessAccountInput } from "../src/lib/businessAccounts";
 
 export const FIRST_PROFILE = "fixture-profile";
 export const SECOND_PROFILE = "second-profile";
+
+/** UI language for the mock; zh-CN specs pass it so localized labels match. */
+export type MockLanguage = "en" | "zh-CN";
+
+/** Localized nav label for the Profiles section (Sidebar `navLabel`). */
+export function navProfilesLabel(language: MockLanguage): string {
+  return language === "zh-CN" ? "浏览器配置" : "Profiles";
+}
+
+/** Localized Close button label (dialog close control). */
+export function closeLabel(language: MockLanguage): string {
+  return language === "zh-CN" ? "关闭" : "Close";
+}
 
 export function accountFixture(patch: Partial<BusinessAccount> = {}): BusinessAccount {
   return {
@@ -15,8 +28,8 @@ export function accountFixture(patch: Partial<BusinessAccount> = {}): BusinessAc
 }
 
 /** Browser-local contract fake only: never launches a profile or contacts a platform. */
-export async function installBusinessMock(page: Page): Promise<void> {
-  await installTauriMock(page);
+export async function installBusinessMock(page: Page, language: MockLanguage = "en"): Promise<void> {
+  await installTauriMock(page, { ...defaultSettings, language });
   await page.goto("/");
   await page.evaluate(({ secondId }) => {
     const base = (window as any).__TEST_IPC__;
@@ -98,7 +111,7 @@ export async function installBusinessMock(page: Page): Promise<void> {
       throw new Error(`Unhandled business fixture IPC: ${command}`);
     };
   }, { secondId: SECOND_PROFILE });
-  await page.getByRole("button", { name: "Profiles", exact: true }).click();
+  await page.getByRole("button", { name: navProfilesLabel(language), exact: true }).click();
 }
 
 export async function setBusinessFixture(page: Page, accounts: BusinessAccount[], scopes: Record<string, BusinessProfileState["scope"]> = {}): Promise<void> {

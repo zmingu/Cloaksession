@@ -16,7 +16,8 @@ const archive: KuaishouSubjectArchive = {
 
 // Contract/UI fixture only: no native OCR, database validation, platform calls or real documents.
 async function installSubjectMock(page: Page, invalid = false) {
-  await installIdentityMock(page);
+  // This spec asserts localized (zh-CN) labels, so the shared mock runs in zh-CN.
+  await installIdentityMock(page, undefined, undefined, "zh-CN");
   await page.evaluate(({ archive, invalid, png }) => {
     const internals = (window as any).__TAURI_INTERNALS__;
     const original = internals.invoke;
@@ -79,7 +80,7 @@ test("zero-profile orphan archives remain searchable and copyable without browse
   // Simulate a profile refresh after the last environment was removed. The archive is independent.
   await page.getByRole("button", { name: /Regression profile/ }).click();
   await page.evaluate(() => { (window as any).__TEST_SUBJECT__.noProfiles = true; });
-  await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "关闭", exact: true }).click();
   await expect(page.getByTestId(`kuaishou-summary-${FIRST_PROFILE}`)).toHaveCount(0);
   const search = page.getByRole("textbox", { name: "搜索环境与账号档案" });
   await search.fill(archive.idCard);
@@ -132,7 +133,7 @@ test("missing local photos render failure, never a remote image or OCR fallback"
   await panel.getByRole("button", { name: "刷新档案", exact: true }).click();
   await expect(panel.getByRole("img", { name: "主体证件照片 1" })).toHaveAttribute("src", PNG);
   expect(await calls(page, "kuaishou_subject_attachment")).toHaveLength(2);
-  await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "关闭", exact: true }).click();
   await expect(panel).toHaveCount(0);
   // A real reopen must revalidate the local file, not retain the successful image globally.
   await page.evaluate(() => { (window as any).__TEST_SUBJECT__.badPhoto = true; });

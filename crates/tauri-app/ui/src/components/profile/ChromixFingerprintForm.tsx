@@ -60,7 +60,7 @@ export function ChromixFingerprintForm({ options, onChange }: Props): JSX.Elemen
       </div>
       {notices.length > 0 && (
         <details className="rounded-lg border border-amber-400/20 bg-amber-500/[0.04] p-3" open>
-          <summary className="cursor-pointer text-[12px] text-amber-200">Configuration notes ({notices.length})</summary>
+          <summary className="cursor-pointer text-[12px] text-amber-200">{t("chromix.form.notesTitle", { count: notices.length })}</summary>
           <ul className="mt-2 list-disc space-y-1.5 pl-4 text-[11px] leading-relaxed text-amber-200/80" aria-live="polite">
             {notices.map((notice) => <li key={notice}>{notice}</li>)}
           </ul>
@@ -73,7 +73,7 @@ export function ChromixFingerprintForm({ options, onChange }: Props): JSX.Elemen
         return (
           <details key={`${group.id}-${search ? "search" : "browse"}`} className="mz-panel min-w-0 p-3" open={!!search || group.id === "identity" || configured > 0}>
             <summary className="cursor-pointer text-[12px] font-medium text-slate-200">
-              {t(`chromix.groups.${group.id}`)}<span className="ml-2 text-[10px] font-normal text-slate-500">{configured} set · {groupFields.length} fields</span>
+              {t(`chromix.groups.${group.id}`)}<span className="ml-2 text-[10px] font-normal text-slate-500">{t("chromix.form.groupCount", { set: configured, total: groupFields.length })}</span>
             </summary>
             <p className="mt-2 text-[11px] leading-relaxed text-slate-500">{t(`chromix.groups.${group.id}Desc`)}</p>
             <div className="mt-3 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
@@ -114,7 +114,7 @@ function FingerprintField({ field, options, onChange, disabled }: Props & { fiel
       <div className="break-all mono text-[10px] text-slate-500">{field.sdkKey ? `options.${field.sdkKey}` : field.kind === "feature" ? "--enable-blink-features=FakeShadowRoot" : state.name}</div>
       {!!field.aliases?.length && (
         <select
-          aria-label={`${field.label} parameter to edit`}
+          aria-label={t("chromix.field.editParamAria", { label: field.label })}
           value={selectedName ?? effective.name}
           onChange={(event) => setSelectedName(event.target.value)}
           disabled={disabled}
@@ -162,12 +162,12 @@ function FingerprintField({ field, options, onChange, disabled }: Props & { fiel
               <button type="button" disabled={disabled} className={smallButtonClass} onClick={() => setValue("off")}>{t("chromix.field.setOff")}</button>
             </div>
           )}
-          {state.present && (state.value === "" || state.value === null) && <p className="text-[10px] text-slate-400">Stored explicitly: {state.value === null ? "bare flag" : "empty string"}. Use Unset to remove.</p>}
+          {state.present && (state.value === "" || state.value === null) && <p className="text-[10px] text-slate-400">{t("chromix.field.storedExplicitly", { value: state.value === null ? t("chromix.field.bareFlagValue") : t("chromix.field.emptyString") })}</p>}
         </>
       )}
       <p id={`${id}-help`} className="text-[10px] leading-relaxed text-slate-500">{field.description}</p>
       {rawTarget && <p className="text-[10px] text-muted-foreground/80">{t("chromix.field.rawAliasNote")}</p>}
-      {state.count > 1 && <p className="text-[10px] text-amber-200/80">{state.count} occurrences. The last stored value is shown; editing replaces every occurrence of this exact name with one argument.</p>}
+      {state.count > 1 && <p className="text-[10px] text-amber-200/80">{t("chromix.field.multiOccurrences", { count: state.count })}</p>}
       {error && <p id={`${id}-error`} className="text-[10px] leading-relaxed text-amber-200" role="status">{error}</p>}
     </div>
   );
@@ -206,10 +206,10 @@ function RawArgsEditor({ options, onChange }: Props): JSX.Element {
       <label htmlFor={`${id}-raw`} className="mb-1 block text-[11px] text-slate-400">{t("chromix.rawArgs.browserArgs")}</label>
       <textarea id={`${id}-raw`} rows={8} value={text} disabled={!!problem} onChange={(event) => { setDraft({ base: draft?.base ?? base, text: event.target.value }); setError(undefined); }} spellCheck={false} className={`${controlClass} resize-y`} style={controlStyle} aria-describedby={`${id}-help`} aria-invalid={!!error} />
       <div className="mt-2 flex flex-wrap gap-2">
-        <button type="button" className={smallButtonClass} disabled={!!problem || stale || !draft} onClick={apply}>Apply raw args</button>
-        {draft && <button type="button" className={smallButtonClass} onClick={() => { setDraft(undefined); setError(undefined); }}>Discard raw draft / reload current args</button>}
+        <button type="button" className={smallButtonClass} disabled={!!problem || stale || !draft} onClick={apply}>{t("chromix.rawArgs.apply")}</button>
+        {draft && <button type="button" className={smallButtonClass} onClick={() => { setDraft(undefined); setError(undefined); }}>{t("chromix.rawArgs.discard")}</button>}
       </div>
-      {(error || problem || stale) && <p className="mt-2 text-[11px] text-amber-200" role="alert">{error ?? problem ?? "options.args changed while this raw draft was open. Discard the draft before editing again; newer structured edits will not be overwritten."}</p>}
+      {(error || problem || stale) && <p className="mt-2 text-[11px] text-amber-200" role="alert">{error ?? problem ?? t("chromix.rawArgs.stale")}</p>}
     </details>
   );
 }

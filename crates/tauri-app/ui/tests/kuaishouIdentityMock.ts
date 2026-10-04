@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import type { KuaishouIdentitySnapshot } from "../src/lib/kuaishouIdentity";
-import { FIRST_PROFILE, SECOND_PROFILE, installBusinessMock } from "./businessAccountsMock";
+import { FIRST_PROFILE, SECOND_PROFILE, closeLabel, installBusinessMock, type MockLanguage } from "./businessAccountsMock";
 
 export const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6lqQAAAAASUVORK5CYII=";
 export function identityFixture(patch: Partial<KuaishouIdentitySnapshot> = {}): KuaishouIdentitySnapshot {
@@ -9,8 +9,8 @@ export function identityFixture(patch: Partial<KuaishouIdentitySnapshot> = {}): 
 }
 
 /** All commands here are browser-local fakes. No profile launch or external request. */
-export async function installIdentityMock(page: Page, snapshots = [identityFixture()], running = [FIRST_PROFILE, SECOND_PROFILE]): Promise<void> {
-  await installBusinessMock(page);
+export async function installIdentityMock(page: Page, snapshots = [identityFixture()], running = [FIRST_PROFILE, SECOND_PROFILE], language: MockLanguage = "en"): Promise<void> {
+  await installBusinessMock(page, language);
   await page.evaluate(({ snapshots, running, png, first, second }) => {
     const internals = (window as any).__TAURI_INTERNALS__;
     const base = (window as any).__TEST_IPC__;
@@ -58,7 +58,7 @@ export async function installIdentityMock(page: Page, snapshots = [identityFixtu
   }, { snapshots, running, png: PNG, first: FIRST_PROFILE, second: SECOND_PROFILE });
   // Closing the existing editor asks App to refresh its profile summaries, including mock running flags.
   await page.getByRole("button", { name: /Regression profile/ }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: closeLabel(language), exact: true }).click();
   await expect(page.getByTestId(`kuaishou-summary-${SECOND_PROFILE}`)).toBeVisible();
   await refreshIdentity(page);
 }
