@@ -127,6 +127,7 @@ pub fn build_spawn_args(
     proxy_bridge_url: Option<&str>,
     geo_coords: Option<(f64, f64)>,
     companion_dir: Option<&str>,
+    hidden: bool,
 ) -> Vec<String> {
     if engine == BrowserEngine::Chromix {
         return vec![
@@ -148,6 +149,14 @@ pub fn build_spawn_args(
         format!("--window-size={},{}", fp.screen.width, fp.screen.height),
         format!("--force-device-scale-factor={}", fp.dpr),
     ];
+
+    // Hidden launch: keep the window off-screen so a caller can capture the
+    // page (e.g. a login QR) without a browser window appearing on screen. The
+    // window still exists and is headed, so the fingerprint stays identical to
+    // a normal launch — unlike `--headless`, which is a detectable signal.
+    if hidden {
+        args.push("--window-position=-32000,-32000".to_string());
+    }
 
     // Platform-specific
     #[cfg(target_os = "macos")]

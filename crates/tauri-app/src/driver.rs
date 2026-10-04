@@ -41,7 +41,8 @@
 //! `TauriBrowserDriver::start(db_path, profiles_root, ...)` spawns the
 //! dedicated thread and returns the driver. `browser_binary` and
 //! `companion_dir` are stored on the driver (from `AppSettings`) because
-//! `BrowserDriver::launch(&self, profile_id)` has no parameter for them.
+//! `BrowserDriver::launch(&self, profile_id, hidden)` has no parameter for the
+//! binary/engine/companion paths; those come from the driver's own fields.
 
 pub(crate) mod auto_message;
 pub mod auto_reply;
@@ -146,6 +147,9 @@ enum LauncherCmd {
         chromix: ChromixSettings,
         chromix_runtime: PathBuf,
         skip_download: bool,
+        /// Start with the window off-screen (headed but not visible) so a caller
+        /// can capture the page without a browser window appearing on screen.
+        hidden: bool,
         resp: oneshot::Sender<Result<LaunchedProfile>>,
     },
     Close {
@@ -514,6 +518,7 @@ async fn launcher_task(
                 chromix,
                 chromix_runtime,
                 skip_download,
+                hidden,
                 resp,
             } => {
                 let result = async {
@@ -534,11 +539,12 @@ async fn launcher_task(
                                 &config,
                                 &chromix_runtime,
                                 skip_download,
+                                hidden,
                             )
                             .await
                     } else {
                         launcher
-                            .launch(&profile_id, &binary, engine, companion.as_deref())
+                            .launch(&profile_id, &binary, engine, companion.as_deref(), hidden)
                             .await
                     }
                 }
@@ -739,7 +745,7 @@ async fn launcher_task(
 
 #[async_trait]
 impl BrowserDriver for TauriBrowserDriver {
-    async fn launch(&self, profile_id: &str) -> Result<LaunchedProfile> {
+    async fn launch(&self, profile_id: &str, hidden: bool) -> Result<LaunchedProfile> {
         let (resp_tx, resp_rx) = oneshot::channel();
         self.launcher_tx
             .send(LauncherCmd::Launch {
@@ -750,6 +756,7 @@ impl BrowserDriver for TauriBrowserDriver {
                 chromix: self.chromix.clone(),
                 chromix_runtime: self.chromix_runtime.clone(),
                 skip_download: self.skip_download,
+                hidden,
                 resp: resp_tx,
             })
             .await

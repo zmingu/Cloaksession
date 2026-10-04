@@ -190,6 +190,7 @@ async fn persistent_launch_preserves_options_and_keeps_secrets_off_argv() {
             &fixture.config,
             fixture.runtime(),
             false,
+            false,
         )
         .await
         .unwrap();
@@ -244,6 +245,7 @@ async fn persistent_launch_preserves_options_and_keeps_secrets_off_argv() {
             &fixture.config,
             fixture.runtime(),
             false,
+            false,
         )
         .await
         .unwrap();
@@ -269,6 +271,7 @@ async fn running_registry_waits_for_the_ready_handshake() {
         None,
         &fixture.config,
         fixture.runtime(),
+        false,
         false,
     );
     tokio::pin!(launch);
@@ -304,6 +307,7 @@ async fn sdk_failure_never_marks_the_profile_running_or_opened() {
             &fixture.config,
             fixture.runtime(),
             false,
+            false,
         )
         .await
         .unwrap_err();
@@ -332,6 +336,7 @@ async fn cancelling_startup_closes_the_inflight_sdk_context() {
             None,
             &fixture.config,
             fixture.runtime(),
+            false,
             false,
         );
         tokio::pin!(launch);
@@ -365,6 +370,7 @@ async fn browser_exit_updates_liveness_and_override_profile_dir_is_respected() {
             &fixture.config,
             fixture.runtime(),
             false,
+            false,
         )
         .await
         .unwrap();
@@ -383,6 +389,46 @@ async fn browser_exit_updates_liveness_and_override_profile_dir_is_respected() {
 }
 
 #[tokio::test]
+async fn hidden_launch_merges_window_position_into_existing_launch_args() {
+    let mut fixture = Fixture::new();
+    // A profile (or global config) may already set its own launchOptions.args.
+    fixture.config.options = json!({
+        "launchOptions": { "slowMo": 2, "args": ["--existing-flag"] },
+    })
+    .as_object()
+    .unwrap()
+    .clone();
+    fixture
+        .launcher
+        .launch_with_chromix(
+            &fixture.profile.id,
+            Path::new(""),
+            None,
+            &fixture.config,
+            fixture.runtime(),
+            false,
+            true,
+        )
+        .await
+        .unwrap();
+    let captured = fixture.capture();
+    let args = captured["options"]["launchOptions"]["args"]
+        .as_array()
+        .unwrap();
+    // Hidden appends the position switch and never drops the profile's own args.
+    assert!(args
+        .iter()
+        .any(|value| value == "--window-position=-32000,-32000"));
+    assert!(args.iter().any(|value| value == "--existing-flag"));
+    // Headed, not headless: no launch option may turn the window into headless.
+    assert!(!args.iter().any(|value| {
+        value.as_str().map(|arg| arg.starts_with("--headless")).unwrap_or(false)
+    }));
+    assert_eq!(captured["options"]["launchOptions"]["slowMo"], json!(2));
+    fixture.launcher.close(&fixture.profile.id).await.unwrap();
+}
+
+#[tokio::test]
 async fn missing_runtime_and_legacy_launch_have_actionable_errors() {
     let fixture = Fixture::new();
     let error = fixture
@@ -393,6 +439,7 @@ async fn missing_runtime_and_legacy_launch_have_actionable_errors() {
             None,
             &fixture.config,
             &fixture.runtime().join("missing-runtime"),
+            false,
             false,
         )
         .await
@@ -405,6 +452,7 @@ async fn missing_runtime_and_legacy_launch_have_actionable_errors() {
             Path::new(""),
             BrowserEngine::Chromix,
             None,
+            false,
         )
         .await
         .unwrap_err();

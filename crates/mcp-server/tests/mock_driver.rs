@@ -31,7 +31,7 @@ impl MockBrowserDriver {
 
 #[async_trait]
 impl BrowserDriver for MockBrowserDriver {
-    async fn launch(&self, profile_id: &str) -> Result<LaunchedProfile> {
+    async fn launch(&self, profile_id: &str, _hidden: bool) -> Result<LaunchedProfile> {
         let launched = LaunchedProfile {
             id: profile_id.into(),
             cdp_endpoint: "http://127.0.0.1:9".into(),

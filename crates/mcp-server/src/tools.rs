@@ -165,7 +165,7 @@ pub async fn launch_profile(
         if pm.get(&args.profile_id)?.is_none() {
             return Err(MultizenError::NotFound(args.profile_id.clone()));
         }
-        let launched = driver.launch(&args.profile_id).await?;
+        let launched = driver.launch(&args.profile_id, false).await?;
         pm.mark_opened(&args.profile_id)?;
         Ok(serde_json::to_value(&launched).unwrap_or_default())
     }

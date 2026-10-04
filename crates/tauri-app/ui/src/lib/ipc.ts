@@ -1,5 +1,5 @@
 /**
- * Frontend IPC layer for Cloaksession (P4.6).
+ * Frontend IPC layer for JiegeGo (P4.6).
  *
  * Wraps the Tauri 2.x `invoke` command channel and `listen` event channel.
  *
@@ -60,7 +60,7 @@ export * from "../types";
 
 function notImplemented(name: string): Promise<never> {
   return Promise.reject(
-    new Error(`Cloaksession: '${name}' is not implemented in the Tauri build (scope-excluded)`),
+    new Error(`JiegeGo: '${name}' is not implemented in the Tauri build (scope-excluded)`),
   );
 }
 
@@ -92,13 +92,19 @@ export const profiles = {
   /** `profiles_delete` → `()`. */
   delete: (id: ProfileId): Promise<void> => invoke<void>("profiles_delete", { id }),
 
-  /** `profiles_launch` → `LaunchedProfile`. */
-  launch: (id: ProfileId): Promise<LaunchedProfile> =>
-    invoke<LaunchedProfile>("profiles_launch", { id }),
+  /** `profiles_launch` → `LaunchedProfile`. `hidden` starts the window
+   *  off-screen (headed but not visible) for the account wizard's QR capture.
+   *  It stays optional on the wire: when omitted the payload keeps sending only
+   *  the profile id, so every existing caller and the MCP path are unchanged. */
+  launch: (id: ProfileId, hidden?: boolean): Promise<LaunchedProfile> =>
+    invoke<LaunchedProfile>("profiles_launch", hidden ? { id, hidden: true } : { id }),
 
   /** Explicit shop login tab; leaves saved startUrl and generic launch untouched. */
-  launchKuaishou: (id: ProfileId): Promise<LaunchedProfile> =>
-    invoke<LaunchedProfile>("profiles_launch", { id, entry: "kuaishou-shop" }),
+  launchKuaishou: (id: ProfileId, hidden?: boolean): Promise<LaunchedProfile> =>
+    invoke<LaunchedProfile>(
+      "profiles_launch",
+      hidden ? { id, entry: "kuaishou-shop", hidden: true } : { id, entry: "kuaishou-shop" },
+    ),
 
   /** `profiles_close` → `()`. */
   close: (id: ProfileId): Promise<void> => invoke<void>("profiles_close", { id }),
@@ -484,7 +490,7 @@ export function onProxyCountryUpdated(
 
 /**
  * `extensions:installed` push event — emitted by the companion poller after
- * an "Add to Cloaksession" button click on a Chrome Web Store page. Resolves to
+ * an "Add to JiegeGo" button click on a Chrome Web Store page. Resolves to
  * an `UnlistenFn` (await registration before relying on it).
  */
 export function onExtensionInstalled(

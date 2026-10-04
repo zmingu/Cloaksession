@@ -1,5 +1,5 @@
 /**
- * Kuaishou shop auth IPC (commands/kuaishou_auth.rs — 3 commands, no prior TS).
+ * Kuaishou shop auth IPC (commands/kuaishou_auth.rs — 4 commands, no prior TS).
  * Invoke channel = Rust snake_case fn name; args camelCase.
  */
 import { invoke } from "@tauri-apps/api/core";
@@ -20,6 +20,14 @@ export const kuaishouAuth = {
   /** Full flow: cookie-reuse verify first, otherwise wait for a scan. */
   ensureAuth: (profileId: string, targetId: string): Promise<EnsureAuthResult> =>
     invoke<EnsureAuthResult>("ensure_kuaishou_auth", { profileId, targetId }),
+
+  /**
+   * `kuaishou_login_qr` → the profile's current page as a base64 PNG, or
+   * `null` while the profile has no running session yet. The account wizard
+   * polls this to show the login QR without a visible browser window.
+   */
+  loginQr: (profileId: string): Promise<string | null> =>
+    invoke<string | null>("kuaishou_login_qr", { profileId }),
 };
 
 /** Subscribe to `kuaishou-auth-phase` (await register/cleanup per spec). */

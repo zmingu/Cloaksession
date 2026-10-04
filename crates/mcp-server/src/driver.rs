@@ -3,7 +3,10 @@ use multizen_core::{LaunchedProfile, Result};
 
 #[async_trait]
 pub trait BrowserDriver: Send + Sync {
-    async fn launch(&self, profile_id: &str) -> Result<LaunchedProfile>;
+    /// Launch a profile. `hidden` starts the window off-screen (headed but not
+    /// visible) so a caller can capture the page without a browser window
+    /// appearing on screen; `false` is the normal visible launch.
+    async fn launch(&self, profile_id: &str, hidden: bool) -> Result<LaunchedProfile>;
     async fn close(&self, profile_id: &str) -> Result<()>;
     fn is_running(&self, profile_id: &str) -> bool;
     async fn navigate(&self, profile_id: &str, url: &str) -> Result<String>;

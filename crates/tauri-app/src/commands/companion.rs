@@ -206,7 +206,7 @@ async fn process_companion_signal(
     }
     // Brief delay to let the process fully exit before relaunching.
     tokio::time::sleep(Duration::from_millis(500)).await;
-    match BrowserDriver::launch(driver, profile_id).await {
+    match BrowserDriver::launch(driver, profile_id, false).await {
         Ok(_) => {
             info!(profile = %profile_id, "companion: profile relaunched");
             // The `BrowserDriver::launch` call registered a new session in

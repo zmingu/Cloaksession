@@ -81,12 +81,16 @@ pub async fn profiles_launch(
     app: tauri::AppHandle,
     id: String,
     entry: Option<LaunchEntry>,
+    hidden: Option<bool>,
 ) -> Result<LaunchedProfile, String> {
     if entry.is_some() {
         state.driver.require_kuaishou_login_scope(&id).await.map_err(|e| e.to_string())?;
     }
+    // `hidden` keeps the window off-screen for the account wizard's QR capture;
+    // it never changes the saved startUrl or the fingerprint.
+    let hidden = hidden.unwrap_or(false);
     // `BrowserDriver::launch` returns the full LaunchedProfile.
-    let launched = mcp_server::driver::BrowserDriver::launch(state.driver.as_ref(), &id)
+    let launched = mcp_server::driver::BrowserDriver::launch(state.driver.as_ref(), &id, hidden)
         .await
         .map_err(|e| e.to_string())?;
 

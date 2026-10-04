@@ -67,7 +67,7 @@ use crate::commands::{
         profiles_delete_group, profiles_list_groups, profiles_set_profile_group,
     },
     huibo_live::{cancel_huibo_task, get_huibo_video_list, get_shop_live_state, start_huibo_live},
-    kuaishou_auth::{ensure_kuaishou_auth, kuaishou_connect, kuaishou_login},
+    kuaishou_auth::{ensure_kuaishou_auth, kuaishou_connect, kuaishou_login, kuaishou_login_qr},
     kuaishou_identity::{
         kuaishou_identity_avatar, kuaishou_identity_detect, kuaishou_identity_list,
     },
@@ -594,6 +594,7 @@ pub fn run() {
             // kuaishou platform auth primitives (connect / login / ensure)
             kuaishou_connect,
             kuaishou_login,
+            kuaishou_login_qr,
             ensure_kuaishou_auth,
             // kuaishou subject archive + account initialization
             kuaishou_subject_list,

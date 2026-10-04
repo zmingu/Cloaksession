@@ -70,6 +70,7 @@ impl BrowserLauncher {
         binary_path: &Path,
         engine: BrowserEngine,
         companion_dir: Option<&Path>,
+        hidden: bool,
     ) -> Result<LaunchedProfile> {
         if engine == BrowserEngine::Chromix {
             return Err(MultizenError::Launch(
@@ -158,6 +159,7 @@ impl BrowserLauncher {
             bridge_url_str.as_deref(),
             geo_coords,
             companion_dir_str.as_deref(),
+            hidden,
         );
 
         // Resolve metadata before spawn so an error cannot leave an unregistered process.
@@ -206,8 +208,39 @@ impl BrowserLauncher {
         config: &ChromixSettings,
         runtime_dir: &Path,
         skip_download: bool,
+        hidden: bool,
     ) -> Result<LaunchedProfile> {
         let _launch = self.chromix_launch.lock().await;
+        // Hidden launch: force the SDK window off-screen. Per-profile options
+        // are a shallow merge, so `launchOptions` has to be merged by hand to
+        // avoid dropping the profile's own `launchOptions`.
+        let hidden_config;
+        let config = if hidden {
+            let mut options = config.options.clone();
+            let mut launch_options = options
+                .get("launchOptions")
+                .and_then(|value| value.as_object())
+                .cloned()
+                .unwrap_or_default();
+            // Append to any existing args instead of replacing the array, so a
+            // profile that already sets `launchOptions.args` keeps them.
+            let mut args = launch_options
+                .get("args")
+                .and_then(|value| value.as_array())
+                .cloned()
+                .unwrap_or_default();
+            args.push(serde_json::json!("--window-position=-32000,-32000"));
+            launch_options.insert("args".into(), serde_json::Value::Array(args));
+            options.insert("launchOptions".into(), serde_json::Value::Object(launch_options));
+            hidden_config = ChromixSettings {
+                node_path: config.node_path.clone(),
+                options,
+                environment: config.environment.clone(),
+            };
+            &hidden_config
+        } else {
+            config
+        };
         if let Some(existing) = self
             .registry
             .with(profile_id, |handle| LaunchedProfile {

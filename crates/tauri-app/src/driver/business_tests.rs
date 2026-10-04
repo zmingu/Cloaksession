@@ -67,6 +67,7 @@ pub(super) async fn launch_without_cdp(
             chromix: d.chromix.clone(),
             chromix_runtime: d.chromix_runtime.clone(),
             skip_download: true,
+            hidden: false,
             resp,
         })
         .await
@@ -263,7 +264,7 @@ async fn shared_launch_preflight_blocks_both_directions_before_any_spawn_or_mark
         .insert("CAPTURE_FILE".into(), marker.display().to_string());
     for p in [&j, &other] {
         assert!(d
-            .launch(&p.id)
+            .launch(&p.id, false)
             .await
             .unwrap_err()
             .to_string()

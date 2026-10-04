@@ -134,7 +134,7 @@ async fn old_attach_failure_rollback_carries_original_slot() {
     let (tx, mut rx) = tokio::sync::mpsc::channel(4);
     driver.launcher_tx = tx;
     {
-        let launch = driver.launch(&profile.id);
+        let launch = driver.launch(&profile.id, false);
         tokio::pin!(launch);
         poll_pending(launch.as_mut()).await;
         let LauncherCmd::Launch { resp, .. } = rx.recv().await.unwrap() else {

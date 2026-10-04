@@ -47,7 +47,7 @@ fn _silence_pathbuf_warning() -> PathBuf {
 async fn navigate_calls_driver_and_logs() {
     let driver = MockBrowserDriver::new();
     let log = ActivityLog::new();
-    driver.launch("p1").await.unwrap();
+    driver.launch("p1", false).await.unwrap();
     let pm = pm_stub();
     let r = navigate(
         &driver,
@@ -70,7 +70,7 @@ async fn navigate_calls_driver_and_logs() {
 async fn navigate_rejects_blocked_scheme() {
     let driver = MockBrowserDriver::new();
     let log = ActivityLog::new();
-    driver.launch("p1").await.unwrap();
+    driver.launch("p1", false).await.unwrap();
     let pm = pm_stub();
     let r = navigate(
         &driver,
@@ -113,7 +113,7 @@ async fn navigate_rejects_not_running() {
 async fn cdp_send_disabled_by_default() {
     let driver = MockBrowserDriver::new();
     let log = ActivityLog::new();
-    driver.launch("p1").await.unwrap();
+    driver.launch("p1", false).await.unwrap();
     let pm = pm_stub();
     // ensure env var is not set during this test
     std::env::remove_var("MULTIZEN_MCP_ALLOW_RAW_CDP");
@@ -142,7 +142,7 @@ async fn cdp_send_denies_io_read() {
     std::env::set_var("MULTIZEN_MCP_ALLOW_RAW_CDP", "1");
     let driver = MockBrowserDriver::new();
     let log = ActivityLog::new();
-    driver.launch("p1").await.unwrap();
+    driver.launch("p1", false).await.unwrap();
     let pm = pm_stub();
     let r = cdp_send(
         &driver,
@@ -165,7 +165,7 @@ async fn cdp_send_blocks_blocked_scheme_in_params() {
     std::env::set_var("MULTIZEN_MCP_ALLOW_RAW_CDP", "1");
     let driver = MockBrowserDriver::new();
     let log = ActivityLog::new();
-    driver.launch("p1").await.unwrap();
+    driver.launch("p1", false).await.unwrap();
     let pm = pm_stub();
     let r = cdp_send(
         &driver,
@@ -191,7 +191,7 @@ async fn cdp_send_blocks_blocked_scheme_in_params() {
 async fn get_cookies_rejects_blocked_url() {
     let driver = MockBrowserDriver::new();
     let log = ActivityLog::new();
-    driver.launch("p1").await.unwrap();
+    driver.launch("p1", false).await.unwrap();
     let pm = pm_stub();
     let r = get_cookies(
         &driver,
@@ -211,7 +211,7 @@ async fn get_cookies_rejects_blocked_url() {
 async fn new_tab_rejects_blocked_scheme() {
     let driver = MockBrowserDriver::new();
     let log = ActivityLog::new();
-    driver.launch("p1").await.unwrap();
+    driver.launch("p1", false).await.unwrap();
     let pm = pm_stub();
     let r = new_tab(
         &driver,
@@ -333,7 +333,7 @@ async fn create_and_list_and_delete_profile() {
 async fn click_type_extract_screenshot_run_when_running() {
     let driver = MockBrowserDriver::new();
     let log = ActivityLog::new();
-    driver.launch("p1").await.unwrap();
+    driver.launch("p1", false).await.unwrap();
     let pm = pm_stub();
 
     let r = click(
@@ -396,7 +396,7 @@ async fn click_type_extract_screenshot_run_when_running() {
 async fn close_profile_works() {
     let driver = MockBrowserDriver::new();
     let log = ActivityLog::new();
-    driver.launch("p1").await.unwrap();
+    driver.launch("p1", false).await.unwrap();
     let pm = pm_stub();
     let r = close_profile(
         &driver,
@@ -443,7 +443,7 @@ async fn list_fingerprint_options_returns_catalogs() {
 async fn evaluate_js_returns_driver_result() {
     let driver = MockBrowserDriver::new();
     let log = ActivityLog::new();
-    driver.launch("p1").await.unwrap();
+    driver.launch("p1", false).await.unwrap();
     let pm = pm_stub();
     let r = evaluate_js(
         &driver,
@@ -466,7 +466,7 @@ async fn wait_for_selector_times_out_with_mock() {
     // mock cdp_send returns {} → no result.value → treated as not found → timeout
     let driver = MockBrowserDriver::new();
     let log = ActivityLog::new();
-    driver.launch("p1").await.unwrap();
+    driver.launch("p1", false).await.unwrap();
     let pm = pm_stub();
     let r = wait_for_selector(
         &driver,
@@ -488,7 +488,7 @@ async fn wait_for_selector_times_out_with_mock() {
 async fn list_tabs_runs() {
     let driver = MockBrowserDriver::new();
     let log = ActivityLog::new();
-    driver.launch("p1").await.unwrap();
+    driver.launch("p1", false).await.unwrap();
     let pm = pm_stub();
     let r = list_tabs(
         &driver,
@@ -511,7 +511,7 @@ async fn list_tabs_runs() {
 async fn set_cookies_runs() {
     let driver = MockBrowserDriver::new();
     let log = ActivityLog::new();
-    driver.launch("p1").await.unwrap();
+    driver.launch("p1", false).await.unwrap();
     let pm = pm_stub();
     let r = set_cookies(
         &driver,

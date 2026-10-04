@@ -43,6 +43,7 @@ async fn launch_and_close_round_trip() {
             &bin,
             multizen_core::BrowserEngine::Cloakbrowser,
             None,
+            false,
         )
         .await
         .unwrap();

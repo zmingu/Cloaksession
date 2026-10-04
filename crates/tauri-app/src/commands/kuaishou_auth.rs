@@ -78,6 +78,27 @@ pub async fn kuaishou_login(
         .map_err(|e| format!("快手扫码登录失败或超时：{e}"))
 }
 
+/// Capture the profile's current page as a base64 PNG.
+///
+/// Used by the shop account wizard to show the login QR while the browser
+/// window stays off-screen (see `profiles_launch { hidden: true }`). Returns
+/// `Ok(None)` when the profile has no running session yet — the wizard keeps
+/// polling instead of treating that as an error.
+#[tauri::command]
+pub async fn kuaishou_login_qr(
+    state: State<'_, AppState>,
+    profile_id: String,
+) -> Result<Option<String>, String> {
+    let Some(session) = state.driver.registry().get(&profile_id).await else {
+        return Ok(None);
+    };
+    session
+        .screenshot()
+        .await
+        .map(Some)
+        .map_err(|e| format!("二维码截图失败：{e}"))
+}
+
 /// Full flow: cookie-reuse verify first (`scanned: false`), otherwise wait
 /// for a scan (`scanned: true`). Never relaunches headless itself.
 #[tauri::command]

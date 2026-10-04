@@ -68,6 +68,7 @@ fn chromix_args_do_not_inherit_cloak_fingerprint_or_proxy_policy() {
         Some("socks5://127.0.0.1:1080"),
         Some((40.7, -74.0)),
         Some("/companion"),
+        false,
     );
     assert_eq!(args, vec![
         "--user-data-dir=/profile/engines/chromix",
@@ -77,9 +78,43 @@ fn chromix_args_do_not_inherit_cloak_fingerprint_or_proxy_policy() {
 }
 
 #[test]
+fn hidden_launch_moves_the_window_off_screen_without_headless() {
+    let profile = base_profile();
+    let visible = build_spawn_args(
+        &profile,
+        BrowserEngine::Cloakbrowser,
+        9222,
+        "/tmp/p1",
+        None,
+        None,
+        None,
+        false,
+    );
+    let hidden = build_spawn_args(
+        &profile,
+        BrowserEngine::Cloakbrowser,
+        9222,
+        "/tmp/p1",
+        None,
+        None,
+        None,
+        true,
+    );
+    assert!(!visible.iter().any(|arg| arg.starts_with("--window-position")));
+    assert!(hidden.iter().any(|arg| arg == "--window-position=-32000,-32000"));
+    // Headed, not headless: the fingerprint must stay identical to a visible launch.
+    assert!(!hidden.iter().any(|arg| arg.starts_with("--headless")));
+    // Hidden only adds the position switch — everything else is unchanged.
+    assert_eq!(
+        hidden.iter().filter(|arg| !arg.starts_with("--window-position")).collect::<Vec<_>>(),
+        visible.iter().collect::<Vec<_>>(),
+    );
+}
+
+#[test]
 fn base_args_always_present() {
     let p = base_profile();
-    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/tmp/p1/engines/cloakbrowser", None, None, None);
+    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/tmp/p1/engines/cloakbrowser", None, None, None, false);
     assert!(args.iter().any(|a| a == "--user-data-dir=/tmp/p1/engines/cloakbrowser"));
     assert!(args.iter().any(|a| a == "--remote-debugging-port=9222"));
     assert!(args.iter().any(|a| a == "--no-first-run"));
@@ -95,7 +130,7 @@ fn base_args_always_present() {
 #[test]
 fn cloak_engine_adds_fingerprint_flags() {
     let p = base_profile();
-    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/tmp/p1/engines/cloakbrowser", None, None, None);
+    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/tmp/p1/engines/cloakbrowser", None, None, None, false);
     assert!(args.iter().any(|a| a.starts_with("--fingerprint=")), "cloak must pass --fingerprint=");
     assert!(args.iter().any(|a| a.starts_with("--fingerprint-platform=")));
     assert!(args.iter().any(|a| a.starts_with("--fingerprint-timezone=America/New_York")));
@@ -104,7 +139,7 @@ fn cloak_engine_adds_fingerprint_flags() {
 #[test]
 fn cft_engine_adds_user_agent_and_test_type() {
     let p = base_profile();
-    let args = build_spawn_args(&p, BrowserEngine::Cft, 9222, "/tmp/p1", None, None, None);
+    let args = build_spawn_args(&p, BrowserEngine::Cft, 9222, "/tmp/p1", None, None, None, false);
     assert!(args.iter().any(|a| a.starts_with("--user-agent=")));
     assert!(args.iter().any(|a| a == "--test-type=gpu"));
     // CFT must NOT pass --fingerprint-*
@@ -115,7 +150,7 @@ fn cft_engine_adds_user_agent_and_test_type() {
 fn cft_engine_preserves_custom_user_agent() {
     let mut p = base_profile();
     p.fingerprint.user_agent = "Custom/99.1 test-agent".into();
-    let args = build_spawn_args(&p, BrowserEngine::Cft, 9222, "/tmp/p1", None, None, None);
+    let args = build_spawn_args(&p, BrowserEngine::Cft, 9222, "/tmp/p1", None, None, None, false);
     assert!(args.iter().any(|a| a == "--user-agent=Custom/99.1 test-agent"));
 }
 
@@ -123,14 +158,14 @@ fn cft_engine_preserves_custom_user_agent() {
 fn cloak_engine_passes_custom_user_agent() {
     let mut p = base_profile();
     p.fingerprint.user_agent = "Custom/99.1 test-agent".into();
-    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/tmp/p1", None, None, None);
+    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/tmp/p1", None, None, None, false);
     assert!(args.iter().any(|a| a == "--fingerprint-user-agent=Custom/99.1 test-agent"));
 }
 
 #[test]
 fn proxy_adds_bridge_url_and_dns_flags() {
     let p = base_profile();
-    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/d", Some("socks5://127.0.0.1:1080"), None, None);
+    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/d", Some("socks5://127.0.0.1:1080"), None, None, false);
     assert!(args.iter().any(|a| a == "--proxy-server=socks5://127.0.0.1:1080"));
     assert!(args.iter().any(|a| a == "--force-webrtc-ip-handling-policy=disable_non_proxied_udp"));
     assert!(args.iter().any(|a| a == "--dns-over-https-mode=off"));
@@ -140,7 +175,7 @@ fn proxy_adds_bridge_url_and_dns_flags() {
 #[test]
 fn geo_coords_add_fingerprint_location_and_webrtc_ip() {
     let p = base_profile();
-    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/d", Some("socks5://127.0.0.1:1080"), Some((40.7, -74.0)), None);
+    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/d", Some("socks5://127.0.0.1:1080"), Some((40.7, -74.0)), None, false);
     assert!(args.iter().any(|a| a == "--fingerprint-location=40.7,-74"));
     assert!(args.iter().any(|a| a == "--fingerprint-webrtc-ip=auto"));
 }
@@ -168,7 +203,7 @@ fn cloak_default_storage_quota_is_two_gb() {
     let mut p = base_profile();
     p.fingerprint = profile_manager::fingerprint::default_fingerprint("abc");
     assert_eq!(p.fingerprint.storage_quota, Some(2_000_000_000));
-    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/tmp/p1", None, None, None);
+    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/tmp/p1", None, None, None, false);
     assert!(args.iter().any(|a| a == "--fingerprint-storage-quota=2000000000"));
 }
 

@@ -92,7 +92,7 @@ impl TauriMcpDispatcher {
                 if self.driver.get_profile(&profile_id).await?.is_none() {
                     return Err(MultizenError::NotFound(profile_id));
                 }
-                Ok(serde_json::to_value(self.driver.launch(&profile_id).await?)?)
+                Ok(serde_json::to_value(self.driver.launch(&profile_id, false).await?)?)
             }
             "close_profile" => {
                 let profile_id = Self::profile_id(&arguments)?;
