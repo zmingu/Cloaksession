@@ -107,7 +107,7 @@ export function BusinessSection({ profiles }: Props): JSX.Element {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <div className="flex gap-1 px-6 pt-4" role="tablist" aria-label={t("nav.business")}>
+      <div className="flex gap-1 px-6 pt-4 shrink-0" role="tablist" aria-label={t("nav.business")}>
         {BUSINESS_TABS.map((id) => (
           <button
             key={id}
@@ -126,21 +126,23 @@ export function BusinessSection({ profiles }: Props): JSX.Element {
           </button>
         ))}
       </div>
-      {tab === "auth" && <KuaishouAuthPage />}
-      {tab === "mate" && <MateLoginPage />}
-      {tab === "live" && <LiveLaunchPage />}
-      {tab === "monitor" && <LiveRoomMonitorPage />}
-      {tab === "bind" && <BindAuthorizePage profiles={profiles} />}
-      {tab === "huibo" && <HuiboLivePage profiles={profiles} />}
-      {tab === "jinniu" && <JinniuPromotePage profiles={profiles} />}
-      {tab === "msg" && <CAutoMessagePanel />}
-      {tab === "reply" && <CAutoReplyPanel />}
-      {tab === "scene" && <CScenePlayPanel />}
-      {tab === "pscript" && <DProductScripts />}
-      {tab === "helper" && <DShopHelper profileId={profiles[0]?.id ?? ""} />}
-      {tab === "popup" && <DAutoPopup profileId={profiles[0]?.id ?? ""} />}
-      {tab === "comments" && <CommentListenerPage />}
-      {tab === "sub" && <SubAccountsPage />}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {tab === "auth" && <KuaishouAuthPage />}
+        {tab === "mate" && <MateLoginPage />}
+        {tab === "live" && <LiveLaunchPage />}
+        {tab === "monitor" && <LiveRoomMonitorPage />}
+        {tab === "bind" && <BindAuthorizePage profiles={profiles} />}
+        {tab === "huibo" && <HuiboLivePage profiles={profiles} />}
+        {tab === "jinniu" && <JinniuPromotePage profiles={profiles} />}
+        {tab === "msg" && <CAutoMessagePanel />}
+        {tab === "reply" && <CAutoReplyPanel />}
+        {tab === "scene" && <CScenePlayPanel />}
+        {tab === "pscript" && <DProductScripts />}
+        {tab === "helper" && <DShopHelper profileId={profiles[0]?.id ?? ""} />}
+        {tab === "popup" && <DAutoPopup profileId={profiles[0]?.id ?? ""} />}
+        {tab === "comments" && <CommentListenerPage />}
+        {tab === "sub" && <SubAccountsPage />}
+      </div>
     </div>
   );
 }

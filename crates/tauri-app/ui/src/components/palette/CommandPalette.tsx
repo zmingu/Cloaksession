@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from "react";
-import { Boxes, Command, Download, Play, Plug, Plus, Settings as SettingsIcon, Store } from "lucide-react";
+import { Boxes, Command, Download, MessageCircle, MessagesSquare, Play, Plug, Plus, Settings as SettingsIcon, ShoppingBag, Store, Video } from "lucide-react";
 import type { ProfileSummary } from "../../types";
 import { Kbd } from "../atoms";
 import { useT } from "../../i18n/LanguageProvider";
+import type { KuaishouTab, Section } from "../screens/Sidebar";
 
 export type CommandAction =
   | { kind: "launch"; profileId: string }
@@ -11,7 +12,8 @@ export type CommandAction =
   | { kind: "import" }
   | { kind: "export" }
   | { kind: "settings" }
-  | { kind: "section"; id: "profiles" | "mcp" | "business" | "settings" };
+  | { kind: "kuaishou"; tab: KuaishouTab }
+  | { kind: "section"; id: Section };
 
 interface Props {
   open: boolean;
@@ -77,10 +79,37 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
         action: { kind: "import" },
       },
       {
+        id: "kuaishou:shop",
+        icon: <ShoppingBag size={14} strokeWidth={1.5} />,
+        title: t("kuaishou.tab.shop"),
+        group: t("nav.kuaishou"),
+        action: { kind: "kuaishou", tab: "shop" },
+      },
+      {
+        id: "kuaishou:mate",
+        icon: <Video size={14} strokeWidth={1.5} />,
+        title: t("kuaishou.tab.mate"),
+        group: t("nav.kuaishou"),
+        action: { kind: "kuaishou", tab: "mate" },
+      },
+      {
+        id: "kuaishou:interact",
+        icon: <MessageCircle size={14} strokeWidth={1.5} />,
+        title: t("kuaishou.tab.interact"),
+        group: t("nav.kuaishou"),
+        action: { kind: "kuaishou", tab: "interact" },
+      },
+      {
+        id: "section:kuaishou",
+        icon: <Store size={14} strokeWidth={1.5} />,
+        title: t("nav.kuaishou"),
+        group: t("palette.navigate"),
+        action: { kind: "section", id: "kuaishou" },
+      },
+      {
         id: "section:profiles",
         icon: <Boxes size={14} strokeWidth={1.5} />,
         title: t("palette.goToProfiles"),
-        kbd: <Kbd>⌘ 1</Kbd>,
         group: t("palette.navigate"),
         action: { kind: "section", id: "profiles" },
       },
@@ -88,15 +117,13 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
         id: "section:mcp",
         icon: <Plug size={14} strokeWidth={1.5} />,
         title: t("palette.goToMcp"),
-        kbd: <Kbd>⌘ 2</Kbd>,
         group: t("palette.navigate"),
         action: { kind: "section", id: "mcp" },
       },
       {
         id: "section:business",
-        icon: <Store size={14} strokeWidth={1.5} />,
+        icon: <MessagesSquare size={14} strokeWidth={1.5} />,
         title: t("nav.business"),
-        kbd: <Kbd>⌘ 3</Kbd>,
         group: t("palette.navigate"),
         action: { kind: "section", id: "business" },
       },
@@ -104,7 +131,6 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
         id: "settings",
         icon: <SettingsIcon size={14} strokeWidth={1.5} />,
         title: t("nav.settings"),
-        kbd: <Kbd>⌘ ,</Kbd>,
         group: t("palette.navigate"),
         action: { kind: "settings" },
       },

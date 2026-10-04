@@ -1,10 +1,23 @@
-import type { JSX } from "react";
-import { Boxes, Command, MessagesSquare, Plug, Settings } from "lucide-react";
+import { useEffect, useState, type JSX } from "react";
+import { Boxes, ChevronRight, MessageCircle, MessagesSquare, Plug, Settings, ShoppingBag, Store, Video } from "lucide-react";
 import { cn } from "../../lib/cn";
 import type { ProfileGroup } from "../../types";
 import { useT } from "../../i18n/LanguageProvider";
 
-export type Section = "profiles" | "mcp" | "business" | "settings";
+export type Section = "profiles" | "kuaishou" | "mcp" | "business" | "settings";
+
+export type KuaishouTab = "shop" | "interact" | "mate";
+
+interface KuaishouNavItem {
+  id: KuaishouTab;
+  icon: typeof Boxes;
+}
+
+export const KUAISHOU_TABS: KuaishouNavItem[] = [
+  { id: "shop", icon: ShoppingBag },
+  { id: "mate", icon: Video },
+  { id: "interact", icon: MessageCircle },
+];
 
 /** Sidebar group filter — mirrors `Constellation.GroupFilter` structurally. */
 export type GroupFilter = "all" | "ungrouped" | (string & {});
@@ -12,48 +25,63 @@ export type GroupFilter = "all" | "ungrouped" | (string & {});
 interface NavItem {
   id: Section;
   icon: typeof Boxes;
-  kbd: string;
 }
 
 const NAV: NavItem[] = [
-  { id: "profiles", icon: Boxes, kbd: "1" },
-  { id: "mcp", icon: Plug, kbd: "2" },
-  { id: "business", icon: MessagesSquare, kbd: "3" },
-  { id: "settings", icon: Settings, kbd: "," },
+  { id: "kuaishou", icon: Store },
+  { id: "profiles", icon: Boxes },
+  { id: "mcp", icon: Plug },
+  { id: "business", icon: MessagesSquare },
+  { id: "settings", icon: Settings },
 ];
 
 interface Props {
   active: Section;
   onChange: (s: Section) => void;
-  onCmdK: () => void;
   groups: ProfileGroup[];
   groupFilter: GroupFilter;
   onGroupFilterChange: (g: GroupFilter) => void;
   onDeleteGroup?: (name: string) => void;
+  kuaishouTab: KuaishouTab;
+  onKuaishouTabChange: (tab: KuaishouTab) => void;
 }
 
 export function Sidebar({
   active,
   onChange,
-  onCmdK,
   groups,
   groupFilter,
   onGroupFilterChange,
   onDeleteGroup,
+  kuaishouTab,
+  onKuaishouTabChange,
 }: Props): JSX.Element {
   const t = useT();
   const navLabel = (id: Section): string =>
     id === "profiles"
       ? t("nav.profiles")
-      : id === "settings"
-        ? t("nav.settings")
-        : id === "business"
-          ? t("nav.business")
-          : "MCP";
+      : id === "kuaishou"
+        ? t("nav.kuaishou")
+        : id === "settings"
+          ? t("nav.settings")
+          : id === "business"
+            ? t("nav.business")
+            : "MCP";
+  const kuaishouLabel = (id: KuaishouTab): string =>
+    id === "shop"
+      ? t("kuaishou.tab.shop")
+      : id === "interact"
+        ? t("kuaishou.tab.interact")
+        : t("kuaishou.tab.mate");
   const namedGroups = groups.filter((g) => g.name != null);
   const ungrouped = groups.find((g) => g.name == null);
   const ungroupedCount = ungrouped?.count ?? 0;
   const totalCount = groups.reduce((n, g) => n + g.count, 0);
+  // 快手子菜单的展开/折叠状态：进入快手板块时自动展开，也可手动收起。
+  const [kuaishouOpen, setKuaishouOpen] = useState(true);
+  useEffect(() => {
+    if (active === "kuaishou") setKuaishouOpen(true);
+  }, [active]);
 
   return (
     <nav
@@ -69,22 +97,84 @@ export function Sidebar({
         {NAV.map((it) => {
           const Icon = it.icon;
           const isActive = active === it.id;
+          if (it.id !== "kuaishou") {
+            return (
+              <button
+                key={it.id}
+                type="button"
+                title={navLabel(it.id)}
+                onClick={() => onChange(it.id)}
+                className={cn(
+                  "flex items-center gap-2.5 px-2.5 h-8 rounded-[9px] text-[13px] font-medium transition-colors",
+                  isActive
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                )}
+              >
+                <Icon size={15} strokeWidth={1.5} />
+                {navLabel(it.id)}
+              </button>
+            );
+          }
+          // 快手：父项可点击展开/折叠 + 缩进子菜单
           return (
-            <button
-              key={it.id}
-              type="button"
-              title={t("nav.item.shortcutTitle", { label: navLabel(it.id), kbd: it.kbd })}
-              onClick={() => onChange(it.id)}
-              className={cn(
-                "flex items-center gap-2.5 px-2.5 h-8 rounded-[9px] text-[13px] font-medium transition-colors",
-                isActive
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            <div key={it.id} className="flex flex-col gap-0.5">
+              <button
+                type="button"
+                title={navLabel(it.id)}
+                aria-expanded={kuaishouOpen}
+                onClick={() => {
+                  if (active === "kuaishou") {
+                    setKuaishouOpen((v) => !v);
+                  } else {
+                    onChange(it.id);
+                    setKuaishouOpen(true);
+                  }
+                }}
+                className={cn(
+                  "flex items-center gap-2.5 px-2.5 h-8 rounded-[9px] text-[13px] font-medium transition-colors",
+                  isActive
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                )}
+              >
+                <Icon size={15} strokeWidth={1.5} />
+                {navLabel(it.id)}
+                <ChevronRight
+                  size={14}
+                  strokeWidth={2}
+                  className={cn("ml-auto transition-transform", kuaishouOpen && "rotate-90")}
+                />
+              </button>
+              {kuaishouOpen && (
+                <div className="flex flex-col gap-0.5 ml-4 pl-2 border-l border-white/10">
+                  {KUAISHOU_TABS.map((tab) => {
+                    const TabIcon = tab.icon;
+                    const tabActive = isActive && kuaishouTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        title={kuaishouLabel(tab.id)}
+                        onClick={() => {
+                          onChange("kuaishou");
+                          onKuaishouTabChange(tab.id);
+                        }}
+                        className={cn(
+                          "flex items-center gap-2 px-2.5 h-7 rounded-[8px] text-[12px] font-medium transition-colors text-left",
+                          tabActive
+                            ? "bg-accent text-accent-foreground"
+                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                        )}
+                      >
+                        <TabIcon size={13} strokeWidth={1.5} />
+                        {kuaishouLabel(tab.id)}
+                      </button>
+                    );
+                  })}
+                </div>
               )}
-            >
-              <Icon size={15} strokeWidth={1.5} />
-              {navLabel(it.id)}
-            </button>
+            </div>
           );
         })}
       </div>
@@ -121,21 +211,6 @@ export function Sidebar({
         </div>
       )}
 
-      <div className="flex-1" />
-      <div className="px-3">
-        <button
-          type="button"
-          title={t("nav.commandPalette.title")}
-          onClick={onCmdK}
-          className={cn(
-            "flex items-center gap-2.5 w-full px-2.5 h-8 rounded-[9px] text-[13px] font-medium transition-colors",
-            "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-          )}
-        >
-          <Command size={15} strokeWidth={1.5} />
-          {t("nav.commandPalette")}
-        </button>
-      </div>
     </nav>
   );
 }

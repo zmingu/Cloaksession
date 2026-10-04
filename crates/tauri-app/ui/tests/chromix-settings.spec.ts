@@ -79,7 +79,7 @@ test("explicit save preserves full SDK JSON and unknown keys across navigation a
   await environmentEditor(page).scrollIntoViewIfNeeded();
   await screenshot(page, testInfo, "chromix-environment-saved");
 
-  await page.getByTitle("Profiles · ⌘1", { exact: true }).click();
+  await page.getByRole("button", { name: "Profiles", exact: true }).click();
   await expect(page.getByText("All profiles", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Regression profile/ }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
@@ -89,11 +89,11 @@ test("explicit save preserves full SDK JSON and unknown keys across navigation a
   await screenshot(page, testInfo, "shared-profile-browser");
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await page.getByTitle("MCP · ⌘2", { exact: true }).click();
+  await page.getByRole("button", { name: "MCP", exact: true }).click();
   await expect(page.getByText("Connect an agent", { exact: true })).toBeVisible();
   await expect(page.getByText("Live tool calls", { exact: true })).toBeVisible();
   await screenshot(page, testInfo, "shared-mcp");
-  await page.getByTitle("Settings · ⌘,", { exact: true }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(nodeEditor(page)).toHaveValue(expected.nodePath);
   expect(JSON.parse(await optionsEditor(page).inputValue())).toEqual(options);
   await page.reload();
@@ -105,7 +105,7 @@ test("explicit save preserves full SDK JSON and unknown keys across navigation a
 });
 
 test("Profile Chromix JSON autosaves independently and survives closing and reopening", async ({ page }) => {
-  await page.getByTitle("Profiles · ⌘1", { exact: true }).click();
+  await page.getByRole("button", { name: "Profiles", exact: true }).click();
   await page.getByRole("button", { name: /Regression profile/ }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();

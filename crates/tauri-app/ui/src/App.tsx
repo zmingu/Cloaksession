@@ -1,7 +1,6 @@
 import { activity, chromium, profiles as profilesApi, profilesDeleteGroup, profilesListGroups, system, onActivityEvent, onChromiumStatus, onExtensionInstalled, onProxyCountryUpdated, onRunningChanged } from "./lib/ipc";
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
-import { TopBar } from "./components/screens/TopBar";
-import { Sidebar, type Section } from "./components/screens/Sidebar";
+import { Sidebar, type Section, type KuaishouTab } from "./components/screens/Sidebar";
 import { Constellation, type GroupFilter } from "./components/profile/Constellation";
 import { NewProfileSheet } from "./components/profile/NewProfileSheet";
 import { ProfileEditSheet } from "./components/profile/ProfileEditSheet";
@@ -10,6 +9,8 @@ import { ActivityDrawer } from "./components/activity/ActivityDrawer";
 import { McpPanel } from "./components/mcp/McpPanel";
 import { Settings } from "./components/screens/Settings";
 import { BusinessSection } from "./components/business/BusinessSection";
+import { KuaishouAccountsPage } from "./components/kuaishou/KuaishouAccountsPage";
+import { KuaishouAccountWizard } from "./components/kuaishou/KuaishouAccountWizard";
 import { Confirm, Prompt } from "./components/screens/Confirm";
 import { CommandPalette, type CommandAction } from "./components/palette/CommandPalette";
 import { FirstRun } from "./components/onboarding/FirstRun";
@@ -32,6 +33,7 @@ export function App(): JSX.Element {
   const t = useT();
   // Persisted UI state — survives app restarts under localStorage `multizen.ui.*`.
   const [section, setSection] = usePersistedState<Section>("section", "profiles");
+  const [kuaishouTab, setKuaishouTab] = usePersistedState<KuaishouTab>("kuaishouTab", "shop");
   const [drawerOpen, setDrawerOpen] = usePersistedState<boolean>("drawerOpen", false);
 
   // Migrate the legacy "activity" section (renamed to "mcp") from localStorage
@@ -69,7 +71,7 @@ export function App(): JSX.Element {
       unlisten();
     };
   }, []);
-  // Global toast when the companion "Add to Cloaksession" button installs an
+  // Global toast when the companion "Add to JiegeGo" button installs an
   // extension into a running profile (the edit sheet may not be open).
   useEffect(() => {
     let unlisten = (): void => {};
@@ -102,6 +104,9 @@ export function App(): JSX.Element {
     () => !readPersisted<boolean>("onboarded", false),
   );
   const [showSheet, setShowSheet] = useState(false);
+  // Shop-account wizard (快手 › 小店 › 添加账号). Separate from the generic
+  // New-profile sheet: it also drives the hidden-browser QR sign-in.
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [sheetDirty, setSheetDirty] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -222,7 +227,7 @@ export function App(): JSX.Element {
     };
   }, [refresh, refreshGroups]);
 
-  // Keyboard shortcuts: ⌘K palette, ⌘N new profile, ⌘1/2/, sections,
+  // Keyboard shortcuts: ⌘K palette, ⌘N new profile,
   // ⌘⇧A drawer, esc closes overlays.
   useEffect(() => {
     function onKey(e: KeyboardEvent): void {
@@ -240,26 +245,6 @@ export function App(): JSX.Element {
       if (meta && e.shiftKey && e.key.toLowerCase() === "a") {
         e.preventDefault();
         setDrawerOpen((v) => !v);
-        return;
-      }
-      if (meta && e.key === "1") {
-        e.preventDefault();
-        setSection("profiles");
-        return;
-      }
-      if (meta && e.key === "2") {
-        e.preventDefault();
-        setSection("mcp");
-        return;
-      }
-      if (meta && e.key === "3") {
-        e.preventDefault();
-        setSection("business");
-        return;
-      }
-      if (meta && e.key === ",") {
-        e.preventDefault();
-        setSection("settings");
         return;
       }
       // ESC: <Modal> handles its own ESC (with dirty-form confirm); no
@@ -375,13 +360,15 @@ export function App(): JSX.Element {
       case "settings":
         setSection("settings");
         break;
+      case "kuaishou":
+        setSection("kuaishou");
+        setKuaishouTab(a.tab);
+        break;
       case "section":
         setSection(a.id);
         break;
     }
   }
-
-  const runningCount = profiles.filter((p) => p.isRunning).length;
 
   if (showOnboarding && true) {
     return <FirstRun onCreate={onboardCreate} />;
@@ -391,13 +378,6 @@ export function App(): JSX.Element {
     <KuaishouIdentityProvider profiles={profiles} closingIds={closingIds}>
     <div className="h-screen flex flex-col">
       <KuaishouIdentityDialog />
-      <TopBar
-        totalCount={profiles.length}
-        runningCount={runningCount}
-        mcpUrl={info?.mcpHttpUrl ?? null}
-        onCmdK={() => setPaletteOpen(true)}
-        onSettings={() => setSection("settings")}
-      />
 
       <UpdateBanner suppressed={!chromiumReady} />
 
@@ -405,11 +385,12 @@ export function App(): JSX.Element {
         <Sidebar
           active={section}
           onChange={setSection}
-          onCmdK={() => setPaletteOpen(true)}
           groups={groups}
           groupFilter={groupFilter}
           onGroupFilterChange={setGroupFilter}
           onDeleteGroup={deleteGroup}
+          kuaishouTab={kuaishouTab}
+          onKuaishouTabChange={setKuaishouTab}
         />
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
@@ -488,6 +469,10 @@ export function App(): JSX.Element {
 
           {section === "settings" && <Settings onImport={() => setModal({ kind: "import-passphrase" })} />}
 
+          {section === "kuaishou" && (
+            <KuaishouAccountsPage tab={kuaishouTab} onAddAccount={() => setWizardOpen(true)} />
+          )}
+
           {section === "business" && <BusinessSection profiles={profiles} />}
         </div>
 
@@ -531,6 +516,12 @@ export function App(): JSX.Element {
         profiles={profiles}
         onClose={() => setPaletteOpen(false)}
         onAction={handleCommand}
+      />
+
+      <KuaishouAccountWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onCreated={() => void refresh()}
       />
 
       <Prompt

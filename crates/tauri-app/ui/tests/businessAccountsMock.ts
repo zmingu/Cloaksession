@@ -98,7 +98,7 @@ export async function installBusinessMock(page: Page): Promise<void> {
       throw new Error(`Unhandled business fixture IPC: ${command}`);
     };
   }, { secondId: SECOND_PROFILE });
-  await page.getByTitle("Profiles · ⌘1", { exact: true }).click();
+  await page.getByRole("button", { name: "Profiles", exact: true }).click();
 }
 
 export async function setBusinessFixture(page: Page, accounts: BusinessAccount[], scopes: Record<string, BusinessProfileState["scope"]> = {}): Promise<void> {

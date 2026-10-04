@@ -22,7 +22,9 @@ function AvatarImage({ avatarKey, size }: { avatarKey: string | null; size: numb
       style={{ width: size, height: size }}>快</span>;
 }
 
-function IdentityAvatar({ snapshot, size = 26 }: { snapshot: KuaishouIdentitySnapshot | null; size?: number }): JSX.Element | null {
+/** Platform avatar for a detected identity; null when no id was read. Reused by
+ *  the shop account list so every surface shows the same photo and cache. */
+export function IdentityAvatar({ snapshot, size = 26 }: { snapshot: KuaishouIdentitySnapshot | null; size?: number }): JSX.Element | null {
   if (!snapshot?.platformUserId) return null;
   // Remount before paint when either identity or key changes; never show a previous ID's photo.
   return <AvatarImage key={JSON.stringify([snapshot.profileId, snapshot.platformUserId, snapshot.avatarKey])} avatarKey={snapshot.avatarKey} size={size} />;

@@ -149,7 +149,7 @@ export async function installListenSubMock(page: Page): Promise<void> {
     };
   });
   // Mock UI runs in English; enter the business section via the sidebar.
-  await page.getByTitle("Business · ⌘3", { exact: true }).click();
+  await page.getByRole("button", { name: "Business", exact: true }).click();
 }
 
 export async function setListenSubFixture(
