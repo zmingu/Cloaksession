@@ -1,0 +1,32 @@
+{
+  "id": "jieger-frontend-catchup",
+  "name": "jieger-frontend-catchup",
+  "title": "jieger业务前端补齐",
+  "description": "为已合入main的15个jieger业务后端模块补齐前端入口与页面",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "zmingu",
+  "assignee": "zmingu",
+  "createdAt": "2026-10-04",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "10-04-frontend-accounts-live",
+    "10-04-frontend-listen-sub",
+    "10-04-frontend-script-scene",
+    "10-04-frontend-shop-popup",
+    "10-04-frontend-jinniu-huibo"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

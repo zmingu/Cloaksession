@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/tauri-app/backend/ipc.md", "reason": "IPC契约：invoke命名、事件、验证命令"}
+{"file": ".trellis/spec/tauri-app/backend/i18n.md", "reason": "i18n加键规则与异常类别"}
+{"file": ".trellis/spec/tauri-app/backend/index.md", "reason": "tauri-app开发前检查清单"}
+{"file": ".trellis/tasks/10-04-jieger-frontend-catchup/research/command-surface.md", "reason": "84命令签名全表"}

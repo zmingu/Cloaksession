@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/tauri-app/backend/ipc.md", "reason": "核对handler注册与serde字段"}
+{"file": ".trellis/spec/tauri-app/backend/i18n.md", "reason": "核对字典key集一致"}

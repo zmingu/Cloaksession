@@ -1044,7 +1044,10 @@ impl TauriBrowserDriver {
         }
         let weak = Arc::downgrade(self);
         let stop = self.sub_account.stop.clone();
-        tokio::spawn(async move {
+        // Called from the Tauri setup hook (no Tokio runtime context), so use
+        // `tauri::async_runtime::spawn` like the other monitors — plain
+        // `tokio::spawn` panics here with "no reactor running".
+        tauri::async_runtime::spawn(async move {
             let mut interval =
                 tokio::time::interval(Duration::from_millis(LOGIN_POLL_INTERVAL_MS));
             interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
