@@ -301,7 +301,7 @@ export interface SystemInfo {
 // stubbed until P4.8 / P5.
 // ---------------------------------------------------------------------------
 
-/** `extensions:installed` push payload ("Add to Cloaksession" companion event). */
+/** `extensions:installed` push payload ("Add to JiegeGo" companion event). */
 export type ExtensionInstalledEvent =
   | { ok: true; profileId: string; extension: ExtensionConfig }
   | { ok: false; profileId: string; error: string };

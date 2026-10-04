@@ -5,7 +5,7 @@ import type { UpdateStatus } from "../types";
 import { useT } from "../i18n/LanguageProvider";
 
 /**
- * Full-width, non-intrusive update bar shown under the TopBar. Only renders for
+ * Full-width, non-intrusive update bar shown at the top of the main view. Only renders for
  * actionable states:
  *   - `ready`       (Windows/Linux) → "Restart to update" / Later
  *   - `available`   (macOS, terminal) → "Download" / Dismiss

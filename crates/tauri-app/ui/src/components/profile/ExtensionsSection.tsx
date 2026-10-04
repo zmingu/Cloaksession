@@ -58,7 +58,7 @@ function LiveExtensions({ profileId }: { profileId: string }): JSX.Element {
     let unlisten = (): void => {};
     let active = true;
     void extensions.list(profileId).then(setItems);
-    // A companion "Add to Cloaksession" install (while editing a running profile)
+    // A companion "Add to JiegeGo" install (while editing a running profile)
     // pushes here — refresh the list.
     void onExtensionInstalled((e) => {
       if (e.profileId === profileId) {
@@ -141,7 +141,7 @@ function LiveExtensions({ profileId }: { profileId: string }): JSX.Element {
       )}
 
       <div className="text-[11px] text-slate-600 leading-relaxed">
-        Or open the Chrome Web Store inside this profile and click <b>Add to Cloaksession</b>.
+        Or open the Chrome Web Store inside this profile and click <b>Add to JiegeGo</b>.
         Changes apply on the next launch.
       </div>
 

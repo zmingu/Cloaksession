@@ -19,7 +19,7 @@ export function Cube({ size = 28, glow = true, className }: Props): JSX.Element 
   return (
     <img
       src={logoUrl}
-      alt="Cloaksession"
+      alt="JiegeGo"
       width={size}
       height={size}
       className={className}

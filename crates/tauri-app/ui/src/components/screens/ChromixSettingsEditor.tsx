@@ -214,17 +214,17 @@ export function ChromixSettingsEditor({ value = DEFAULTS, onSave }: Props): JSX.
       <div className="mz-panel p-3 text-[11px] text-slate-400 leading-relaxed space-y-2 break-words">
         <p>
           <b className="text-slate-300">Automation boundary:</b> SDK humanize only affects SDK Playwright
-          page objects. Existing MCP/CDP actions still use Cloaksession’s current driver, not the SDK’s
+          page objects. Existing MCP/CDP actions still use JiegeGo’s current driver, not the SDK’s
           humanized mouse or keyboard methods.
         </p>
         <p>
           <b className="text-slate-300">Measured devices:</b> devicePool requires the matching Python SDK
-          and matching browser binary through a separate measured-device entry point. Cloaksession's
+          and matching browser binary through a separate measured-device entry point. JiegeGo's
           CDP sidecar rejects devicePool and measured mode because that entry point excludes host CDP
           overrides. The example below is for direct SDK use only.
         </p>
         <p>
-          <b className="text-slate-300">Host controls:</b> Cloaksession supplies profile storage by default and reserves
+          <b className="text-slate-300">Host controls:</b> JiegeGo supplies profile storage by default and reserves
           debugging arguments, including --remote-debugging-port, --remote-debugging-address and
           --remote-debugging-pipe. Do not override them in args, launchOptions or contextOptions.
         </p>
@@ -236,7 +236,7 @@ export function ChromixSettingsEditor({ value = DEFAULTS, onSave }: Props): JSX.
         <summary className="cursor-pointer text-muted-foreground">Complete SDK JSON examples</summary>
         <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
           Reference examples, not defaults or a field whitelist. Replace paths, credentials and persona
-          values before use. Omit userDataDir to keep Cloaksession’s per-profile storage; an explicit
+          values before use. Omit userDataDir to keep JiegeGo’s per-profile storage; an explicit
           path overrides it and must not be shared by concurrent profiles. Availability depends on the
           installed SDK and matching native binary; consult the official README above.
         </p>

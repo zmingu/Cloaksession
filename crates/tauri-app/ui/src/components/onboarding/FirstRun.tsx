@@ -10,7 +10,7 @@ interface Props {
 /**
  * Three-step first-run: welcome → anonymous-usage consent → name a profile.
  * We omit the Anthropic-key step from the original Claude Design output because
- * Cloaksession no longer calls any external API.
+ * JiegeGo no longer calls any external API.
  *
  * The telemetry step is a deliberate opt-in ASK (Homebrew's rule: no ping
  * before the notice). The heartbeat stays OFF unless the user clicks Enable —
@@ -59,7 +59,7 @@ export function FirstRun({ onCreate }: Props): JSX.Element {
       }}
     >
       {/* Drag strip — invisible band at the top so the window can be dragged
-          even though we don't render the TopBar on the onboarding screen.
+          on the onboarding screen (the main UI has no top bar).
           Sits behind the halo and content. */}
       <div
         aria-hidden
