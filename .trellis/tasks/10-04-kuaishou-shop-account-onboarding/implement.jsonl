@@ -1,0 +1,11 @@
+{"file": ".trellis/spec/tauri-app/backend/index.md", "reason": "Tauri 命令层与前端 IPC 的既有约定（新增命令/参数的落位方式）"}
+{"file": ".trellis/spec/tauri-app/backend/ipc.md", "reason": "IPC 命名、参数 camelCase 约定；profiles_launch 扩展与新增命令必须遵守"}
+{"file": ".trellis/spec/tauri-app/backend/kuaishou-identity.md", "reason": "身份检测 provider 契约；向导读快手ID/昵称/头像依赖它"}
+{"file": ".trellis/spec/tauri-app/backend/kuaishou-initialization.md", "reason": "初始化（Subject/Slice）自动补做语义；向导不驱动它，需确认边界"}
+{"file": ".trellis/spec/tauri-app/backend/i18n.md", "reason": "en/zh-CN 双字典键集一致约束；新增 kuaishou.wizard.* 必须遵守"}
+{"file": ".trellis/spec/cdp-driver/backend/sessions.md", "reason": "BrowserSession 生命周期与截图/绑页契约；隐藏启动与截图复用依赖它"}
+{"file": ".trellis/spec/cdp-driver/backend/task-control.md", "reason": "TaskCancel / 超时语义；二维码轮询与登录等待的取消处理"}
+{"file": ".trellis/spec/browser-launcher/backend/lifecycle.md", "reason": "启动参数与生命周期；hidden 启动参数注入落在此层"}
+{"file": ".trellis/spec/browser-launcher/backend/business-isolation.md", "reason": "业务账号与环境隔离约束；确认「账号即环境」不破坏隔离"}
+{"file": ".trellis/spec/profile-manager/backend/business-accounts.md", "reason": "business_accounts 契约；本次明确不复用它作为账号来源，需确认不越界"}
+{"file": ".trellis/tasks/10-04-kuaishou-shop-account-onboarding/research/evidence.md", "reason": "全部 file:line 证据与既有机制清单"}

@@ -1,0 +1,10 @@
+{"file": ".trellis/spec/tauri-app/backend/index.md", "reason": "检查改动是否符合 Tauri 命令层质量门槛"}
+{"file": ".trellis/spec/tauri-app/backend/ipc.md", "reason": "核对新增/扩展命令的参数与命名约定"}
+{"file": ".trellis/spec/tauri-app/backend/i18n.md", "reason": "核对 en/zh-CN 键集与占位符一致（dictionaries.test.mjs 必须 6 pass）"}
+{"file": ".trellis/spec/cdp-driver/backend/sessions.md", "reason": "核对截图/绑页用法与租约释放"}
+{"file": ".trellis/spec/cdp-driver/backend/task-control.md", "reason": "核对取消/超时处理不泄漏轮询"}
+{"file": ".trellis/spec/browser-launcher/backend/lifecycle.md", "reason": "核对 hidden 启动不改变缺省可见启动行为"}
+{"file": ".trellis/spec/profile-manager/backend/business-accounts.md", "reason": "确认未写入 business_accounts、未破坏既有唯一性约束"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "跨层改动（driver→IPC→UI）一致性检查"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "确认复用 screenshot/身份检测/指纹机制而非重造"}
+{"file": ".trellis/tasks/10-04-kuaishou-shop-account-onboarding/research/evidence.md", "reason": "对照验收标准逐条核对"}
