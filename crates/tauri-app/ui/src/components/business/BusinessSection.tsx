@@ -8,6 +8,8 @@ import { LiveLaunchPage } from "./LiveLaunchPage";
 import { LiveRoomMonitorPage } from "./LiveRoomMonitorPage";
 import { MateLoginPage } from "./MateLoginPage";
 import { BindAuthorizePage } from "./BindAuthorizePage";
+import { CommentListenerPage } from "./CommentListenerPage";
+import { SubAccountsPage } from "./SubAccountsPage";
 import { CAutoMessagePanel } from "./CAutoMessagePanel";
 import { CAutoReplyPanel } from "./CAutoReplyPanel";
 import { CScenePlayPanel } from "./CScenePlayPanel";
@@ -22,7 +24,8 @@ import { JinniuPromotePage } from "./JinniuPromotePage";
  *
  * 各组按同一模式追加 tab (向 `BUSINESS_TABS` 加一项 + 一个页面组件).
  * E 组: `bind` / `huibo` / `jinniu`; C 组: `msg` / `reply` / `scene`;
- * D 组: `pscript` / `helper` / `popup`; A 组: `auth` / `mate` / `live` / `monitor`.
+ * D 组: `pscript` / `helper` / `popup`; A 组: `auth` / `mate` / `live` / `monitor`;
+ * B 组: `comments` / `sub`.
  */
 export type BusinessTabId =
   | "auth"
@@ -37,7 +40,9 @@ export type BusinessTabId =
   | "scene"
   | "pscript"
   | "helper"
-  | "popup";
+  | "popup"
+  | "comments"
+  | "sub";
 
 const BUSINESS_TABS: BusinessTabId[] = [
   "auth",
@@ -53,6 +58,8 @@ const BUSINESS_TABS: BusinessTabId[] = [
   "pscript",
   "helper",
   "popup",
+  "comments",
+  "sub",
 ];
 
 interface Props {
@@ -91,6 +98,10 @@ export function BusinessSection({ profiles }: Props): JSX.Element {
         return t("biz.helper.tab");
       case "popup":
         return t("biz.popup.tab");
+      case "comments":
+        return t("biz.comments.tab");
+      case "sub":
+        return t("biz.sub.tab");
     }
   };
 
@@ -128,6 +139,8 @@ export function BusinessSection({ profiles }: Props): JSX.Element {
       {tab === "pscript" && <DProductScripts />}
       {tab === "helper" && <DShopHelper profileId={profiles[0]?.id ?? ""} />}
       {tab === "popup" && <DAutoPopup profileId={profiles[0]?.id ?? ""} />}
+      {tab === "comments" && <CommentListenerPage />}
+      {tab === "sub" && <SubAccountsPage />}
     </div>
   );
 }
