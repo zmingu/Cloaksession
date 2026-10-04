@@ -4,19 +4,21 @@ import { useT } from "../../i18n/LanguageProvider";
 import { cn } from "../../lib/cn";
 import type { ProfileSummary } from "../../types";
 import { BindAuthorizePage } from "./BindAuthorizePage";
+import { CAutoMessagePanel } from "./CAutoMessagePanel";
+import { CAutoReplyPanel } from "./CAutoReplyPanel";
+import { CScenePlayPanel } from "./CScenePlayPanel";
 import { HuiboLivePage } from "./HuiboLivePage";
 import { JinniuPromotePage } from "./JinniuPromotePage";
 
 /**
  * 业务 section 壳 (design: 独立 section + 组内子导航).
  *
- * B 组注册 `comments` / `sub` 两个入口; A/C/D/E 组按同一模式追加 tab
- * (向 `BUSINESS_TABS` 加一项 + 一个页面组件), 无需改动壳结构.
- * E 组追加 `bind` / `huibo` / `jinniu` (达人授权 / 跟播回播 / 金牛推广).
+ * 各组按同一模式追加 tab (向 `BUSINESS_TABS` 加一项 + 一个页面组件).
+ * E 组: `bind` / `huibo` / `jinniu`; C 组: `msg` / `reply` / `scene`.
  */
-export type BusinessTabId = "bind" | "huibo" | "jinniu";
+export type BusinessTabId = "bind" | "huibo" | "jinniu" | "msg" | "reply" | "scene";
 
-const BUSINESS_TABS: BusinessTabId[] = ["bind", "huibo", "jinniu"];
+const BUSINESS_TABS: BusinessTabId[] = ["bind", "huibo", "jinniu", "msg", "reply", "scene"];
 
 interface Props {
   profiles: ProfileSummary[];
@@ -34,6 +36,12 @@ export function BusinessSection({ profiles }: Props): JSX.Element {
         return t("biz.huibo.tab");
       case "jinniu":
         return t("biz.jinniu.tab");
+      case "msg":
+        return t("biz.msg.tab");
+      case "reply":
+        return t("biz.reply.tab");
+      case "scene":
+        return t("biz.scene.tab");
     }
   };
 
@@ -61,6 +69,9 @@ export function BusinessSection({ profiles }: Props): JSX.Element {
       {tab === "bind" && <BindAuthorizePage profiles={profiles} />}
       {tab === "huibo" && <HuiboLivePage profiles={profiles} />}
       {tab === "jinniu" && <JinniuPromotePage profiles={profiles} />}
+      {tab === "msg" && <CAutoMessagePanel />}
+      {tab === "reply" && <CAutoReplyPanel />}
+      {tab === "scene" && <CScenePlayPanel />}
     </div>
   );
 }
