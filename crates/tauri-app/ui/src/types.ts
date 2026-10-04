@@ -823,3 +823,183 @@ export interface StoreCreatePhase1Config {
   roiTargetMode?: string | null;
   creativeMode?: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Frontend A group: accounts & live launch (kuaishou_auth / mate_login /
+// live_launch / live_room_monitor). Mirrors:
+//   crates/cdp-driver/src/platforms/kuaishou.rs (EnsureAuthResult, AuthPhase)
+//   crates/tauri-app/src/driver/mate_login.rs
+//   crates/tauri-app/src/driver/live_launch.rs
+//   crates/tauri-app/src/driver/live_room_monitor.rs
+// All structs use `#[serde(rename_all = "camelCase")]` except where noted.
+// ---------------------------------------------------------------------------
+
+/** `AuthPhase::as_str()` snake_case wire values for `kuaishou-auth-phase`. */
+export type KuaishouAuthPhase =
+  | "launching_browser"
+  | "verifying_session"
+  | "waiting_for_login"
+  | "restoring_headless";
+
+export interface KuaishouAuthPhaseEvent {
+  profileId: string;
+  phase: KuaishouAuthPhase;
+}
+
+/** Outcome of `ensure_kuaishou_auth` (cdp-driver kuaishou.rs:409). */
+export interface EnsureAuthResult {
+  ok: boolean;
+  scanned: boolean;
+  error?: string;
+}
+
+/** `MateLoginStage`, `#[serde(rename_all = "kebab-case")]`. */
+export type MateLoginStage =
+  | "idle"
+  | "starting"
+  | "awaiting-scan"
+  | "awaiting-confirm"
+  | "receiving"
+  | "success"
+  | "expired"
+  | "cancelled"
+  | "error";
+
+export interface MateLoginUser {
+  userId: string;
+  userName: string;
+  avatarUrl?: string | null;
+}
+
+/** Full login snapshot (driver/mate_login.rs:106). */
+export interface MateLoginState {
+  accountId: string;
+  stage: MateLoginStage;
+  qrImageDataUrl?: string | null;
+  qrLoginToken?: string | null;
+  qrLoginSignature?: string | null;
+  expireAt?: number | null;
+  errorMessage?: string | null;
+  user?: MateLoginUser | null;
+  startedAt?: number | null;
+  finishedAt?: number | null;
+}
+
+/** Terminal stages: polling stops. */
+export const MATE_LOGIN_TERMINAL_STAGES: readonly MateLoginStage[] = [
+  "success",
+  "expired",
+  "cancelled",
+  "error",
+] as const;
+
+/** `StreamingStatus`, `#[serde(rename_all = "camelCase")]`. */
+export type StreamingStatus =
+  | "idle"
+  | "starting"
+  | "streaming"
+  | "stopping"
+  | "stopped"
+  | "error";
+
+/** `StreamMode`, `#[serde(rename_all = "camelCase")]`. */
+export type StreamMode = "heartbeat" | "realtime";
+
+/** `StreamCredentials` (driver/live_launch.rs:153). streamKey never logged. */
+export interface StreamCredentials {
+  rtmpServer: string;
+  streamKey: string;
+  liveStreamId: string;
+  placeholder: boolean;
+}
+
+/** `StreamingState` (driver/live_launch.rs:220). `target` is redacted. */
+export interface StreamingState {
+  profileId: string;
+  status: StreamingStatus;
+  mode?: StreamMode | null;
+  target?: string | null;
+  pid?: number | null;
+  stderrTail: string[];
+  exitCode?: number | null;
+  error?: string | null;
+  placeholderCredentials: boolean;
+  startedAt?: string | null;
+}
+
+/** Subset pushed via `live-launch-state-changed`. */
+export interface LiveLaunchStateChanged {
+  profileId: string;
+  status: StreamingStatus;
+  mode?: StreamMode | null;
+  target?: string | null;
+  pid?: number | null;
+  exitCode?: number | null;
+  error?: string | null;
+  placeholderCredentials: boolean;
+}
+
+/** `PrerequisitesReport` (driver/live_launch.rs:284). */
+export interface PrerequisitesReport {
+  available: boolean;
+  ffmpegPath?: string | null;
+  searched: string[];
+  error?: string | null;
+}
+
+/** `MonitorConfig` (driver/live_room_monitor.rs:184). */
+export interface MonitorConfig {
+  liveRoomUrl: string;
+  sceneId?: number | null;
+  groupId?: string | null;
+  productScriptId?: number | null;
+  productScriptAccountId?: string | null;
+  autoExitSubAccounts: boolean;
+}
+
+/** `LiveRoomMonitorStatus`, `#[serde(rename_all = "lowercase")]`. */
+export type LiveRoomMonitorStatus =
+  | "idle"
+  | "checking"
+  | "offline"
+  | "live"
+  | "triggering"
+  | "triggered"
+  | "error";
+
+/** `LiveRoomLiveStatus`, `#[serde(rename_all = "lowercase")]`. */
+export type LiveRoomLiveStatus = "unknown" | "offline" | "live";
+
+/** Downstream batch result (enter/exit/product-script share shape). */
+export interface TriggerBatchResult {
+  attempted: number;
+  succeeded: number;
+  failed: number;
+  message?: string | null;
+  error?: string | null;
+  at: string;
+}
+
+/** `LiveRoomMonitorState` (driver/live_room_monitor.rs:197). */
+export interface LiveRoomMonitorState {
+  enabled: boolean;
+  profileId?: string | null;
+  liveRoomUrl?: string | null;
+  sceneId?: number | null;
+  groupId?: string | null;
+  productScriptId?: number | null;
+  productScriptAccountId?: string | null;
+  autoExitSubAccounts: boolean;
+  status: LiveRoomMonitorStatus;
+  liveStatus: LiveRoomLiveStatus;
+  triggeredForCurrentLive: boolean;
+  enteringRooms: boolean;
+  exitingRooms: boolean;
+  lastCheckedAt?: number | null;
+  lastTriggeredAt?: number | null;
+  nextCheckAt?: number | null;
+  lastEnterAllResult?: TriggerBatchResult | null;
+  lastExitAllResult?: TriggerBatchResult | null;
+  lastProductScriptResult?: TriggerBatchResult | null;
+  error?: string | null;
+}
