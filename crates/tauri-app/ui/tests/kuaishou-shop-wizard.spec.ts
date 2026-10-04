@@ -13,6 +13,7 @@ const SHOP_HOME_URL = "https://s.kwaixiaodian.com/zone/home";
  * 全部命令都是浏览器本地 fake：不启动浏览器、不访问快手。
  * 覆盖：向导第一步是分区式（主页/代理/扩展/指纹，无 General）、主页预填小店首页、
  * 代理触发 Chromix GeoIP 对齐、创建后隐藏启动、二维码轮询、识别后自动命名、
+ * 识别后自动驱动初始化（保持浏览器存活 / 显示进度 / 完成或失败后才允许关闭）、
  * 完成/取消的关闭语义（AC3/AC4/AC5/AC9）。
  */
 test("shop account wizard: partitioned form (no General), shop home, create, QR, detect, done, close", async ({ page }, testInfo) => {
@@ -23,9 +24,9 @@ test("shop account wizard: partitioned form (no General), shop home, create, QR,
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("添加小店账号")).toBeVisible();
 
-  // Partitioned form: no General section and no legacy random-fingerprint panel.
+  // Partitioned form: no General section and no legacy CloakBrowser fingerprint panel.
   await expect(dialog.getByRole("button", { name: "General", exact: true })).toHaveCount(0);
-  await expect(dialog.getByText(/Random fingerprint|随机指纹/)).toHaveCount(0);
+  await expect(dialog.getByTestId("wizard-fingerprint")).toHaveCount(0);
 
   // The four Chinese partitions are visible.
   await expect(dialog.getByRole("button", { name: "主页", exact: true })).toBeVisible();
@@ -35,6 +36,12 @@ test("shop account wizard: partitioned form (no General), shop home, create, QR,
 
   // Home is prefilled with the shop home page (editable, not just a placeholder).
   await expect(dialog.getByRole("textbox")).toHaveValue(SHOP_HOME_URL);
+
+  // Fingerprint auto-randomizes on open: a seed is shown, plus a one-click
+  // "随机指纹" (Randomize) button to re-roll it.
+  await dialog.getByRole("button", { name: "指纹", exact: true }).click();
+  await expect(dialog.getByText(/随机指纹种子：\d+/)).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "随机指纹", exact: true })).toBeVisible();
 
   // Create directly — nothing else to fill in.
   await dialog.getByRole("button", { name: "创建并登录", exact: true }).click();
@@ -55,6 +62,10 @@ test("shop account wizard: partitioned form (no General), shop home, create, QR,
   expect(input.name).toBe("未命名");
   expect(input.startUrl).toBe(SHOP_HOME_URL);
   expect(input).not.toHaveProperty("fingerprint");
+  // A random fingerprint seed (auto-generated on open) is carried into the profile.
+  expect((input.chromixOptions?.args ?? []) as string[]).toEqual(
+    expect.arrayContaining([expect.stringMatching(/^--fingerprint=\d+$/)]),
+  );
   // No proxy → no GeoIP alignment requested.
   expect(input.chromixOptions ?? {}).not.toHaveProperty("geoip");
 
@@ -114,6 +125,94 @@ async function wizardCalls(page: Page, command: string) {
 }
 
 /**
+ * Wizard-driven initialization: the moment an account is detected the wizard
+ * keeps the hidden browser alive, triggers the catch-up run (kuaishou_init_retry)
+ * and polls kuaishou_init_steps until both steps are done — and only then does
+ * "Done" stop the browser. A still-running campaign must NOT close the browser.
+ */
+test("shop account wizard: drives initialization, keeps the browser alive, then closes on completion", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chrome", "desktop layout only");
+  await installWizardMock(page, "zh-CN");
+
+  // Model the campaign: still running while the wizard is open, then both done.
+  await page.evaluate(() => {
+    const pending = (state: string) => [
+      { platformUserId: "00123456", step: "subject", state, attempts: 1, nextRetryAt: null, lastErrorCode: null, completedAt: null, updatedAt: "2026-10-04T00:00:00Z" },
+      { platformUserId: "00123456", step: "slice", state: "pending", attempts: 0, nextRetryAt: null, lastErrorCode: null, completedAt: null, updatedAt: "2026-10-04T00:00:00Z" },
+    ];
+    const done = [
+      { platformUserId: "00123456", step: "subject", state: "done", attempts: 1, nextRetryAt: null, lastErrorCode: null, completedAt: "2026-10-04T00:00:00Z", updatedAt: "2026-10-04T00:00:00Z" },
+      { platformUserId: "00123456", step: "slice", state: "done", attempts: 1, nextRetryAt: null, lastErrorCode: null, completedAt: "2026-10-04T00:00:00Z", updatedAt: "2026-10-04T00:00:00Z" },
+    ];
+    // The first read (fired before the first tick) sees a running campaign; the
+    // next read sees both steps done.
+    (window as any).__TEST_WIZARD__.initSequence = [pending("running"), done];
+  });
+
+  await page.getByRole("button", { name: "添加账号", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "创建并登录", exact: true }).click();
+
+  // The wizard triggers the catch-up run itself, using the created profile id.
+  await expect
+    .poll(async () => (await wizardCalls(page, "kuaishou_init_retry")).length)
+    .toBeGreaterThan(0);
+  expect(await wizardCalls(page, "kuaishou_init_retry")).toEqual([{ profileId: "fixture-profile" }]);
+
+  // Initialization progress is shown while the campaign runs.
+  const progress = dialog.getByTestId("wizard-init");
+  await expect(progress).toBeVisible();
+  await expect(progress).toHaveAttribute("data-state", "running");
+  await expect(progress.getByText("正在初始化账号（主体资料、直播切片关闭）…")).toBeVisible();
+  await expect(dialog.getByTestId("wizard-init-step-subject")).toHaveAttribute("data-state", "running");
+  await expect(dialog.getByTestId("wizard-init-step-slice")).toHaveAttribute("data-state", "pending");
+
+  // While running the wizard does NOT stop the browser.
+  expect((await wizardCalls(page, "profiles_close")).length).toBe(0);
+
+  // Once both steps report done, the campaign finishes.
+  await expect(progress).toHaveAttribute("data-state", "done");
+  await expect(progress.getByText("初始化已完成。")).toBeVisible();
+
+  // Now the browser is still alive until the user confirms with "Done".
+  expect((await wizardCalls(page, "profiles_close")).length).toBe(0);
+  await dialog.getByRole("button", { name: "完成", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect((await wizardCalls(page, "profiles_close")).length).toBe(1);
+});
+
+/**
+ * A failed campaign is surfaced with a clear reason and a manual close, so the
+ * user is never trapped waiting on an initialization that will not complete.
+ */
+test("shop account wizard: surfaces a failed initialization and allows a manual close", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chrome", "desktop layout only");
+  await installWizardMock(page, "zh-CN");
+
+  await page.evaluate(() => {
+    (window as any).__TEST_WIZARD__.initSteps = [
+      { platformUserId: "00123456", step: "subject", state: "failed", attempts: 3, nextRetryAt: null, lastErrorCode: "ocr-unavailable", completedAt: null, updatedAt: "2026-10-04T00:00:00Z" },
+      { platformUserId: "00123456", step: "slice", state: "pending", attempts: 0, nextRetryAt: null, lastErrorCode: null, completedAt: null, updatedAt: "2026-10-04T00:00:00Z" },
+    ];
+  });
+
+  await page.getByRole("button", { name: "添加账号", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "创建并登录", exact: true }).click();
+
+  const progress = dialog.getByTestId("wizard-init");
+  await expect(progress).toHaveAttribute("data-state", "failed");
+  await expect(progress.getByText("初始化未完成：中文 OCR 不可用")).toBeVisible();
+  // A manual retry is offered...
+  await expect(dialog.getByRole("button", { name: "重试", exact: true })).toBeVisible();
+
+  // ...and closing is still possible, stopping the hidden browser.
+  await dialog.getByRole("button", { name: "关闭（不等待）", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect((await wizardCalls(page, "profiles_close")).length).toBe(1);
+});
+
+/**
  * AC9: cancelling the wizard after the profile was created must stop the QR
  * capture / identity polling loop (no leaked timer keeps screenshotting).
  */
@@ -153,6 +252,17 @@ async function installWizardMock(page: Page, language: "en" | "zh-CN" = "en"): P
     const mock = {
       calls: [] as Array<{ command: string; args: Record<string, any> }>,
       detects: 0,
+      initRetry: 0,
+      initReads: 0,
+      // Default campaign: both steps already done, so a wizard run that does not
+      // override them completes immediately. `initSequence` (when set) is
+      // consumed one entry per `kuaishou_init_steps` read, the last entry
+      // repeating — it lets a test model a running → done progression.
+      initSteps: [
+        { platformUserId: "00123456", step: "subject", state: "done", attempts: 1, nextRetryAt: null, lastErrorCode: null, completedAt: "2026-10-04T00:00:00Z", updatedAt: "2026-10-04T00:00:00Z" },
+        { platformUserId: "00123456", step: "slice", state: "done", attempts: 1, nextRetryAt: null, lastErrorCode: null, completedAt: "2026-10-04T00:00:00Z", updatedAt: "2026-10-04T00:00:00Z" },
+      ] as Array<Record<string, any>>,
+      initSequence: null as Array<Array<Record<string, any>>> | null,
     };
     Object.assign(window, { __TEST_WIZARD__: mock });
     internals.invoke = async (command: string, args: Record<string, any> = {}) => {
@@ -220,6 +330,20 @@ async function installWizardMock(page: Page, language: "en" | "zh-CN" = "en"): P
           lastSeenAt: "2026-10-04T00:00:00Z",
           message: null,
         };
+      }
+      if (command === "kuaishou_init_retry") {
+        mock.calls.push({ command, args: structuredClone(args) });
+        mock.initRetry += 1;
+        return undefined;
+      }
+      if (command === "kuaishou_init_steps") {
+        mock.calls.push({ command, args: structuredClone(args) });
+        const sequence = mock.initSequence;
+        const rows = sequence && sequence.length
+          ? sequence[Math.min(mock.initReads, sequence.length - 1)]
+          : mock.initSteps;
+        mock.initReads += 1;
+        return structuredClone(rows);
       }
       return original(command, args);
     };

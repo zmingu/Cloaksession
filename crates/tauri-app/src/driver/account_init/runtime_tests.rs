@@ -485,3 +485,56 @@ fn retry_budget_is_per_account_generation_and_drop_releases_profile_gate() {
     drop(active);
     assert!(runtime.active.lock().unwrap().is_empty());
 }
+
+#[tokio::test]
+async fn wake_scan_returns_immediately_consumes_one_permit_and_honors_cancellation() {
+    let temp = tempfile::tempdir().unwrap();
+    let runtime = InitRuntime::new(temp.path().join("attachments"));
+    let mut interval = tokio::time::interval(Duration::from_secs(3600));
+    // The interval's first tick is already due, so this scan is timer-driven.
+    assert!(runtime.wait_for_scan(&mut interval).await);
+    // No permit: the next scan blocks until a wake (proved by the surrounding timeout).
+    assert!(
+        tokio::time::timeout(Duration::from_millis(50), runtime.wait_for_scan(&mut interval))
+            .await
+            .is_err()
+    );
+    // One wake, one permit: the next scan returns at once and a second waits again.
+    runtime.wake();
+    assert!(runtime.wait_for_scan(&mut interval).await);
+    assert!(
+        tokio::time::timeout(Duration::from_millis(50), runtime.wait_for_scan(&mut interval))
+            .await
+            .is_err()
+    );
+    // Cancellation wins over both arms and stops the monitor.
+    runtime.stop.cancel();
+    assert!(!runtime.wait_for_scan(&mut interval).await);
+}
+
+#[tokio::test]
+async fn monitor_wake_shortens_the_scan_window_without_launching_or_claiming_idle_profiles() {
+    let (_temp, driver) = crate::driver::business_tests::fixture(ChromixSettings::default());
+    let driver = Arc::new(driver);
+    driver.start_kuaishou_init_monitor();
+    // A second start cannot spawn a rival loop (once guard).
+    driver.start_kuaishou_init_monitor();
+    // Let the loop enter wait_for_scan (its first tick already fired; reset hides it).
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    driver.account_init.test_reset_scanned();
+    // A wake schedules the same scan the 5s tick would; the empty registry means no
+    // launch, no claim and no browser is created for it.
+    driver.account_init.wake();
+    tokio::time::timeout(Duration::from_secs(2), async {
+        while !driver.account_init.test_scanned() {
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .expect("a wake must schedule a scan well before the 5s tick");
+    assert!(driver.account_init.active.lock().unwrap().is_empty());
+    assert!(driver.account_init.pages.lock().unwrap().is_empty());
+    assert!(driver.account_init.runs.lock().unwrap().is_empty());
+    driver.shutdown().await;
+    assert!(driver.account_init.stop.is_cancelled());
+}

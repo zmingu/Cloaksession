@@ -8,8 +8,9 @@ import { KuaishouShopAccounts } from "./KuaishouShopAccounts";
 /**
  * 快手三个二级菜单的内容分发（小店 / 互动账号 / 直播伴侣）。
  *
- * 小店与互动账号已有内容；直播伴侣仍是空壳，后续按 tab 填充，
- * 不在此处堆业务。
+ * 小店与互动账号各自拥有「添加账号」入口：小店复用 App 的通用新建环境表单，
+ * 互动账号使用自己的建号向导（环境 + 快手主站扫码 + 互动登记）。
+ * 直播伴侣仍是空壳，后续按 tab 填充，不在此处堆业务。
  */
 export function KuaishouAccountsPage({
   tab,
@@ -21,6 +22,7 @@ export function KuaishouAccountsPage({
   onAddAccount?: () => void;
 }): JSX.Element {
   if (tab === "shop") return <KuaishouShopAccounts onAddAccount={onAddAccount} />;
+  // 互动账号自带建号向导（含主站扫码与互动登记），不需要 App 的通用新建环境入口。
   if (tab === "interact") return <KuaishouInteractAccounts />;
   return <KuaishouShell tab={tab} />;
 }

@@ -66,14 +66,31 @@ pub async fn profiles_delete(
     state.driver.delete_profile(&id).await.map_err(|e| e.to_string())
 }
 
-/// Only this explicit entry opens the shop login page; generic launch stays unchanged.
+/// Only these explicit entries open a platform login page; generic launch stays unchanged.
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum LaunchEntry {
     KuaishouShop,
+    /// Kuaishou main-site viewer (互动账号 / 小号) entry.
+    KuaishouSub,
+}
+
+impl LaunchEntry {
+    /// URL opened in a new tab for this explicit launch entry. Shop keeps its
+    /// post-login store home redirect; the main-site viewer opens `www.kuaishou.com`.
+    pub fn login_url(&self) -> &'static str {
+        match self {
+            Self::KuaishouShop => KUAISHOU_LOGIN_URL,
+            Self::KuaishouSub => KUAISHOU_SUB_LOGIN_URL,
+        }
+    }
 }
 
 pub const KUAISHOU_LOGIN_URL: &str = "https://login.kwaixiaodian.com/?biz=zone&redirect_url=https%3A%2F%2Fs.kwaixiaodian.com%2Fzone%2Fhome";
+
+/// Kuaishou main-site viewer entry. The homepage is where the viewer identity
+/// (`www.kuaishou.com`) is read from; it is the only URL opened for this entry.
+pub const KUAISHOU_SUB_LOGIN_URL: &str = "https://www.kuaishou.com/";
 
 #[tauri::command]
 pub async fn profiles_launch(
@@ -94,13 +111,13 @@ pub async fn profiles_launch(
         .await
         .map_err(|e| e.to_string())?;
 
-    if entry.is_some() {
+    if let Some(entry) = entry.as_ref() {
         // Recheck after launch, then open a NEW tab. Never overwrite startUrl or restored pages.
         state.driver.require_kuaishou_login_scope(&id).await.map_err(|e| e.to_string())?;
-        let tab = state.driver.new_tab(&id, KUAISHOU_LOGIN_URL).await
-            .map_err(|e| format!("浏览器已启动，小店扫码页未打开，可重试：{e}"))?;
+        let tab = state.driver.new_tab(&id, entry.login_url()).await
+            .map_err(|e| format!("浏览器已启动，登录扫码页未打开，可重试：{e}"))?;
         state.driver.activate_tab(&id, &tab).await
-            .map_err(|e| format!("小店扫码页已打开但未激活，请切换标签页：{e}"))?;
+            .map_err(|e| format!("登录扫码页已打开但未激活，请切换标签页：{e}"))?;
     }
 
     // Spawn the companion poller for this profile — it watches Chrome Web

@@ -1,7 +1,7 @@
 //! Platform identity archives are independent from business_accounts and survive profile deletion.
 use crate::ProfileManager;
 use multizen_core::{
-    kuaishou_identity_allowed, valid_kuaishou_user_id, BusinessProfileState,
+    kuaishou_identity_detection_allowed, valid_kuaishou_identity_id, BusinessProfileState,
     KuaishouIdentityObservation as Observation, KuaishouIdentityStatus as Status, MultizenError,
     Result,
 };
@@ -71,9 +71,9 @@ impl ProfileManager {
         if &current != expected_business {
             return Ok(None);
         }
-        if !kuaishou_identity_allowed(&current) {
+        if !kuaishou_identity_detection_allowed(&current) {
             observation.snapshot.status = Status::Skipped;
-            observation.snapshot.message = Some("金牛scope或非小店业务绑定，已跳过身份检测".into());
+            observation.snapshot.message = Some("金牛scope或非快手业务绑定，已跳过身份检测".into());
         }
         if observation.snapshot.status == Status::Detected {
             let platform_id = observation
@@ -81,7 +81,9 @@ impl ProfileManager {
                 .platform_user_id
                 .as_deref()
                 .ok_or_else(|| MultizenError::Config("detected observation has no ID".into()))?;
-            if !valid_kuaishou_user_id(platform_id)
+            // Shop profiles keep the numeric-only id; viewer (sub) and unbound
+            // profiles also accept the main-site alphanumeric id form.
+            if !valid_kuaishou_identity_id(&current, platform_id)
                 || observation.session_id.as_deref().is_none_or(str::is_empty)
             {
                 return Err(MultizenError::Config("invalid identity observation".into()));

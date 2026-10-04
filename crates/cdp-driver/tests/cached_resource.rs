@@ -217,7 +217,7 @@ async fn detection_preserves_source_target_without_extending_wire_dto() {
         EvalReply::Value(without_image),
         EvalReply::Value(probe()["page"].clone()),
     ]);
-    let (detection, target) = reader::detect_with_avatar_target(&session, TaskCancel::new())
+    let (detection, target) = reader::detect_with_avatar_target(&session, TaskCancel::new(), reader::Scope::ShopOnly)
         .await
         .unwrap();
     let reader::Detection::Found(page) = detection else {

@@ -1,9 +1,13 @@
 use cdp_driver::{session::BrowserSession, TaskCancel};
-use multizen_core::valid_kuaishou_user_id;
+use multizen_core::{valid_kuaishou_user_id, valid_kuaishou_viewer_id};
 use serde::Deserialize;
 use std::time::Duration;
 
 pub(super) const EXTRACTOR: &str = include_str!("extract.js");
+/// Main-site (`www.kuaishou.com`) viewer extractor, mirroring jieger
+/// `extractSubAccountProfile`. Best-effort: the selectors are unverified and
+/// simply yield no id on mismatch (never an error).
+pub(super) const EXTRACTOR_MAIN: &str = include_str!("extract_main.js");
 const LOCK_WAIT: Duration = Duration::from_millis(500);
 const READ_WAIT: Duration = Duration::from_secs(2);
 pub(super) const MAX_AVATAR_BYTES: usize = cdp_driver::avatar_resource::MAX_AVATAR_BYTES;
@@ -19,7 +23,9 @@ pub(super) struct PageIdentity {
     pub avatar_url: Option<String>,
 }
 
-pub(super) fn shop_url(raw: &str) -> bool {
+/// The single host a page must be on for its identity to be trusted, verified
+/// with the exact `https` + default-443 + no-userinfo rule shared by both sites.
+fn exact_origin(raw: &str, host: &str) -> bool {
     if raw.len() > 8192
         || raw.split_once("://").is_some_and(|(_, v)| {
             v.split(['/', '?', '#'])
@@ -31,26 +37,75 @@ pub(super) fn shop_url(raw: &str) -> bool {
     }
     reqwest::Url::parse(raw).is_ok_and(|u| {
         u.scheme() == "https"
-            && u.host_str() == Some("s.kwaixiaodian.com")
+            && u.host_str() == Some(host)
             && u.port_or_known_default() == Some(443)
             && u.username().is_empty()
             && u.password().is_none()
     })
 }
+/// Shop identity page: the merchant console on `s.kwaixiaodian.com`.
+pub(super) fn shop_url(raw: &str) -> bool {
+    exact_origin(raw, "s.kwaixiaodian.com")
+}
+/// Main-site viewer page on `www.kuaishou.com` (互动账号 / 小号).
+pub(super) fn viewer_url(raw: &str) -> bool {
+    exact_origin(raw, "www.kuaishou.com")
+}
+
+/// The two trusted identity origins. A page's host picks both the extractor that
+/// may run on it and the id shape accepted from it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Site {
+    Shop,
+    Viewer,
+}
+
+/// Which site(s) an identity read is allowed to look at. A registered profile
+/// reads exactly its own origin; an unbound profile — the state both onboarding
+/// wizards detect in before saving — reads whichever trusted origin is open.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Scope {
+    ShopOnly,
+    ViewerOnly,
+    Both,
+}
+
+impl Scope {
+    pub(super) fn includes(self, site: Site) -> bool {
+        match (self, site) {
+            (Scope::Both, _) => true,
+            (Scope::ShopOnly, Site::Shop) | (Scope::ViewerOnly, Site::Viewer) => true,
+            (Scope::ShopOnly, Site::Viewer) | (Scope::ViewerOnly, Site::Shop) => false,
+        }
+    }
+}
+
+pub(super) fn site_of(raw: &str) -> Option<Site> {
+    if shop_url(raw) {
+        Some(Site::Shop)
+    } else if viewer_url(raw) {
+        Some(Site::Viewer)
+    } else {
+        None
+    }
+}
 pub(super) fn trusted_url(raw: &str) -> bool {
     cdp_driver::avatar_resource::trusted_avatar_url(raw)
 }
-pub(super) fn decode(value: serde_json::Value) -> Result<PageIdentity, String> {
+/// Strict site + id validation for a decoded page. A page on neither trusted
+/// origin, or an id whose shape does not match that origin, is rejected (the
+/// caller turns this into a refusal, never a silent account pick).
+pub(super) fn decode_for_site(value: serde_json::Value, site: Site) -> Result<PageIdentity, String> {
     let mut page: PageIdentity =
         serde_json::from_value(value).map_err(|_| "身份页面返回结构无效".to_string())?;
-    if !shop_url(&page.url) {
-        return Err("读取期间页面已离开准确的小店域名".into());
+    if site_of(&page.url) != Some(site) {
+        return Err("读取期间页面已离开准确的受信域名".into());
     }
-    if page
-        .platform_user_id
-        .as_deref()
-        .is_some_and(|id| !valid_kuaishou_user_id(id))
-    {
+    let id_ok = match site {
+        Site::Shop => valid_kuaishou_user_id,
+        Site::Viewer => valid_kuaishou_viewer_id,
+    };
+    if page.platform_user_id.as_deref().is_some_and(|id| !id_ok(id)) {
         return Err("身份页面返回ID格式无效".into());
     }
     page.nickname = page
@@ -60,6 +115,11 @@ pub(super) fn decode(value: serde_json::Value) -> Result<PageIdentity, String> {
         page.avatar_url = None;
     }
     Ok(page)
+}
+
+/// Shop-page decode, kept as the default for callers that are inherently shop-only.
+pub(super) fn decode(value: serde_json::Value) -> Result<PageIdentity, String> {
+    decode_for_site(value, Site::Shop)
 }
 
 #[derive(Debug)]
@@ -273,21 +333,23 @@ pub(super) async fn detect(
     session: &BrowserSession,
     cancel: TaskCancel,
 ) -> Result<Detection, String> {
-    Ok(detect_with_avatar_target(session, cancel).await?.0)
+    Ok(detect_with_avatar_target(session, cancel, Scope::Both).await?.0)
 }
 
 /// Keep routing metadata outside the four-field extractor DTO.
 pub(super) async fn detect_with_avatar_target(
     session: &BrowserSession,
     cancel: TaskCancel,
+    scope: Scope,
 ) -> Result<(Detection, Option<String>), String> {
-    detect_targets(session, cancel, None).await
+    detect_targets(session, cancel, None, scope).await
 }
 
 /// The supplied lease is read directly, never reacquired or omitted from identity
 /// verification. Every other shop target is still checked for conflicts/errors.
 /// This is initialization's live check while its shared profile reservation keeps
 /// the ordinary monitor from contending on the same cooperative TaskPage lock.
+/// Always shop-scoped: initialization only ever runs against the merchant console.
 pub(super) async fn verify_initialization_identity(
     session: &BrowserSession,
     owned: &mut cdp_driver::TaskPage<'_>,
@@ -295,7 +357,7 @@ pub(super) async fn verify_initialization_identity(
     cancel: TaskCancel,
 ) -> Result<(), String> {
     let before = decode(owned.evaluate(EXTRACTOR, READ_WAIT).await.map_err(|_| "任务页身份读取失败".to_string())?)?;
-    let (peers, _) = detect_targets(session, cancel, Some(owned.target_id())).await?;
+    let (peers, _) = detect_targets(session, cancel, Some(owned.target_id()), Scope::ShopOnly).await?;
     verify_owned_and_peers(&before, peers, expected)?;
     let after = decode(owned.evaluate(EXTRACTOR, READ_WAIT).await.map_err(|_| "任务页身份回读失败".to_string())?)?;
     if after.platform_user_id.as_deref() != Some(expected) { return Err("任务页账号已变化".into()); }
@@ -313,6 +375,7 @@ async fn detect_targets(
     session: &BrowserSession,
     cancel: TaskCancel,
     already_leased: Option<&str>,
+    scope: Scope,
 ) -> Result<(Detection, Option<String>), String> {
     let pages = session
         .browser
@@ -329,21 +392,29 @@ async fn detect_targets(
             .url()
             .await
             .map_err(|_| "无法读取页面地址".to_string())?;
-        if !url.as_deref().is_some_and(shop_url) {
+        // Only the trusted origin matching this scope is read; every other page
+        // (including the other Kuaishou site) is skipped without evaluation.
+        let Some(site) = url.as_deref().and_then(site_of).filter(|s| scope.includes(*s)) else {
             continue;
-        }
+        };
         if observations.len() >= 16 - usize::from(already_leased.is_some()) {
-            return Err("小店页面过多，无法在有界检测内确认身份".into());
+            return Err("受信页面过多，无法在有界检测内确认身份".into());
         }
+        // Main-site pages must never run the shop extractor (and vice versa):
+        // pick the script by the verified host.
+        let extractor = match site {
+            Site::Shop => EXTRACTOR,
+            Site::Viewer => EXTRACTOR_MAIN,
+        };
         let mut task = session
             .task_page(page.target_id().as_ref(), cancel.clone(), LOCK_WAIT)
             .await
-            .map_err(|_| "小店页面忙、已关闭或等待超时".to_string())?;
+            .map_err(|_| "受信页面忙、已关闭或等待超时".to_string())?;
         let value = task
-            .evaluate(EXTRACTOR, READ_WAIT)
+            .evaluate(extractor, READ_WAIT)
             .await
-            .map_err(|_| "小店身份读取失败或超时".to_string())?;
-        observations.push((task.target_id().to_owned(), decode(value)?));
+            .map_err(|_| "身份读取失败或超时".to_string())?;
+        observations.push((task.target_id().to_owned(), decode_for_site(value, site)?));
     }
     let detection = combine(observations.iter().map(|(_, page)| page.clone()).collect());
     let target = match &detection {
@@ -416,5 +487,70 @@ mod tests {
             combine(vec![page(Some("12345")), page(Some("54321"))]),
             Detection::Conflict
         ));
+    }
+
+    fn viewer_page(id: Option<&str>) -> PageIdentity {
+        decode_for_site(
+            json!({"url":"https://www.kuaishou.com/","platformUserId":id,"nickname":"N","avatarUrl":null}),
+            Site::Viewer,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn viewer_origin_is_exact_https_and_distinct_from_shop() {
+        assert!(viewer_url("https://www.kuaishou.com/"));
+        assert!(viewer_url("https://www.kuaishou.com:443/profile/abc"));
+        // The bare apex and the live subdomain are not the main site.
+        assert!(!viewer_url("https://kuaishou.com/"));
+        assert!(!viewer_url("https://live.kuaishou.com/"));
+        for url in [
+            "http://www.kuaishou.com/",
+            "https://www.kuaishou.com.evil.test/",
+            "https://evil.test/www.kuaishou.com",
+            "https://www.kuaishou.com@evil.test/",
+            "https://u@www.kuaishou.com/",
+            "https://www.kuaishou.com:444/",
+            "https://www.kuaishou.com./",
+        ] {
+            assert!(!viewer_url(url), "{url}");
+        }
+        assert_eq!(site_of("https://www.kuaishou.com/"), Some(Site::Viewer));
+        assert_eq!(site_of("https://s.kwaixiaodian.com/zone/home"), Some(Site::Shop));
+        assert_eq!(site_of("https://evil.test/"), None);
+        assert!(Scope::Both.includes(Site::Viewer) && Scope::Both.includes(Site::Shop));
+        assert!(Scope::ViewerOnly.includes(Site::Viewer) && !Scope::ViewerOnly.includes(Site::Shop));
+        assert!(Scope::ShopOnly.includes(Site::Shop) && !Scope::ShopOnly.includes(Site::Viewer));
+    }
+
+    #[test]
+    fn viewer_decode_accepts_alphanumeric_and_rejects_mismatch() {
+        assert!(viewer_page(None).platform_user_id.is_none());
+        assert_eq!(viewer_page(Some("3x7abcdef")).platform_user_id.as_deref(), Some("3x7abcdef"));
+        assert_eq!(viewer_page(Some("12345")).platform_user_id.as_deref(), Some("12345"));
+        // The viewer extractor's id is not a numeric-only shop id.
+        for id in ["ab", "a b", "abcdefghijklmnopqrstuvwxyz0123456", "快手"] {
+            assert!(
+                decode_for_site(
+                    json!({"url":"https://www.kuaishou.com/","platformUserId":id,"nickname":null,"avatarUrl":null}),
+                    Site::Viewer,
+                )
+                .is_err(),
+                "{id}"
+            );
+        }
+        // A page on the wrong trusted origin, or an untrusted origin, is refused.
+        assert!(decode_for_site(
+            json!({"url":"https://s.kwaixiaodian.com/","platformUserId":"3x7abcdef"}),
+            Site::Viewer
+        )
+        .is_err());
+        assert!(decode_for_site(
+            json!({"url":"https://evil.test/","platformUserId":"12345"}),
+            Site::Viewer
+        )
+        .is_err());
+        // The shop decoder keeps rejecting the viewer id form.
+        assert!(decode(json!({"url":"https://s.kwaixiaodian.com","platformUserId":"3x7abcdef"})).is_err());
     }
 }

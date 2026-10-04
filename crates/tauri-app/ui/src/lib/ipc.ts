@@ -106,6 +106,16 @@ export const profiles = {
       hidden ? { id, entry: "kuaishou-shop", hidden: true } : { id, entry: "kuaishou-shop" },
     ),
 
+  /** Explicit Kuaishou main-site viewer tab (互动账号 / 小号): `entry` is the
+   *  wire value `"kuaishou-sub"` (serde kebab-case) and the backend opens
+   *  `https://www.kuaishou.com/` in a new tab. Like the shop entry it never
+   *  touches the saved startUrl, the restored tabs or the fingerprint. */
+  launchKuaishouSub: (id: ProfileId, hidden?: boolean): Promise<LaunchedProfile> =>
+    invoke<LaunchedProfile>(
+      "profiles_launch",
+      hidden ? { id, entry: "kuaishou-sub", hidden: true } : { id, entry: "kuaishou-sub" },
+    ),
+
   /** `profiles_close` → `()`. */
   close: (id: ProfileId): Promise<void> => invoke<void>("profiles_close", { id }),
 

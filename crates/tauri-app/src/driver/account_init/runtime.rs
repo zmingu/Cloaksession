@@ -13,6 +13,7 @@ use std::{
     time::{Duration, Instant},
 };
 use KuaishouInitErrorCode as Code;
+use tokio::sync::Notify;
 #[cfg(test)]
 #[path = "runtime_tests.rs"]
 mod tests;
@@ -92,6 +93,15 @@ pub(in crate::driver) struct InitRuntime {
     // None means a create request had unknown completion: never create another automatically.
     pages: Mutex<HashMap<String, Option<String>>>,
     runs: Mutex<HashMap<(String, String), u32>>,
+    /// Fresh `Detected` identity saves notify this so a profile does not wait out a
+    /// whole 5s poll window (or lose its chance when a hidden wizard browser closes).
+    /// The notification is a hint only: a permit and the periodic tick can both
+    /// trigger a scan, so a concurrent/absent wake never loses or duplicates work.
+    wake: Arc<Notify>,
+    /// Scans performed by the running monitor; a test-only observation that a wake
+    /// shortens the delay between the loop's initial tick and the next one.
+    #[cfg(test)]
+    scans: AtomicBool,
 }
 impl InitRuntime {
     pub fn new(root: PathBuf) -> Self {
@@ -102,6 +112,24 @@ impl InitRuntime {
             active: Mutex::new(HashSet::new()),
             pages: Mutex::new(HashMap::new()),
             runs: Mutex::new(HashMap::new()),
+            wake: Arc::new(Notify::new()),
+            #[cfg(test)]
+            scans: AtomicBool::new(false),
+        }
+    }
+    /// Wakes the periodic initialization monitor so the identity that was just
+    /// persisted is offered an immediate scan instead of the next timer tick.
+    pub(in crate::driver) fn wake(&self) {
+        self.wake.notify_one();
+    }
+    /// Waits for the next initialization scan: cancellation, the periodic tick, or
+    /// an identity-driven wake. Returns false once the monitor must stop.
+    async fn wait_for_scan(&self, interval: &mut tokio::time::Interval) -> bool {
+        tokio::select! {
+            biased;
+            _ = self.stop.cancelled() => false,
+            _ = interval.tick() => true,
+            _ = self.wake.notified() => true,
         }
     }
     #[cfg(test)]
@@ -118,6 +146,22 @@ impl InitRuntime {
     #[cfg(test)]
     pub(super) fn test_owned_record(&self, session: &str) -> Option<Option<String>> {
         self.pages.lock().unwrap().get(session).cloned()
+    }
+    #[cfg(test)]
+    pub(super) fn test_scanned(&self) -> bool {
+        self.scans.load(Ordering::Acquire)
+    }
+    #[cfg(test)]
+    pub(super) fn test_reset_scanned(&self) {
+        self.scans.store(false, Ordering::Release);
+    }
+    /// Test-only probe: a pending wake permit is observed and consumed. A short
+    /// bounded wait keeps the negative case (no wake was sent) deterministic.
+    #[cfg(test)]
+    pub(in crate::driver) async fn test_wake_pending(&self) -> bool {
+        tokio::time::timeout(Duration::from_millis(50), self.wake.notified())
+            .await
+            .is_ok()
     }
 }
 struct Active {
@@ -283,15 +327,21 @@ impl TauriBrowserDriver {
             return;
         }
         let weak = Arc::downgrade(self);
-        let stop = self.account_init.stop.clone();
+        let runtime = self.account_init.clone();
         tauri::async_runtime::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(5));
             interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             loop {
-                tokio::select! { biased; _ = stop.cancelled() => break, _ = interval.tick() => {} }
+                // Cancellation, the 5s tick, or a freshly persisted identity all
+                // schedule the same bounded scan; the body below is unchanged.
+                if !runtime.wait_for_scan(&mut interval).await {
+                    break;
+                }
                 let Some(driver) = weak.upgrade() else {
                     break;
                 };
+                #[cfg(test)]
+                driver.account_init.scans.store(true, Ordering::Release);
                 for id in driver.registry.ids().await {
                     let Some(active) = driver.init_slot(&id) else {
                         continue;

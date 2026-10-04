@@ -55,6 +55,10 @@ export async function installTauriMock(page: Page, initial: AppSettings = defaul
       profileUpdates: [] as Record<string, unknown>[],
       calls: [] as string[],
       failNextSave: false,
+      // Per-platformUserId init-step rows returned by `kuaishou_init_steps`.
+      // Defaults to empty (not initialized); tests overwrite it per case.
+      initSteps: [] as Array<Record<string, unknown>>,
+      initStepsByUser: {} as Record<string, Array<Record<string, unknown>>>,
       settings: () => JSON.parse(localStorage.getItem(key)!),
       profile: () => JSON.parse(localStorage.getItem(profileKey)!),
     };
@@ -100,7 +104,13 @@ export async function installTauriMock(page: Page, initial: AppSettings = defaul
             case "kuaishou_identity_list": return []; // No observed identity in the base UI fixture.
             case "kuaishou_subject_list": return { items: [], total: 0, offset: args.query.offset, limit: args.query.limit };
             case "kuaishou_subject_detail": return null;
-            case "kuaishou_init_steps": return [];
+            case "kuaishou_init_steps": {
+              const rows = mock.initStepsByUser[args.platformUserId] ?? mock.initSteps;
+              return JSON.parse(JSON.stringify(rows));
+            }
+            // Write-capable initialization stays inert: the retry request is
+            // recorded and resolved without touching any real platform.
+            case "kuaishou_init_retry": return undefined;
             case "kuaishou_ocr_availability": return { available: false, message: "本地测试未启用 OCR" };
             // Write-capable initialization commands deliberately remain unhandled here.
             case "activity_recent": return [];

@@ -37,9 +37,21 @@ async fn shop_login_guard_preserves_custom_urls_and_rejects_jinniu_even_after_un
 
 #[test]
 fn launch_entry_wire_is_explicit_and_url_is_login_not_post_login_home() {
-    use crate::commands::profiles::{LaunchEntry, KUAISHOU_LOGIN_URL};
+    use crate::commands::profiles::{LaunchEntry, KUAISHOU_LOGIN_URL, KUAISHOU_SUB_LOGIN_URL};
     assert!(serde_json::from_value::<LaunchEntry>(serde_json::json!("kuaishou-shop")).is_ok());
     assert!(serde_json::from_value::<LaunchEntry>(serde_json::json!("jinniu")).is_err());
     assert!(serde_json::from_value::<Option<LaunchEntry>>(serde_json::Value::Null).unwrap().is_none());
     assert_eq!(KUAISHOU_LOGIN_URL, "https://login.kwaixiaodian.com/?biz=zone&redirect_url=https%3A%2F%2Fs.kwaixiaodian.com%2Fzone%2Fhome");
+    // The main-site viewer entry is a distinct, explicit kebab-case wire value
+    // that opens the homepage (not the merchant console).
+    let sub: LaunchEntry = serde_json::from_value(serde_json::json!("kuaishou-sub")).unwrap();
+    assert_eq!(sub.login_url(), KUAISHOU_SUB_LOGIN_URL);
+    assert_eq!(KUAISHOU_SUB_LOGIN_URL, "https://www.kuaishou.com/");
+    assert_eq!(
+        serde_json::from_value::<LaunchEntry>(serde_json::json!("kuaishou-shop")).unwrap().login_url(),
+        KUAISHOU_LOGIN_URL
+    );
+    for wrong in ["kuaishou_sub", "kuaishouSub", "shop", "sub", "kuaishou-live"] {
+        assert!(serde_json::from_value::<LaunchEntry>(serde_json::json!(wrong)).is_err(), "{wrong}");
+    }
 }

@@ -9,7 +9,8 @@ use crate::registry::{ProfileRegistry, SessionSlot};
 use avatar::{AvatarCache, AvatarRoute};
 use cdp_driver::TaskCancel;
 use multizen_core::{
-    kuaishou_identity_allowed, BusinessProfileState, KuaishouIdentityObservation as Observation,
+    kuaishou_identity_allowed, kuaishou_identity_detection_allowed, BusinessAccountKind,
+    BusinessProfileState, KuaishouIdentityObservation as Observation,
     KuaishouIdentitySnapshot as Snapshot, KuaishouIdentityStatus as Status, MultizenError, Profile,
     Result,
 };
@@ -232,6 +233,34 @@ impl Drop for Gate {
     }
 }
 
+/// Identity read scope for a profile. A viewer (互动账号) binding reads the main
+/// site only and a shop binding the merchant console only, so neither ever picks
+/// up a stray tab of the other. An unbound profile reads both — that is the
+/// state the onboarding wizards detect in before the account is saved.
+fn identity_scope(business: &BusinessProfileState) -> extract::Scope {
+    match business.account.as_ref().map(|a| a.kind) {
+        Some(BusinessAccountKind::KuaishouSub) => extract::Scope::ViewerOnly,
+        Some(_) => extract::Scope::ShopOnly,
+        None => extract::Scope::Both,
+    }
+}
+
+/// A freshly persisted, still-current `Detected` shop identity offers the
+/// initialization monitor an immediate scan instead of the next 5s tick: the
+/// hidden onboarding browser may otherwise be closed before that timer fires.
+/// `business` is the state the save compared against inside its transaction, so
+/// the shop-only initialization gate is re-applied here without a second read.
+/// Viewer bindings and non-`Detected` observations never wake anything.
+fn wake_initialization_if_shop_identity(
+    driver: &TauriBrowserDriver,
+    business: &BusinessProfileState,
+    saved: &Observation,
+) {
+    if saved.snapshot.status == Status::Detected && kuaishou_identity_allowed(business) {
+        driver.account_init.wake();
+    }
+}
+
 fn project(
     id: &str,
     old: Option<&Observation>,
@@ -246,9 +275,9 @@ fn project(
             snapshot.status = Status::Closed;
             snapshot.message = Some("环境未运行；保留的是上次观察，不会自动启动浏览器".into());
         }
-        Some(_) if !kuaishou_identity_allowed(business) => {
+        Some(_) if !kuaishou_identity_detection_allowed(business) => {
             snapshot.status = Status::Skipped;
-            snapshot.message = Some("金牛scope或非小店业务绑定，已跳过".into());
+            snapshot.message = Some("金牛scope或非快手业务绑定，已跳过".into());
         }
         Some(s) if old.and_then(|o| o.session_id.as_deref()) != Some(s.id.as_str()) => {
             snapshot.status = Status::Unknown;
@@ -393,9 +422,11 @@ impl TauriBrowserDriver {
         let Some(slot) = slot else {
             return snapshot;
         };
-        if !kuaishou_identity_allowed(&business) {
+        if !kuaishou_identity_detection_allowed(&business) {
             return snapshot;
         }
+        let scope = identity_scope(&business);
+        let viewer = scope == extract::Scope::ViewerOnly;
         let Some(session) = slot.session() else {
             snapshot.status = Status::Closed;
             return snapshot;
@@ -403,23 +434,35 @@ impl TauriBrowserDriver {
         let work = async {
             let (result, avatar_target) = tokio::time::timeout(
                 Duration::from_secs(8),
-                extract::detect_with_avatar_target(&session, slot.cancel.clone()),
+                extract::detect_with_avatar_target(&session, slot.cancel.clone(), scope),
             )
             .await
-            .map_err(|_| "小店页面检测整体超时".to_string())??;
+            .map_err(|_| "受信页面检测整体超时".to_string())??;
             let mut observed = Snapshot::empty(id, Status::NotDetected);
             observed.checked_at = Some(chrono::Utc::now().to_rfc3339());
             let mut avatar_url = None;
             match result {
                 extract::Detection::NoPage => {
-                    observed.message = Some("没有打开准确域名的小店页面；未导航或新建页面".into())
+                    observed.message = Some(if viewer {
+                        "没有打开准确域名的快手主站页面；未导航或新建页面".into()
+                    } else {
+                        "没有打开准确域名的小店页面；未导航或新建页面".into()
+                    })
                 }
                 extract::Detection::NoId => {
-                    observed.message = Some("小店账号区未检测到有效ID，请确认登录或稍后重试".into())
+                    observed.message = Some(if viewer {
+                        "快手主站未检测到有效ID（选择器可能未命中），请确认已登录或稍后重试".into()
+                    } else {
+                        "小店账号区未检测到有效ID，请确认登录或稍后重试".into()
+                    })
                 }
                 extract::Detection::Conflict => {
                     observed.status = Status::Conflict;
-                    observed.message = Some("多个小店页面读到不同ID，未选择任一账号".into());
+                    observed.message = Some(if viewer {
+                        "多个快手主站页面读到不同ID，未选择任一账号".into()
+                    } else {
+                        "多个小店页面读到不同ID，未选择任一账号".into()
+                    });
                 }
                 extract::Detection::Found(page) => {
                     let identity = page.platform_user_id.unwrap();
@@ -436,7 +479,14 @@ impl TauriBrowserDriver {
                         observed.status = Status::Detected;
                         observed.platform_user_id = Some(identity.clone());
                         observed.nickname = page.nickname;
-                        if let Some(url) = page.avatar_url {
+                        if viewer {
+                            // The main-site avatar selector differs and the shop
+                            // avatar probe is `.seller-main-avatar`-specific, so
+                            // v1 does not cache viewer avatars (UI falls back to
+                            // an initial-letter avatar). No avatar_url is stored.
+                            observed.message =
+                                Some("ID已读到；快手主站头像暂不支持本地缓存".into());
+                        } else if let Some(url) = page.avatar_url {
                             let cached = old.as_ref().filter(|o| {
                                 o.snapshot.platform_user_id.as_deref() == Some(&identity)
                                     && o.avatar_url.as_deref() == Some(&url)
@@ -599,7 +649,13 @@ impl TauriBrowserDriver {
             })
             .await;
         match result {
-            Ok(Some(saved)) if self.registry.is_current(id, &slot).await => saved.snapshot,
+            Ok(Some(saved)) if self.registry.is_current(id, &slot).await => {
+                // A current, shop-eligible `Detected` save shortens the next
+                // initialization scan. The save's own transaction already matched
+                // this exact business state, so no second read is required here.
+                wake_initialization_if_shop_identity(self, &business, &saved);
+                saved.snapshot
+            }
             Ok(_) => {
                 let current = self.registry.slot(id).await;
                 let mut s = project(id, old.as_ref(), &business, current.as_ref());
@@ -630,7 +686,7 @@ impl TauriBrowserDriver {
         session: &cdp_driver::session::BrowserSession,
         cancel: TaskCancel,
     ) -> Result<String> {
-        let (detection, _) = extract::detect_with_avatar_target(session, cancel)
+        let (detection, _) = extract::detect_with_avatar_target(session, cancel, extract::Scope::ShopOnly)
             .await
             .map_err(MultizenError::Mcp)?;
         match detection {

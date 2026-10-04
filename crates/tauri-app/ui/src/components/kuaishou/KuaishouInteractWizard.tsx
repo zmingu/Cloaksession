@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, type JSX } from "react";
 import {
   Blocks,
-  Check,
-  CircleAlert,
   Dices,
+  Eye,
   Fingerprint,
   Globe,
   Loader2,
@@ -13,18 +12,13 @@ import {
 } from "lucide-react";
 
 import { useT } from "../../i18n/LanguageProvider";
-import type { TranslationKey } from "../../i18n/en";
 import { fingerprintSeedOf, withRandomFingerprintSeed } from "../../lib/chromixSeed";
 import { profiles as profilesApi } from "../../lib/ipc";
 import { kuaishouAuth } from "../../lib/kuaishouAuth";
 import { kuaishouIdentity, type KuaishouIdentitySnapshot } from "../../lib/kuaishouIdentity";
-import {
-  kuaishouSubject,
-  type KuaishouInitErrorCode,
-  type KuaishouInitStepRecord,
-} from "../../lib/kuaishouSubject";
 import { useKuaishouIdentities } from "../../lib/KuaishouIdentityProvider";
 import { parseProxyString } from "../../lib/parseProxy";
+import { subAccounts } from "../../lib/subAccounts";
 import type { ExtensionConfig, ProxyConfig } from "../../types";
 import { Modal } from "../atoms";
 import { Button } from "../atoms/Button";
@@ -44,79 +38,18 @@ import {
 /** How often the wizard re-captures the login page while waiting for a scan. */
 const QR_POLL_MS = 2000;
 
-/** How often the wizard reads the persisted initialization steps while running. */
-const INIT_POLL_MS = 5000;
-
-/** How often the wizard re-observes the identity so it never goes stale (>30s). */
-const INIT_DETECT_MS = 10_000;
-
-/** Give up waiting on the campaign after this long and let the user leave. */
-const INIT_TIMEOUT_MS = 180_000;
-
-/** Localized label for one persisted initialization step state (shared keys). */
-const INIT_STATE_KEY: Record<KuaishouInitStepRecord["state"], TranslationKey> = {
-  pending: "kuaishou.init.state.pending",
-  running: "kuaishou.init.state.running",
-  done: "kuaishou.init.state.done",
-  failed: "kuaishou.init.state.failed",
-};
-
-/** Localized label for a failed step's error code (shared with the shop list). */
-const INIT_ERROR_KEY: Record<KuaishouInitErrorCode, TranslationKey> = {
-  "interrupted-needs-verification": "kuaishou.init.error.interruptedNeedsVerification",
-  "context-changed": "kuaishou.init.error.contextChanged",
-  "timed-out": "kuaishou.init.error.timedOut",
-  "page-unsupported": "kuaishou.init.error.pageUnsupported",
-  "page-crashed": "kuaishou.init.error.pageCrashed",
-  "attachment-unavailable": "kuaishou.init.error.attachmentUnavailable",
-  "ocr-unavailable": "kuaishou.init.error.ocrUnavailable",
-  "ocr-failed": "kuaishou.init.error.ocrFailed",
-  "validation-failed": "kuaishou.init.error.validationFailed",
-  "persistence-unverified": "kuaishou.init.error.persistenceUnverified",
-};
-
-/** The wizard's own view of the initialization campaign. */
-type InitState = "running" | "done" | "failed" | "timeout";
-
-/** A failed campaign: an error code from a step, or the retry IPC message. */
-interface InitFailure {
-  code: KuaishouInitErrorCode | null;
-  message: string | null;
-}
-
-/** Prefilled, editable home page for a shop account: the Kuaishou shop home. */
-const SHOP_HOME_URL = "https://s.kwaixiaodian.com/zone/home";
-
-/**
- * 小店账号建号向导（快手 › 小店 › 添加账号）。
- *
- * 账号即环境：向导创建的就是一个浏览器环境，列表里一个环境 = 一个小店账号。
- * 第一步是 Chromix 风格的分区表单（主页 / 代理 / 扩展 / 指纹，无 General）：
- *  - 主页预填小店首页 `https://s.kwaixiaodian.com/zone/home`（可编辑）；
- *  - 代理可选，填了就让 Chromix 按代理出口自动对齐（`chromixOptions.geoip`）；
- *  - 扩展按 staged 模式收集，创建时一并写入；
- *  - 指纹直接用 Chromix 指纹组件（`ChromixProfileOptions`），并在打开时
- *    自动写入一个随机 `--fingerprint=<seed>`，另有「随机指纹」按钮可一键重掷。
- * 创建时不再传 fingerprint —— 身份由 Chromix 拥有，CloakBrowser 指纹已废弃。
- *
- * 流程：填表单 → 创建环境 → 隐藏启动（窗口移出屏幕）→ 向导内轮询取二维码 →
- * 自动读出快手ID/昵称/头像 → 完成。
- *
- * 命名：向导**不**让用户填名字。环境先以「未命名」创建，识别到账号后
- * 自动用昵称（无昵称则用快手ID）改名。若创建成功但用户提前取消，
- * 名称保持「未命名」，之后可在列表里改。
- *
- * 初始化（主体采集 / 切片权限）由既有的「识别到有效账号后自动补做」机制处理，
- * 本向导不驱动。
- */
+/** Prefilled, editable home page for a viewer account: the Kuaishou main site. */
+const SUB_HOME_URL = "https://www.kuaishou.com/";
 
 type Step = "form" | "creating" | "waiting" | "done";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  /** Fired once the profile exists so the caller can refresh its list. */
+  /** Fired once the environment exists so the caller can refresh its list. */
   onCreated?: (profileId: string) => void;
+  /** Fired once the interact registration has been written. */
+  onRegistered?: (profileId: string) => void;
 }
 
 interface DraftProxy {
@@ -142,65 +75,50 @@ function errorText(cause: unknown): string {
 }
 
 /**
- * 小店账号建号向导（快手 › 小店 › 添加账号）。
+ * 互动账号建号向导（快手 › 互动账号 › 新建账号）。
  *
- * 账号即环境：向导创建的就是一个浏览器环境，列表里一个环境 = 一个小店账号。
- * 第一步是 Chromix 风格的分区表单（主页 / 代理 / 扩展 / 指纹，无 General）：
- *  - 主页预填小店首页 `https://s.kwaixiaodian.com/zone/home`（可编辑）；
- *  - 代理可选，填了就让 Chromix 按代理出口自动对齐（`chromixOptions.geoip`）；
- *  - 扩展按 staged 模式收集，创建时一并写入；
- *  - 指纹直接用 Chromix 指纹组件（`ChromixProfileOptions`），并在打开时
- *    自动写入一个随机 `--fingerprint=<seed>`，另有「随机指纹」按钮可一键重掷。
- * 创建时不再传 fingerprint —— 身份由 Chromix 拥有，CloakBrowser 指纹已废弃。
+ * 账号即环境：向导创建的就是一个浏览器环境，列表里一个环境 = 一个互动账号。
+ * 与「小店建号向导」同构（分区表单 → 创建 → 隐藏启动 → 向导内轮询二维码 →
+ * 识别 → 登记），区别只在三处：
+ *  - 主页预填快手主站 `https://www.kuaishou.com/`，启动入口用
+ *    `profiles_launch(entry: "kuaishou-sub")`（后端新标签打开主站）；
+ *  - 主站不缓存头像，识别退化时用首字母头像；
+ *  - 成功后除了给环境改名，还要写 `business_accounts(kind="kuaishou-sub")`
+ *    的互动登记（`save_sub_account`）——这是列表的数据真相。
  *
- * 流程：填表单 → 创建环境 → 隐藏启动（窗口移出屏幕）→ 向导内轮询取二维码 →
- * 自动读出快手ID/昵称/头像 → 完成。
- *
- * 命名：向导**不**让用户填名字。环境先以「未命名」创建，识别到账号后
- * 自动用昵称（无昵称则用快手ID）改名。若创建成功但用户提前取消，
- * 名称保持「未命名」，之后可在列表里改。
- *
- * 初始化（主体采集 / 切片权限）：账号识别后由本向导**主动驱动**——保持隐藏浏览器
- * 运行、触发一次补做（`kuaishou_init_retry`）并轮询持久化的初始化步骤，直到主体与
- * 切片两步都完成；全部完成前不关闭浏览器，失败/超时给出提示并允许用户手动关闭。
+ * 二维码复用 `kuaishou_login_qr`：主站登录页与小店登录页同构，能取到就内嵌；
+ * 取不到（或用户不想等）可一键改用可见窗口扫码，向导继续轮询识别。
+ * 身份检测失败（`not-detected` / `unknown`）不阻断建号：降级为手动填别名登记。
  */
-export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.Element {
+export function KuaishouInteractWizard({ open, onClose, onCreated, onRegistered }: Props): JSX.Element {
   const t = useT();
   const { entries } = useKuaishouIdentities();
 
   const [step, setStep] = useState<Step>("form");
   const [section, setSection] = useState<SectionId>("browser");
-  const [startUrl, setStartUrl] = useState(SHOP_HOME_URL);
+  const [startUrl, setStartUrl] = useState(SUB_HOME_URL);
   const [proxyDraft, setProxyDraft] = useState<DraftProxy>(EMPTY_PROXY);
   const [extensions, setExtensions] = useState<ExtensionConfig[]>([]);
   const [chromixOptions, setChromixOptions] = useState<Record<string, unknown>>({});
   const [profileId, setProfileId] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
-  // The wizard drives detection itself rather than waiting on the app-wide
-  // 15s poll, so the sign-in completes the moment the QR is scanned.
+  // The wizard drives detection itself rather than waiting on the app-wide 15s
+  // poll, so the registration can complete the moment the QR is scanned.
   const [snapshot, setSnapshot] = useState<KuaishouIdentitySnapshot | null>(null);
+  const [visibleWindow, setVisibleWindow] = useState(false);
+  const [switching, setSwitching] = useState(false);
+  const [alias, setAlias] = useState("");
+  const [manualId, setManualId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [registeredName, setRegisteredName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Set once the profile has been renamed from the detected account.
-  const [named, setNamed] = useState(false);
-  // Wizard-driven initialization: once the account is detected the wizard keeps
-  // the hidden browser alive, triggers the catch-up run and polls the persisted
-  // steps until both are done (or the campaign fails / times out).
-  const [initState, setInitState] = useState<InitState>("running");
-  const [initSteps, setInitSteps] = useState<KuaishouInitStepRecord[]>([]);
-  const [initFailure, setInitFailure] = useState<InitFailure | null>(null);
-  const [initAttempt, setInitAttempt] = useState(0);
 
   const alive = useRef(true);
   // A created profile must survive a close: we only hide/stop the browser.
   const created = useRef(false);
   // One rename per wizard run; guarded by a ref so the effect cannot double-fire.
   const renamed = useRef(false);
-  // One retry request per detection; guarded so a re-render cannot double-fire.
-  const initStarted = useRef(false);
 
-  // The wizard's own rail: no General, Chinese labels, home / proxy / extensions
-  // / fingerprint. Kept local so the profile sheets' English 5-section rail is
-  // left untouched.
   const sections: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
     { id: "browser", label: t("kuaishou.wizard.section.home"), icon: Globe },
     { id: "proxy", label: t("kuaishou.wizard.section.proxy"), icon: Network },
@@ -220,7 +138,7 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
     if (!open) return;
     setStep("form");
     setSection("browser");
-    setStartUrl(SHOP_HOME_URL);
+    setStartUrl(SUB_HOME_URL);
     setProxyDraft(EMPTY_PROXY);
     setExtensions([]);
     // Auto-random fingerprint: write a fresh `--fingerprint=<seed>` so Chromix
@@ -229,15 +147,15 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
     setProfileId(null);
     setQr(null);
     setSnapshot(null);
+    setVisibleWindow(false);
+    setSwitching(false);
+    setAlias("");
+    setManualId("");
+    setSaving(false);
+    setRegisteredName(null);
     setError(null);
-    setNamed(false);
-    setInitState("running");
-    setInitSteps([]);
-    setInitFailure(null);
-    setInitAttempt(0);
     created.current = false;
     renamed.current = false;
-    initStarted.current = false;
   }, [open]);
 
   const platformUserId = snapshot?.platformUserId ?? null;
@@ -247,24 +165,8 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
     setChromixOptions((current) => withRandomFingerprintSeed(current));
   }
 
-  // Once a real identity is read for our profile, move to "done" AND take over
-  // initialization: keep the hidden browser alive, trigger the catch-up run
-  // (guarded so it fires exactly once), and let the polling effect below drive
-  // the progress UI. The profile/browser is never closed before this completes.
-  useEffect(() => {
-    if (!platformUserId || !profileId) return;
-    setStep("done");
-    if (initStarted.current) return;
-    initStarted.current = true;
-    void kuaishouSubject.retry(profileId).catch((cause: unknown) => {
-      // A rejected retry (e.g. "a detection or initialization is already
-      // running") is surfaced rather than retried in a loop.
-      if (alive.current) setInitFailure({ code: null, message: errorText(cause) });
-    });
-  }, [platformUserId, profileId]);
-
-  // Name the account from the detected identity: nickname when present, else the
-  // Kuaishou ID. Best-effort — a failure leaves the placeholder name in place.
+  // Name the environment from the detected identity: nickname when present, else
+  // the Kuaishou ID. Best-effort — a failure leaves the placeholder name.
   useEffect(() => {
     if (!platformUserId || !profileId || renamed.current) return;
     const next = (snapshot?.nickname || snapshot?.platformUserId || "").trim();
@@ -273,19 +175,25 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
     void (async () => {
       try {
         await profilesApi.update(profileId, { name: next });
-        if (alive.current) setNamed(true);
       } catch {
         renamed.current = false;
       }
     })();
   }, [platformUserId, profileId, snapshot]);
 
-  // While waiting, keep re-reading the hidden page (for the QR) and asking the
-  // backend whether the profile has signed in yet. Stops on "done", on unmount,
-  // and when the wizard closes — so no timer or read leaks.
+  // Prefill the manual alias with whatever the detector read, so the one-click
+  // registration uses the detected name and the manual field stays editable.
   useEffect(() => {
-    // `open` is part of the gate: the wizard component stays mounted (the
-    // Modal only renders null), so closing must tear the timer down here.
+    const detected = (snapshot?.nickname || snapshot?.platformUserId || "").trim();
+    if (detected) setAlias((current) => (current.trim() ? current : detected));
+  }, [snapshot]);
+
+  // While waiting, keep re-reading the page (for the QR) and asking the backend
+  // whether the profile has signed in yet. Stops on unmount and when the wizard
+  // closes — so no timer or read leaks.
+  useEffect(() => {
+    // `open` is part of the gate: the wizard component stays mounted (the Modal
+    // only renders null), so closing must tear the timer down here.
     if (!open || step !== "waiting" || !profileId) return;
     let active = true;
     let timer = 0;
@@ -313,100 +221,6 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
       window.clearTimeout(timer);
     };
   }, [open, step, profileId]);
-
-  // Wizard-driven initialization. Runs only while the wizard is open, on the
-  // "done" step, with a detected account — the hidden browser stays alive for
-  // the whole campaign. Two cadences share one timer chain so nothing leaks:
-  //   - every tick reads the persisted steps (both done → finished; a failed
-  //     step → failed);
-  //   - every INIT_DETECT_MS it re-observes the identity so the backend's
-  //     ≤30s freshness window never expires mid-run;
-  //   - after INIT_TIMEOUT_MS it stops waiting and offers a manual close.
-  // `open` and `step` are dependencies because the Modal keeps this component
-  // mounted while closed, and the cleanup clears the timer.
-  useEffect(() => {
-    if (!open || step !== "done" || !profileId || !platformUserId) return;
-    if (initState !== "running") return;
-    let active = true;
-    let timer = 0;
-    let lastDetect = 0;
-    const startedAt = Date.now();
-    const tick = async (): Promise<void> => {
-      try {
-        const rows = await kuaishouSubject.steps(platformUserId);
-        if (!active) return;
-        setInitSteps(rows);
-        const subject = rows.find((item) => item.step === "subject");
-        const slice = rows.find((item) => item.step === "slice");
-        if (subject?.state === "done" && slice?.state === "done") {
-          setInitFailure(null);
-          setInitState("done");
-          return;
-        }
-        const failed = rows.find((item) => item.state === "failed");
-        if (failed) {
-          setInitFailure({ code: failed.lastErrorCode, message: null });
-          setInitState("failed");
-          return;
-        }
-      } catch {
-        // A transient read failure must not abort the campaign; retry next tick.
-      }
-      if (!active) return;
-      if (Date.now() - startedAt >= INIT_TIMEOUT_MS) {
-        setInitState("timeout");
-        return;
-      }
-      // Keep the observation fresh so the next campaign attempt is accepted.
-      if (Date.now() - lastDetect >= INIT_DETECT_MS) {
-        lastDetect = Date.now();
-        try {
-          const found = await kuaishouIdentity.detect(profileId);
-          if (active && found.platformUserId) setSnapshot(found);
-        } catch {
-          // Detection is best-effort; the backend re-validates before any write.
-        }
-      }
-      if (active) timer = window.setTimeout(() => void tick(), INIT_POLL_MS);
-    };
-    void tick();
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-    };
-  }, [open, step, profileId, platformUserId, initState, initAttempt]);
-
-  /** Manual retry: clear the terminal state and run the campaign again. */
-  function retryInit(): void {
-    if (!profileId) return;
-    setInitFailure(null);
-    setInitSteps([]);
-    setInitState("running");
-    initStarted.current = true;
-    void kuaishouSubject.retry(profileId).catch((cause: unknown) => {
-      if (alive.current) setInitFailure({ code: null, message: errorText(cause) });
-    });
-    setInitAttempt((value) => value + 1);
-  }
-
-  const initSubject = initSteps.find((item) => item.step === "subject") ?? null;
-  const initSlice = initSteps.find((item) => item.step === "slice") ?? null;
-  const initComplete = initState === "done";
-  const initErrorLabel = initFailure
-    ? initFailure.code
-      ? t(INIT_ERROR_KEY[initFailure.code])
-      : initFailure.message ?? ""
-    : "";
-  const stepLabel = (record: KuaishouInitStepRecord | null): string =>
-    record ? t(INIT_STATE_KEY[record.state]) : t("kuaishou.init.state.pending");
-  const stepTone = (record: KuaishouInitStepRecord | null): string =>
-    record?.state === "done"
-      ? "text-emerald-300"
-      : record?.state === "failed"
-        ? "text-amber-300"
-        : record?.state === "running"
-          ? "text-sky-300"
-          : "text-slate-400";
 
   function buildProxy(): ProxyConfig | undefined {
     if (!proxyDraft.enabled) return undefined;
@@ -446,15 +260,13 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
     let createdId: string | null = null;
     try {
       // Chromix owns the identity. With a proxy set we ask it to resolve the
-      // exit region (GeoIP) so timezone/locale align automatically — the native
-      // Chromix alignment, no separate fingerprint reconciliation needed.
+      // exit region (GeoIP) so timezone/locale align automatically.
       const options = built ? { ...chromixOptions, geoip: true } : chromixOptions;
 
       // Create the profile with a placeholder name; the real name comes from
-      // the detected account once the scan completes. No `fingerprint` is sent:
-      // the CloakBrowser fingerprint is dead and Chromix holds the identity.
+      // the detected account once the scan completes.
       const profile = await profilesApi.create({
-        name: t("kuaishou.shop.unnamed"),
+        name: t("kuaishou.interactWizard.unnamed"),
         proxy: built,
         startUrl: startUrl.trim() || undefined,
         extensions: extensions.length > 0 ? extensions : undefined,
@@ -465,8 +277,8 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
       setProfileId(profile.id);
       onCreated?.(profile.id);
 
-      // Launch hidden and open the shop login page in a new tab.
-      await profilesApi.launchKuaishou(profile.id, true);
+      // Launch hidden and open the Kuaishou main-site login page in a new tab.
+      await profilesApi.launchKuaishouSub(profile.id, true);
 
       if (alive.current) setStep("waiting");
     } catch (cause) {
@@ -476,6 +288,64 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
         // still scan, rather than losing the created environment.
         setStep(createdId ? "waiting" : "form");
       }
+    }
+  }
+
+  /**
+   * Fallback when the hidden window yields no QR: relaunch the profile in a
+   * visible window and let the user scan there. Close first — a Chromix profile
+   * has one persistent context, so a second launch without a close would not
+   * bring the off-screen window into view.
+   */
+  async function useVisibleWindow(): Promise<void> {
+    const id = profileId;
+    if (!id || switching) return;
+    setSwitching(true);
+    setError(null);
+    try {
+      await profilesApi.close(id).catch(() => {});
+      await profilesApi.launchKuaishouSub(id, false);
+      if (alive.current) setVisibleWindow(true);
+    } catch (cause) {
+      if (alive.current) setError(t("kuaishou.interact.failedToast", { detail: errorText(cause) }));
+    } finally {
+      if (alive.current) setSwitching(false);
+    }
+  }
+
+  /**
+   * Register the interact account. The alias falls back to the detected
+   * nickname / Kuaishou ID, then to the manual input; the platform user ID
+   * prefers the detected value. `save_sub_account` upserts by profile, so a
+   * retry after a validation error is safe.
+   */
+  async function register(): Promise<void> {
+    const id = profileId;
+    if (!id || saving) return;
+    const detectedName = (snapshot?.nickname || snapshot?.platformUserId || "").trim();
+    const name = (detectedName || alias).trim();
+    if (!name) {
+      setError(t("kuaishou.interactWizard.aliasRequired"));
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const pid = (snapshot?.platformUserId || manualId).trim();
+      await subAccounts.save({
+        profileId: id,
+        kind: "kuaishou-sub",
+        displayName: name,
+        platformUserId: pid || null,
+      });
+      if (!alive.current) return;
+      setRegisteredName(name);
+      setStep("done");
+      onRegistered?.(id);
+    } catch (cause) {
+      if (alive.current) setError(t("kuaishou.interact.failedToast", { detail: errorText(cause) }));
+    } finally {
+      if (alive.current) setSaving(false);
     }
   }
 
@@ -501,7 +371,7 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
   return (
     <Modal
       open={open}
-      title={t("kuaishou.wizard.title")}
+      title={t("kuaishou.interactWizard.title")}
       width={720}
       onClose={() => void close()}
     >
@@ -526,8 +396,8 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
               {section === "browser" && (
                 <BrowserSection
                   label={t("kuaishou.wizard.section.home")}
-                  defaultUrl={SHOP_HOME_URL}
-                  hint={t("kuaishou.wizard.homeHint")}
+                  defaultUrl={SUB_HOME_URL}
+                  hint={t("kuaishou.interactWizard.homeHint")}
                   startUrl={startUrl}
                   onStartUrl={setStartUrl}
                 />
@@ -644,7 +514,9 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
                     <div className="min-w-0 flex-1">
                       <p className="mono truncate text-[11px] text-slate-300">
                         {fingerprintSeedOf(chromixOptions)
-                          ? t("kuaishou.wizard.fp.randomized", { seed: fingerprintSeedOf(chromixOptions) as string })
+                          ? t("kuaishou.wizard.fp.randomized", {
+                              seed: fingerprintSeedOf(chromixOptions) as string,
+                            })
                           : t("kuaishou.wizard.chromixHint")}
                       </p>
                       <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500">
@@ -690,43 +562,143 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-[12px] text-accent-foreground">
                 <Loader2 size={14} className="animate-spin" />
-                {step === "creating" ? t("kuaishou.wizard.creating") : t("kuaishou.wizard.opening")}
+                {step === "creating"
+                  ? t("kuaishou.wizard.creating")
+                  : t("kuaishou.interactWizard.opening")}
               </div>
 
               <div className="space-y-1.5">
-                <p className="font-medium text-slate-200">{t("kuaishou.wizard.waitingTitle")}</p>
+                <p className="font-medium text-slate-200">
+                  {t("kuaishou.interactWizard.waitingTitle")}
+                </p>
                 <p className="text-[12px] text-slate-400 leading-relaxed">
-                  {t("kuaishou.wizard.waitingHint")}
+                  {visibleWindow
+                    ? t("kuaishou.interactWizard.visibleHint")
+                    : t("kuaishou.interactWizard.waitingHint")}
                 </p>
               </div>
 
               <div
-                data-testid="wizard-qr"
+                data-testid="interact-wizard-qr"
                 className="flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.02] p-3"
                 style={{ minHeight: 220 }}
               >
                 {qr ? (
                   <img
                     src={`data:image/png;base64,${qr}`}
-                    alt={t("kuaishou.wizard.waitingTitle")}
+                    alt={t("kuaishou.interactWizard.waitingTitle")}
                     className="rounded-lg"
                     // The page's QR image is only ~125px; upscale with crisp
                     // (pixelated) rendering so it stays scannable.
                     style={{ width: 260, height: 260, imageRendering: "pixelated" }}
                   />
                 ) : (
-                  <span className="text-[12px] text-slate-500">{t("kuaishou.wizard.qrPending")}</span>
+                  <span className="px-4 text-center text-[12px] text-slate-500">
+                    {visibleWindow
+                      ? t("kuaishou.interactWizard.visibleHint")
+                      : t("kuaishou.interactWizard.qrMissHint")}
+                  </span>
                 )}
               </div>
 
-              <Button
-                size="sm"
-                disabled={!profileId}
-                onClick={() => setQr(null)}
-                leftIcon={<RefreshCw size={11} />}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  disabled={!profileId || switching || visibleWindow}
+                  onClick={() => void useVisibleWindow()}
+                  leftIcon={
+                    switching ? (
+                      <Loader2 size={11} className="animate-spin" />
+                    ) : (
+                      <Eye size={11} />
+                    )
+                  }
+                >
+                  {t("kuaishou.interactWizard.useVisible")}
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!profileId}
+                  onClick={() => setQr(null)}
+                  leftIcon={<RefreshCw size={11} />}
+                >
+                  {t("kuaishou.wizard.refreshQr")}
+                </Button>
+                <div className="flex-1" />
+                {platformUserId ? (
+                  <span className="text-[12px] text-emerald-300">
+                    {t("kuaishou.interact.status.detected")}
+                  </span>
+                ) : (
+                  <span className="text-[12px] text-slate-500">
+                    {t("kuaishou.interact.status.detecting")}
+                  </span>
+                )}
+              </div>
+
+              {/* Detected identity preview; the manual fields stay editable so a
+                  missed detection can still be registered. */}
+              {platformUserId && (
+                <div className="flex items-center gap-3 min-w-0 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+                  <IdentityAvatar snapshot={snapshot} size={36} />
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-semibold text-slate-100">
+                      {snapshot?.nickname || snapshot?.platformUserId}
+                    </p>
+                    <p className="mono truncate text-[11px] text-slate-400">{platformUserId}</p>
+                  </div>
+                </div>
+              )}
+
+              {duplicateOf && (
+                <p role="alert" className="text-[12px] text-amber-300 break-words">
+                  {t("kuaishou.wizard.duplicate", { name: duplicateOf })}
+                </p>
+              )}
+
+              <section
+                aria-label={t("kuaishou.interactWizard.manualTitle")}
+                className="space-y-2.5 rounded-lg border border-white/10 bg-white/[0.03] p-3"
               >
-                {t("kuaishou.wizard.refreshQr")}
-              </Button>
+                <div className="space-y-1">
+                  <h3 className="text-[13px] font-semibold text-slate-200">
+                    {t("kuaishou.interactWizard.manualTitle")}
+                  </h3>
+                  <p className="text-[11px] leading-relaxed text-slate-500">
+                    {t("kuaishou.interactWizard.manualHint")}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-end gap-2">
+                  <Field label={t("kuaishou.interactWizard.alias")}>
+                    <input
+                      aria-label={t("kuaishou.interactWizard.alias")}
+                      value={alias}
+                      onChange={(event) => {
+                        setAlias(event.target.value);
+                        setError(null);
+                      }}
+                      className="h-8 w-44 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 text-[12px] text-slate-200 outline-none focus:border-purple-400/60"
+                    />
+                  </Field>
+                  <Field label={t("kuaishou.interactWizard.platformUserId")}>
+                    <input
+                      aria-label={t("kuaishou.interactWizard.platformUserId")}
+                      value={manualId}
+                      onChange={(event) => setManualId(event.target.value)}
+                      className="mono h-8 w-44 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 text-[12px] text-slate-200 outline-none focus:border-purple-400/60"
+                    />
+                  </Field>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    disabled={!profileId || saving}
+                    onClick={() => void register()}
+                    leftIcon={saving ? <Loader2 size={10} className="animate-spin" /> : undefined}
+                  >
+                    {t("kuaishou.interactWizard.register")}
+                  </Button>
+                </div>
+              </section>
             </div>
           )}
 
@@ -736,98 +708,28 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
                 <IdentityAvatar snapshot={snapshot} size={44} />
                 <div className="min-w-0">
                   <p className="text-[12px] text-emerald-300">
-                    {named ? t("kuaishou.wizard.named") : t("kuaishou.wizard.detected")}
+                    {t("kuaishou.interactWizard.registered")}
                   </p>
                   <p className="text-[14px] font-semibold text-slate-100 truncate">
-                    {snapshot?.nickname || snapshot?.platformUserId}
+                    {registeredName ?? snapshot?.nickname ?? snapshot?.platformUserId}
                   </p>
                   <p className="mono text-[11px] text-slate-400 truncate">
-                    {snapshot?.platformUserId}
+                    {snapshot?.platformUserId ?? manualId}
                   </p>
                 </div>
-              </div>
-
-              {duplicateOf && (
-                <p role="alert" className="text-[12px] text-amber-300 break-words">
-                  {t("kuaishou.wizard.duplicate", { name: duplicateOf })}
-                </p>
-              )}
-
-              {/* Initialization progress: the wizard keeps the hidden browser
-               *  alive and drives the catch-up run until both steps are done. */}
-              <div
-                data-testid="wizard-init"
-                data-state={initState}
-                className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5"
-              >
-                <div className="flex items-center gap-2 text-[12px]">
-                  {initState === "running" ? (
-                    <Loader2 size={13} className="animate-spin text-sky-300" />
-                  ) : initState === "done" ? (
-                    <Check size={13} className="text-emerald-300" />
-                  ) : (
-                    <CircleAlert size={13} className="text-amber-300" />
-                  )}
-                  <span
-                    className={
-                      initState === "running"
-                        ? "text-slate-200"
-                        : initState === "done"
-                          ? "text-emerald-300"
-                          : "text-amber-300"
-                    }
-                  >
-                    {initState === "running"
-                      ? t("kuaishou.wizard.initPending")
-                      : initState === "done"
-                        ? t("kuaishou.wizard.initDone")
-                        : initState === "timeout"
-                          ? t("kuaishou.wizard.initTimeout")
-                          : t("kuaishou.wizard.initFailed", { error: initErrorLabel })}
-                  </span>
-                </div>
-
-                <ul className="space-y-1 text-[11px]">
-                  {[initSubject, initSlice].map((record, index) => (
-                    <li
-                      key={index === 0 ? "subject" : "slice"}
-                      data-testid={`wizard-init-step-${index === 0 ? "subject" : "slice"}`}
-                      data-state={record?.state ?? "pending"}
-                      className="flex items-center justify-between gap-2"
-                    >
-                      <span className="text-slate-400">
-                        {t(index === 0 ? "kuaishou.init.step.subject" : "kuaishou.init.step.slice")}
-                      </span>
-                      <span className={stepTone(record)}>{stepLabel(record)}</span>
-                    </li>
-                  ))}
-                </ul>
               </div>
             </div>
           )}
 
           <div className="flex justify-end gap-2 pt-1">
             {step === "done" ? (
-              <>
-                <span className="flex-1 self-center text-[11px] text-slate-500" />
-                {initState === "failed" && (
-                  <Button size="sm" onClick={retryInit} leftIcon={<RefreshCw size={11} />}>
-                    {t("kuaishou.wizard.initRetry")}
-                  </Button>
-                )}
-                <Button
-                  variant={initComplete ? "primary" : "secondary"}
-                  onClick={() => void close()}
-                >
-                  {initComplete
-                    ? t("kuaishou.wizard.done")
-                    : t("kuaishou.wizard.closeWhileInit")}
-                </Button>
-              </>
+              <Button variant="primary" onClick={() => void close()}>
+                {t("kuaishou.wizard.done")}
+              </Button>
             ) : (
               <>
                 <span className="flex-1 self-center text-[11px] text-slate-500">
-                  {created.current ? t("kuaishou.wizard.cancelCreated") : ""}
+                  {created.current ? t("kuaishou.interactWizard.cancelCreated") : ""}
                 </span>
                 <Button onClick={() => void close()}>{t("common.cancel")}</Button>
               </>

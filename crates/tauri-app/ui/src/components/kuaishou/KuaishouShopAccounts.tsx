@@ -6,6 +6,11 @@ import type { TranslationKey } from "../../i18n/en";
 import { cn } from "../../lib/cn";
 import { profiles as profilesApi } from "../../lib/ipc";
 import { useKuaishouIdentities, useKuaishouIdentity } from "../../lib/KuaishouIdentityProvider";
+import {
+  kuaishouSubject,
+  type KuaishouInitErrorCode,
+  type KuaishouInitStepRecord,
+} from "../../lib/kuaishouSubject";
 import type { ProfileSummary } from "../../types";
 import { Avatar, Pill, confirm } from "../atoms";
 import { Button } from "../atoms/Button";
@@ -169,6 +174,13 @@ export function KuaishouShopAccounts({ onAddAccount }: { onAddAccount?: () => vo
         cell: (row) => <StatusCell row={row} />,
       },
       {
+        id: "init",
+        header: t("kuaishou.shop.col.init"),
+        width: 170,
+        showFrom: 820,
+        cell: (row) => <InitCell row={row} />,
+      },
+      {
         id: "tags",
         header: t("kuaishou.shop.col.tags"),
         width: 150,
@@ -279,12 +291,161 @@ function AccountCell({ row }: { row: ProfileSummary }): JSX.Element {
       <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-100">
         {row.name}
       </span>
-      {snapshot?.nickname && (
+      {/* The wizard renames the environment from the detected nickname, so the two
+       *  strings are usually identical. Only surface the nickname when it adds
+       *  information — otherwise the row would show the same name twice. */}
+      {snapshot?.nickname && snapshot.nickname !== row.name && (
         <span className="min-w-0 max-w-[40%] shrink truncate text-[11px] text-slate-500" title={snapshot.nickname}>
           {snapshot.nickname}
         </span>
       )}
     </div>
+  );
+}
+
+const INIT_STATE_KEY: Record<KuaishouInitStepRecord["state"], TranslationKey> = {
+  pending: "kuaishou.init.state.pending",
+  running: "kuaishou.init.state.running",
+  done: "kuaishou.init.state.done",
+  failed: "kuaishou.init.state.failed",
+};
+
+const INIT_ERROR_KEY: Record<KuaishouInitErrorCode, TranslationKey> = {
+  "interrupted-needs-verification": "kuaishou.init.error.interruptedNeedsVerification",
+  "context-changed": "kuaishou.init.error.contextChanged",
+  "timed-out": "kuaishou.init.error.timedOut",
+  "page-unsupported": "kuaishou.init.error.pageUnsupported",
+  "page-crashed": "kuaishou.init.error.pageCrashed",
+  "attachment-unavailable": "kuaishou.init.error.attachmentUnavailable",
+  "ocr-unavailable": "kuaishou.init.error.ocrUnavailable",
+  "ocr-failed": "kuaishou.init.error.ocrFailed",
+  "validation-failed": "kuaishou.init.error.validationFailed",
+  "persistence-unverified": "kuaishou.init.error.persistenceUnverified",
+};
+
+const INIT_POLL_MS = 5000;
+
+/**
+ * Per-row initialization status (subject profile + live-slice off).
+ *
+ * Cost control: the cell is mounted per row, so it must never start a request
+ * for a row without a `platformUserId` — those render a dim dash and do no IPC.
+ * It reads once when an id appears, then polls at a low frequency *only* while
+ * a step is still `pending`/`running`. Two `done` steps, a terminal `failed`,
+ * an unmount, or an id change all stop the timer. Reads go to the read-only
+ * `kuaishou_init_steps` command, so this works for a stopped environment too
+ * (it then shows the persisted, historical state).
+ */
+function InitCell({ row }: { row: ProfileSummary }): JSX.Element {
+  const t = useT();
+  const snapshot = useKuaishouIdentities().entries.get(row.id)?.snapshot ?? null;
+  const platformUserId = snapshot?.platformUserId ?? null;
+  // Backend observation marker, compared for equality only (never to a local clock).
+  const observation = snapshot?.checkedAt ?? null;
+  const [steps, setSteps] = useState<KuaishouInitStepRecord[] | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setSteps(null);
+    setFailed(false);
+    if (!platformUserId) return;
+    let active = true;
+    let timer: number | undefined;
+    const stop = (): void => {
+      if (timer !== undefined) {
+        window.clearTimeout(timer);
+        timer = undefined;
+      }
+    };
+    const load = (): void => {
+      void kuaishouSubject.steps(platformUserId).then(
+        (value) => {
+          if (!active) return;
+          setSteps(value);
+          setFailed(false);
+          if (value.some((step) => step.state === "pending" || step.state === "running")) {
+            timer = window.setTimeout(load, INIT_POLL_MS);
+          }
+        },
+        () => {
+          if (active) setFailed(true);
+        },
+      );
+    };
+    load();
+    return () => {
+      active = false;
+      stop();
+    };
+  }, [platformUserId, observation]);
+
+  if (!platformUserId) {
+    return (
+      <span
+        data-testid={`init-cell-${row.id}`}
+        data-state="absent"
+        className="block truncate text-[11px] text-slate-600"
+        title={t("kuaishou.init.state.none")}
+      >
+        —
+      </span>
+    );
+  }
+  if (failed) {
+    return (
+      <span
+        data-testid={`init-cell-${row.id}`}
+        data-state="error"
+        className="block truncate text-[11px] text-amber-300"
+      >
+        {t("kuaishou.init.state.failed")}
+      </span>
+    );
+  }
+  if (steps === null) {
+    return (
+      <span data-testid={`init-cell-${row.id}`} data-state="loading" className="block truncate text-[11px] text-slate-500">
+        …
+      </span>
+    );
+  }
+  const subject = steps.find((step) => step.step === "subject");
+  const slice = steps.find((step) => step.step === "slice");
+  const complete = subject?.state === "done" && slice?.state === "done";
+  const running = steps.some((step) => step.state === "running");
+  const broken = steps.some((step) => step.state === "failed");
+  const tone = complete
+    ? "text-emerald-300"
+    : broken
+      ? "text-amber-300"
+      : running
+        ? "text-sky-300"
+        : "text-slate-400";
+  const state = steps.length === 0 ? "none" : complete ? "done" : broken ? "failed" : running ? "running" : "pending";
+  const summary = steps.length === 0
+    ? t("kuaishou.init.state.none")
+    : complete
+      ? t("kuaishou.init.state.done")
+      : broken
+        ? t("kuaishou.init.state.failed")
+        : running
+          ? t("kuaishou.init.state.running")
+          : t("kuaishou.init.state.pending");
+  const errorCode = [...steps].reverse().find((step) => step.lastErrorCode)?.lastErrorCode ?? null;
+  const detail = [
+    `${t("kuaishou.init.step.subject")}: ${subject ? t(INIT_STATE_KEY[subject.state]) : t("kuaishou.init.state.none")}`,
+    `${t("kuaishou.init.step.slice")}: ${slice ? t(INIT_STATE_KEY[slice.state]) : t("kuaishou.init.state.none")}`,
+    ...(errorCode ? [t(INIT_ERROR_KEY[errorCode])] : []),
+  ].join(" · ");
+  return (
+    <span
+      data-testid={`init-cell-${row.id}`}
+      data-state={state}
+      className={cn("block truncate text-[11px]", tone)}
+      title={detail}
+    >
+      {summary}
+    </span>
   );
 }
 

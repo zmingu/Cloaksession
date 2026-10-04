@@ -152,11 +152,46 @@ fn malformed_success_is_rejected() {
         account: None,
         scope: None,
     };
+    // Unbound profiles accept the main-site alphanumeric id form, so use a value
+    // that is invalid under BOTH the numeric shop rule and the viewer rule.
     assert!(pm
-        .kuaishou_identity_save(observation(&id, "12345oops"), &state)
+        .kuaishou_identity_save(observation(&id, "12 34"), &state)
         .is_err());
     let mut o = observation(&id, "12345");
     o.session_id = None;
     assert!(pm.kuaishou_identity_save(o, &state).is_err());
     assert!(pm.kuaishou_identity_observations().unwrap().is_empty());
+}
+#[test]
+fn viewer_sub_binding_accepts_main_site_id_while_shop_stays_numeric() {
+    let (_dir, pm, id) = fixture();
+    pm.business_accounts_save(SaveBusinessAccountInput {
+        id: None,
+        profile_id: id.clone(),
+        kind: BusinessAccountKind::KuaishouSub,
+        display_name: "Sub".into(),
+        platform_user_id: None,
+    })
+    .unwrap();
+    let state = pm.business_accounts_profile_state(&id).unwrap();
+    let saved = pm
+        .kuaishou_identity_save(observation(&id, "3x7abcdef"), &state)
+        .unwrap()
+        .unwrap();
+    assert_eq!(saved.snapshot.status, Status::Detected);
+    assert_eq!(saved.snapshot.platform_user_id.as_deref(), Some("3x7abcdef"));
+
+    let (_dir2, pm2, id2) = fixture();
+    pm2.business_accounts_save(SaveBusinessAccountInput {
+        id: None,
+        profile_id: id2.clone(),
+        kind: BusinessAccountKind::KuaishouShop,
+        display_name: "Shop".into(),
+        platform_user_id: None,
+    })
+    .unwrap();
+    let shop_state = pm2.business_accounts_profile_state(&id2).unwrap();
+    assert!(pm2
+        .kuaishou_identity_save(observation(&id2, "3x7abcdef"), &shop_state)
+        .is_err());
 }

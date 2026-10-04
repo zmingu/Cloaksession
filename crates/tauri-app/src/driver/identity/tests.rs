@@ -573,3 +573,122 @@ async fn manual_closed_profile_never_launches_and_avatar_is_db_gated() {
         .is_none());
     driver.shutdown().await;
 }
+
+/// A persisted, still-current shop `Detected` identity must offer the initialization
+/// monitor an immediate scan. `not-detected` saves never wake it, so the wake is
+/// conditional on the very status the monitor requires.
+#[tokio::test]
+async fn detected_shop_identity_save_wakes_initialization_but_not_detected_does_not() {
+    use crate::driver::business_tests::{fixture, launch_without_cdp};
+    use mcp_server::driver::BrowserDriver;
+    let (_temp, driver) = fixture(multizen_core::ChromixSettings::default());
+    let driver = Arc::new(driver);
+    let profile = driver
+        .create_profile(multizen_core::CreateProfileInput {
+            name: "identity wake fixture".into(),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    let launched = launch_without_cdp(&driver, &profile).await.unwrap();
+    let slot = driver
+        .registry
+        .prepared_slot(&profile.id, &format!("{}:{}", launched.started_at, launched.pid))
+        .await
+        .unwrap();
+    let (peer, session) = common::Peer::connect().await;
+    let session = Arc::new(session);
+    for target in ["a", "b"] {
+        session
+            .bind_page(target)
+            .await
+            .unwrap()
+            .navigate("https://s.kwaixiaodian.com/zone/home", 1000)
+            .await
+            .unwrap();
+    }
+    slot.install_test_session(session.clone());
+    let shop = |id: Option<&str>| {
+        common::EvalReply::Value(serde_json::json!({
+            "url": "https://s.kwaixiaodian.com/zone/home",
+            "platformUserId": id, "nickname": null, "avatarUrl": null,
+        }))
+    };
+    assert!(!driver.account_init.test_wake_pending().await);
+    peer.evaluations(vec![shop(Some("12345")), shop(Some("12345"))]);
+    let detected = driver.kuaishou_identity_detect(&profile.id).await;
+    assert_eq!(detected.status, Status::Detected);
+    assert_eq!(detected.platform_user_id.as_deref(), Some("12345"));
+    assert!(
+        driver.account_init.test_wake_pending().await,
+        "a persisted shop Detected identity must wake the initialization monitor"
+    );
+    // A later non-Detected observation (no readable id) must not wake it again.
+    peer.evaluations(vec![shop(None), shop(None)]);
+    let not_detected = driver.kuaishou_identity_detect(&profile.id).await;
+    assert_eq!(not_detected.status, Status::NotDetected);
+    assert!(!driver.account_init.test_wake_pending().await);
+    driver.close(&profile.id).await.unwrap();
+    driver.shutdown().await;
+}
+
+/// A viewer (互动账号) binding detects on the main site, which the shop-only
+/// initialization gate rejects: its Detected save must never wake the monitor.
+#[tokio::test]
+async fn viewer_identity_save_never_wakes_the_shop_initialization_monitor() {
+    use crate::driver::business_tests::{fixture, launch_without_cdp};
+    use mcp_server::driver::BrowserDriver;
+    let (_temp, driver) = fixture(multizen_core::ChromixSettings::default());
+    let driver = Arc::new(driver);
+    let profile = driver
+        .create_profile(multizen_core::CreateProfileInput {
+            name: "viewer wake fixture".into(),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    driver
+        .business_accounts_save(multizen_core::SaveBusinessAccountInput {
+            id: None,
+            kind: BusinessAccountKind::KuaishouSub,
+            profile_id: profile.id.clone(),
+            display_name: "viewer".into(),
+            platform_user_id: None,
+        })
+        .await
+        .unwrap();
+    let launched = launch_without_cdp(&driver, &profile).await.unwrap();
+    let slot = driver
+        .registry
+        .prepared_slot(&profile.id, &format!("{}:{}", launched.started_at, launched.pid))
+        .await
+        .unwrap();
+    let (peer, session) = common::Peer::connect().await;
+    let session = Arc::new(session);
+    for target in ["a", "b"] {
+        session
+            .bind_page(target)
+            .await
+            .unwrap()
+            .navigate("https://www.kuaishou.com/", 1000)
+            .await
+            .unwrap();
+    }
+    slot.install_test_session(session.clone());
+    let viewer = || {
+        common::EvalReply::Value(serde_json::json!({
+            "url": "https://www.kuaishou.com/",
+            "platformUserId": "3x7abcdef", "nickname": null, "avatarUrl": null,
+        }))
+    };
+    peer.evaluations(vec![viewer(), viewer()]);
+    let detected = driver.kuaishou_identity_detect(&profile.id).await;
+    assert_eq!(detected.status, Status::Detected);
+    assert_eq!(detected.platform_user_id.as_deref(), Some("3x7abcdef"));
+    assert!(
+        !driver.account_init.test_wake_pending().await,
+        "a viewer Detected identity is not shop-eligible and must not wake initialization"
+    );
+    driver.close(&profile.id).await.unwrap();
+    driver.shutdown().await;
+}
