@@ -94,7 +94,14 @@ fn create_legacy_partial_fingerprint_remains_compatible() {
     assert_eq!(created.fingerprint.locale, "de-DE");
     assert_eq!(created.fingerprint.timezone, "Europe/Berlin");
     assert_eq!(created.fingerprint.country, "DE");
-    assert_eq!(created.fingerprint.platform, "Win32");
+    // The rest of the fingerprint comes from the (now randomized) default; the
+    // patch only overrode locale/timezone/country, so the platform must still be
+    // one of the coherent default personas.
+    assert!(
+        ["Win32", "MacIntel", "Linux x86_64"].contains(&created.fingerprint.platform.as_str()),
+        "unexpected default platform: {}",
+        created.fingerprint.platform
+    );
 }
 
 #[test]
