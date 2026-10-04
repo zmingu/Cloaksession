@@ -1,21 +1,15 @@
 # browser-launcher
-Spawns CloakBrowser/CFT, passes `--fingerprint-*` / `--proxy-server` / `--user-data-dir` / `--load-extension` flags, runs the local SOCKS5 bridge (remote DNS), probes proxy geo via ipapi.co, manages session-restore prefs and singleton locks, and tracks running profiles in a registry. Does NOT issue CDP commands — that's `cdp-driver`.
-
-## Storage quota
-
-`FingerprintConfig.storage_quota` and `--fingerprint-storage-quota` use bytes.
-The default is `2_000_000_000` bytes (2 GB), passed as
-`--fingerprint-storage-quota=2000000000` without a minimum override.
-Only the UI converts between bytes and decimal MB (`1 MB = 1_000_000` bytes).
-An unset or zero quota omits the flag and leaves the engine default in effect.
-These native fingerprint flags apply to CloakBrowser, not CFT or Chromix.
+Launches Chromix (the only engine) through its bundled Node SDK bridge, runs the local SOCKS5 bridge (remote DNS), probes proxy geo via ipapi.co, manages session-restore prefs and singleton locks, and tracks running profiles in a registry. Does NOT issue CDP commands — that's `cdp-driver`.
 
 ## Chromix SDK bridge
 
-`BrowserLauncher::launch` is unchanged for CloakBrowser/CFT. Chromix uses
-`launch_with_chromix(&self, profile_id: &str, binary_path: &Path,
+`BrowserLauncher::launch_with_chromix(&self, profile_id: &str, binary_path: &Path,
 companion_dir: Option<&Path>, config: &multizen_core::ChromixSettings,
-runtime_dir: &Path, skip_download: bool) -> Result<LaunchedProfile>`.
+runtime_dir: &Path, skip_download: bool) -> Result<LaunchedProfile>` is the only
+launch entry point. The former CloakBrowser/CFT native `launch` path and the
+`--fingerprint-*` / `--user-agent` / `--test-type` argument builders were removed;
+`build_spawn_args` now returns only the CDP endpoint contract
+(`--user-data-dir`, `--remote-debugging-address`, `--remote-debugging-port`).
 
 Install the runtime with `npm ci --omit=dev --ignore-scripts` in
 `crates/tauri-app/resources/chromix`. Ship that directory, including
@@ -36,6 +30,10 @@ profile-directory arguments in any args/ignoreDefaultArgs layer are rejected.
 CDP uses an OS-assigned port on `127.0.0.1`; control arguments are appended to
 each effective args layer so nested SDK spreads cannot replace them. The port
 reservation must be released for Chromium to bind it.
+
+Hidden launch (`hidden: true`) appends `--window-position=-32000,-32000` into
+`launchOptions.args` by hand (a shallow merge would drop the profile's own
+`launchOptions`), keeping the window headed but off-screen — never `--headless`.
 
 An omitted headless setting defaults to a visible browser. A profile proxy
 is used only without explicit proxy options or proxy arguments. Enabled,

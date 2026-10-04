@@ -18,7 +18,7 @@ async fn registry_get_or_connect_missing_endpoint_errors_cleanly() {
         .get_or_connect(
             "p1",
             "http://127.0.0.1:1", // nothing listening
-            multizen_core::BrowserEngine::Cloakbrowser,
+            multizen_core::BrowserEngine::Chromix,
         )
         .await;
     assert!(res.is_err(), "connect to dead endpoint should error");

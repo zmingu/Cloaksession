@@ -9,7 +9,7 @@ fn load_returns_defaults_when_file_missing() {
     let s = store.load().unwrap();
     assert_eq!(s.mcp_http_port, 7777);
     assert!(s.mcp_http_enabled);
-    assert_eq!(s.browser_engine, BrowserEngine::Cloakbrowser);
+    assert_eq!(s.browser_engine, BrowserEngine::Chromix);
     assert!(!s.usage_reporting);
 }
 
@@ -53,7 +53,27 @@ fn load_normalizes_invalid_browser_engine() {
     std::fs::write(&path, r#"{"mcpHttpPort": 7777, "browserEngine": "bogus"}"#).unwrap();
     let mut store = SettingsStore::new(&path);
     let s = store.load().unwrap();
-    assert_eq!(s.browser_engine, BrowserEngine::Cloakbrowser); // reset to default
+    assert_eq!(s.browser_engine, BrowserEngine::Chromix); // Chromix is the only engine
+}
+
+#[test]
+fn load_normalizes_legacy_engine_values_to_chromix() {
+    let dir = TempDir::new().unwrap();
+    let path = default_settings_path(dir.path());
+    for legacy in ["cloakbrowser", "cft"] {
+        std::fs::write(
+            &path,
+            format!(r#"{{"mcpHttpPort": 7777, "browserEngine": "{legacy}"}}"#),
+        )
+        .unwrap();
+        let mut store = SettingsStore::new(&path);
+        let s = store.load().unwrap();
+        assert_eq!(
+            s.browser_engine,
+            BrowserEngine::Chromix,
+            "legacy engine {legacy} must normalize to Chromix"
+        );
+    }
 }
 
 #[test]

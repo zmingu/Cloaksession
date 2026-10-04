@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize};
 
+/// The only supported browser engine. `Chromix` drives the bundled Node SDK;
+/// the former `Cft`/`Cloakbrowser` native launch paths were removed. The enum
+/// is kept (single variant) so existing function signatures and the
+/// `settings.json` field shape stay stable.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum BrowserEngine {
-    Cft,
     #[default]
-    Cloakbrowser,
     Chromix,
 }
 
@@ -76,7 +78,7 @@ impl Default for AppSettings {
             language: AppLanguage::default(),
             mcp_http_enabled: true,
             mcp_http_port: 7777,
-            browser_engine: BrowserEngine::Cloakbrowser,
+            browser_engine: BrowserEngine::Chromix,
             browser_binary_path: None,
             chromix: ChromixSettings::default(),
             skip_browser_download: false,

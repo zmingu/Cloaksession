@@ -295,6 +295,76 @@ pub fn is_jinniu_login_page(url: &str) -> bool {
         .any(|marker| url.contains(marker))
 }
 
+/// DOM selectors that locate the shop login QR image, most specific first.
+///
+/// Live page (`login.kwaixiaodian.com`): a single `<img alt="qrcode"
+/// class="qrcode-img">` whose `src` is already an inline `data:image/png;base64,…`
+/// PNG. The class carries a Svelte scope hash, so only the stable `alt` and the
+/// `qrcode` class prefix are matched here.
+const QR_IMG_SELECTORS: &[&str] = &[
+    "img[alt=\"qrcode\"]",
+    "img.qrcode-img",
+    "img[class*=\"qrcode\"]",
+];
+
+/// The page marks an expired QR by swapping the status overlay to this class
+/// (showing "二维码已过期" + a refresh control) while leaving the stale `<img>`
+/// in place — so reading `src` alone would keep returning the dead QR.
+const QR_EXPIRED_SELECTOR: &str = ".qrcode-status-timeout";
+
+/// Read the shop login QR straight from the page DOM, refreshing it when stale.
+///
+/// The login page renders the QR as an `<img>` whose `src` is an inline
+/// `data:image/png;base64,…` PNG, so the exact image can be lifted without a
+/// screenshot or a brittle region crop. When the QR expires the page only swaps
+/// its status overlay to [`QR_EXPIRED_SELECTOR`] and leaves the dead image in
+/// the DOM; this helper clicks the page's own refresh control (`.scan-button`)
+/// to mint a new one and returns `Ok(None)` for that poll, so the next poll reads
+/// the fresh image instead of the dead one.
+///
+/// Returns the bare base64 payload (no `data:` prefix) so the wire shape matches
+/// the previous screenshot contract. `Ok(None)` means "no valid QR right now"
+/// (not rendered, expired-and-refreshing, or the target is not the login page) —
+/// callers keep polling, never treat it as an error.
+pub async fn qr_image(
+    session: &BrowserSession,
+    target_id: &str,
+    cancel: TaskCancel,
+    timeout: Duration,
+) -> TaskResult<Option<String>> {
+    if cancel.is_cancelled() {
+        return Err(TaskError::Cancelled);
+    }
+    let bound = session
+        .bind_page(target_id)
+        .await
+        .map_err(TaskError::Driver)?;
+    let mut page = bound.into_task(cancel, timeout).await?;
+    let selectors = serde_json::to_string(QR_IMG_SELECTORS).map_err(|error| {
+        TaskError::Driver(MultizenError::Cdp(format!("qr selectors: {error}")))
+    })?;
+    // One round-trip: refresh an expired QR (click the page's own control), else
+    // return the first selector's inline PNG data URL. Everything is injected so
+    // the expression stays self-contained for a single Runtime.evaluate call.
+    let expression = [
+        "(function(){var expired=document.querySelector('",
+        QR_EXPIRED_SELECTOR,
+        "');if(expired){var btn=expired.querySelector('.scan-button');if(btn&&btn.click)btn.click();return null;}var sels=",
+        selectors.as_str(),
+        ";var img=null;for(var i=0;i<sels.length;i++){var el=document.querySelector(sels[i]);if(el){img=el;break;}}var src=img&&(img.currentSrc||img.src);if(src&&src.indexOf('data:image/png;base64,')===0)return src;return null;})()",
+    ]
+    .concat();
+    let value = page.evaluate(&expression, timeout).await?;
+    page.release();
+    let Some(src) = value.as_str() else {
+        return Ok(None);
+    };
+    let payload = src
+        .strip_prefix("data:image/png;base64,")
+        .filter(|payload| !payload.is_empty());
+    Ok(payload.map(str::to_owned))
+}
+
 fn percent_encode_query(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
     for byte in input.bytes() {

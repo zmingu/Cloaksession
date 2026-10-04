@@ -201,7 +201,7 @@ async fn ordinary_profiles_keep_path_behavior_without_any_jinniu_scope() {
 }
 
 #[tokio::test]
-async fn unbound_reservation_still_protects_directory_and_legacy_engine_roots() {
+async fn unbound_reservation_still_protects_directory() {
     let f = Fixture::new();
     let j = f.profile("j");
     let mut other = f.profile("other");
@@ -214,11 +214,9 @@ async fn unbound_reservation_still_protects_directory_and_legacy_engine_roots() 
     );
     // The guard accepts a patch candidate, not only DB-loaded objects.
     other.data_dir = j.data_dir.clone();
-    for engine in [Engine::Cft, Engine::Cloakbrowser, Engine::Chromix] {
-        assert!(f
-            .launcher
-            .validate_business_directory(&other, engine, &f.global, None)
-            .await
-            .is_err());
-    }
+    assert!(f
+        .launcher
+        .validate_business_directory(&other, Engine::Chromix, &f.global, None)
+        .await
+        .is_err());
 }

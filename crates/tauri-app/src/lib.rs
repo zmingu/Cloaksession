@@ -154,32 +154,18 @@ fn resolve_paths(app: &tauri::AppHandle) -> (PathBuf, PathBuf, PathBuf, PathBuf)
 }
 
 /// Fallback browser binary path when settings has none. Looks for
-/// `MULTIZEN_BROWSER_BINARY` env var first, then a platform default. The
-/// launcher will surface the real error if the binary is missing.
+/// `MULTIZEN_BROWSER_BINARY` env var first. Chromix is the only engine: with no
+/// override the path is left empty so the SDK bridge resolves or downloads the
+/// binary itself. The launcher surfaces the real error if resolution fails.
 fn default_browser_binary(engine: BrowserEngine) -> PathBuf {
     if let Ok(path) = std::env::var("MULTIZEN_BROWSER_BINARY") {
         if !path.trim().is_empty() {
             return PathBuf::from(path);
         }
     }
-    if engine == BrowserEngine::Chromix {
-        return PathBuf::new();
-    }
-    #[cfg(target_os = "windows")]
-    {
-        PathBuf::from("cloakbrowser.exe")
-    }
-    #[cfg(target_os = "macos")]
-    {
-        PathBuf::from("/Applications/CloakBrowser.app/Contents/MacOS/CloakBrowser")
-    }
-    #[cfg(target_os = "linux")]
-    {
-        PathBuf::from("cloakbrowser")
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-    {
-        PathBuf::from("cloakbrowser")
+    match engine {
+        // Chromix (the only engine) resolves its binary through the SDK.
+        BrowserEngine::Chromix => PathBuf::new(),
     }
 }
 

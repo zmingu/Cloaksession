@@ -31,21 +31,10 @@ fn refcount_disable_only_when_reaches_zero() {
 }
 
 #[test]
-fn cloak_rejects_risky_domains() {
-    assert!(!cloak_allows_domain("Runtime", BrowserEngine::Cloakbrowser));
-    assert!(!cloak_allows_domain("Network", BrowserEngine::Cloakbrowser));
-    assert!(cloak_allows_domain("DOM", BrowserEngine::Cloakbrowser));
-    assert!(cloak_allows_domain("Page", BrowserEngine::Cloakbrowser));
-}
-
-#[test]
-fn cft_allows_all() {
-    assert!(cloak_allows_domain("Runtime", BrowserEngine::Cft));
-    assert!(cloak_allows_domain("Network", BrowserEngine::Cft));
-}
-
-#[test]
-fn cloak_allows_on_cft_engine() {
-    // CFT engine ignores cloak restrictions
-    assert!(cloak_allows_domain("Runtime", BrowserEngine::Cft));
+fn chromix_allows_every_domain() {
+    // The CloakBrowser-only Runtime/Network restriction was removed with that
+    // engine; Chromix allows all CDP domains.
+    for domain in ["Runtime", "Network", "DOM", "Page"] {
+        assert!(cloak_allows_domain(domain, BrowserEngine::Chromix), "{domain}");
+    }
 }

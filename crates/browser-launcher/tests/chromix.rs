@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use browser_launcher::BrowserLauncher;
-use multizen_core::{BrowserEngine, ChromixSettings, CreateProfileInput, Profile, ProxyConfig};
+use multizen_core::{ChromixSettings, CreateProfileInput, Profile, ProxyConfig};
 use profile_manager::ProfileManager;
 use serde_json::{json, Value};
 use tempfile::TempDir;
@@ -429,7 +429,7 @@ async fn hidden_launch_merges_window_position_into_existing_launch_args() {
 }
 
 #[tokio::test]
-async fn missing_runtime_and_legacy_launch_have_actionable_errors() {
+async fn missing_runtime_has_actionable_error() {
     let fixture = Fixture::new();
     let error = fixture
         .launcher
@@ -445,16 +445,4 @@ async fn missing_runtime_and_legacy_launch_have_actionable_errors() {
         .await
         .unwrap_err();
     assert!(error.to_string().contains("npm ci"));
-    let error = fixture
-        .launcher
-        .launch(
-            &fixture.profile.id,
-            Path::new(""),
-            BrowserEngine::Chromix,
-            None,
-            false,
-        )
-        .await
-        .unwrap_err();
-    assert!(error.to_string().contains("launch_with_chromix"));
 }

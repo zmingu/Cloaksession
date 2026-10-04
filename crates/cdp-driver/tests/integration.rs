@@ -21,7 +21,7 @@ async fn navigate_and_extract() {
     }
     let endpoint =
         std::env::var("MULTIZEN_TEST_CDP").unwrap_or_else(|_| "http://127.0.0.1:9222".into());
-    let session = BrowserSession::connect(&endpoint, BrowserEngine::Cloakbrowser)
+    let session = BrowserSession::connect(&endpoint, BrowserEngine::Chromix)
         .await
         .expect("connect");
     let nav = session

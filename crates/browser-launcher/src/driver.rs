@@ -1,21 +1,10 @@
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU16, Ordering};
 use std::sync::Arc;
 
-use multizen_core::{
-    BrowserEngine, ChromixSettings, LaunchedProfile, MultizenError, Result, UpdateProfileInput,
-};
+use multizen_core::{BrowserEngine, ChromixSettings, LaunchedProfile, MultizenError, Result};
 use profile_manager::ProfileManager;
-use tokio::process::{Child, Command};
 
-use crate::args::build_spawn_args;
-use crate::proxy_geo::probe_proxy_geo;
 use crate::registry::RunningRegistry;
-use crate::session_restore::{clean_stale_singleton_locks, ensure_session_restore};
-use crate::socks5_bridge::Socks5Bridge;
-use crate::version::{detect_chromium_version, synchronize_managed_fingerprint_version};
-
-const CDP_PORT_BASE: u16 = 9222;
 
 pub struct BrowserHandle {
     pub profile_id: String,
@@ -26,8 +15,6 @@ pub struct BrowserHandle {
     pub(crate) data_dir: PathBuf,
     pub(crate) verified_data_dir: Option<crate::data_dir::VerifiedDataDir>,
     pub(crate) business_scope: Option<multizen_core::BusinessProfileScope>,
-    child: Option<Child>,
-    bridge: Option<Socks5Bridge>,
     chromix: Option<crate::chromix::ChromixProcess>,
 }
 
@@ -35,7 +22,7 @@ impl BrowserHandle {
     pub(crate) fn is_alive(&self) -> bool {
         self.chromix
             .as_ref()
-            .map_or(true, |process| process.is_alive())
+            .is_some_and(|process| process.is_alive())
     }
 
     pub fn endpoint_info(&self) -> (String, String, u32) {
@@ -46,7 +33,6 @@ impl BrowserHandle {
 pub struct BrowserLauncher {
     pub(crate) pm: Arc<ProfileManager>,
     pub(crate) registry: RunningRegistry,
-    next_port: AtomicU16,
     chromix_launch: tokio::sync::Mutex<()>,
 }
 
@@ -55,148 +41,12 @@ impl BrowserLauncher {
         Self {
             pm,
             registry: RunningRegistry::new(),
-            next_port: AtomicU16::new(CDP_PORT_BASE),
             chromix_launch: tokio::sync::Mutex::new(()),
         }
     }
 
     pub async fn is_running_async(&self, profile_id: &str) -> bool {
         self.registry.contains(profile_id).await
-    }
-
-    pub async fn launch(
-        &self,
-        profile_id: &str,
-        binary_path: &Path,
-        engine: BrowserEngine,
-        companion_dir: Option<&Path>,
-        hidden: bool,
-    ) -> Result<LaunchedProfile> {
-        if engine == BrowserEngine::Chromix {
-            return Err(MultizenError::Launch(
-                "Chromix requires launch_with_chromix with its settings and npm runtime directory"
-                    .into(),
-            ));
-        }
-        // 1. Idempotent: if already running, return the existing endpoint info.
-        if self.registry.contains(profile_id).await {
-            return self
-                .registry
-                .with(profile_id, |h| LaunchedProfile {
-                    id: h.profile_id.clone(),
-                    cdp_endpoint: h.cdp_endpoint.clone(),
-                    pid: h.pid,
-                    started_at: h.started_at.clone(),
-                })
-                .await
-                .ok_or_else(|| MultizenError::Launch("lost handle".into()));
-        }
-
-        // 2. Load profile + mark opened.
-        let mut profile = self
-            .pm
-            .get(profile_id)
-            .map_err(|e| MultizenError::Launch(format!("profile get: {e}")))?
-            .ok_or_else(|| MultizenError::NotFound(profile_id.to_string()))?;
-        self.pm
-            .mark_opened(profile_id)
-            .map_err(|e| MultizenError::Launch(format!("mark_opened: {e}")))?;
-
-        // 3. Allocate CDP port.
-        let cdp_port = self.next_port.fetch_add(1, Ordering::SeqCst);
-
-        // 4. Compute browser data dir.
-        let browser_data_dir = crate::data_dir::default_data_dir(&profile, engine);
-        std::fs::create_dir_all(&browser_data_dir)
-            .map_err(|e| MultizenError::Launch(format!("data_dir: {e}")))?;
-
-        // 5. Read the executable version without starting a second browser.
-        // Some Windows Chromium builds turn `--version` into a normal launch.
-        if let Some(version) = detect_chromium_version(binary_path) {
-            tracing::debug!(binary = %binary_path.display(), %version, "browser runtime version detected");
-            if synchronize_managed_fingerprint_version(&mut profile.fingerprint, &version) {
-                self.pm
-                    .update(
-                        profile_id,
-                        UpdateProfileInput {
-                            fingerprint: Some(profile.fingerprint.clone()),
-                            ..Default::default()
-                        },
-                    )
-                    .map_err(|e| MultizenError::Launch(format!("sync fingerprint version: {e}")))?;
-            }
-        }
-
-        // 6. Proxy: start socks5 bridge + geo probe (best-effort).
-        let mut bridge_handle: Option<(Socks5Bridge, u16)> = None;
-        let mut geo_coords: Option<(f64, f64)> = None;
-        if let Some(proxy) = &profile.proxy {
-            let (bridge, local_port) = Socks5Bridge::start(proxy.clone()).await?;
-            bridge_handle = Some((bridge, local_port));
-            if let Ok(geo) = probe_proxy_geo(proxy, 4000).await {
-                if let (Some(lat), Some(lon)) = (geo.latitude, geo.longitude) {
-                    geo_coords = Some((lat, lon));
-                }
-                let _ = self.pm.set_proxy_country(profile_id, Some(&geo.country));
-            }
-        }
-
-        // 7. Session restore + singleton cleanup.
-        ensure_session_restore(&browser_data_dir)?;
-        clean_stale_singleton_locks(&browser_data_dir);
-
-        // 8. Build spawn args.
-        let bridge_url_str = bridge_handle
-            .as_ref()
-            .map(|(_, p)| format!("socks5://127.0.0.1:{p}"));
-        let browser_data_dir_str = browser_data_dir.to_string_lossy().to_string();
-        let companion_dir_str = companion_dir.map(|p| p.to_string_lossy().to_string());
-        let args = build_spawn_args(
-            &profile,
-            engine,
-            cdp_port,
-            &browser_data_dir_str,
-            bridge_url_str.as_deref(),
-            geo_coords,
-            companion_dir_str.as_deref(),
-            hidden,
-        );
-
-        // Resolve metadata before spawn so an error cannot leave an unregistered process.
-        let business_scope = self.pm.business_profile_scope(profile_id)?;
-        let verified_data_dir = crate::data_dir::verify_data_dir(&browser_data_dir).ok();
-        // 9. Spawn.
-        let mut cmd = Command::new(binary_path);
-        cmd.args(&args);
-        let child = cmd
-            .spawn()
-            .map_err(|e| MultizenError::Launch(format!("spawn: {e}")))?;
-        let pid = child.id().unwrap_or(0);
-        let started_at = chrono::Utc::now().to_rfc3339();
-        let cdp_endpoint = format!("http://127.0.0.1:{cdp_port}");
-
-        // 10. Store handle.
-        let handle = BrowserHandle {
-            profile_id: profile_id.to_string(),
-            cdp_endpoint: cdp_endpoint.clone(),
-            pid,
-            started_at: started_at.clone(),
-            data_dir: browser_data_dir,
-            verified_data_dir,
-            business_scope,
-            child: Some(child),
-            bridge: bridge_handle.map(|(b, _)| b),
-            chromix: None,
-        };
-        self.registry.insert(handle).await;
-
-        // 11. Return launched profile info.
-        Ok(LaunchedProfile {
-            id: profile_id.to_string(),
-            cdp_endpoint,
-            pid,
-            started_at,
-        })
     }
 
     /// Launch through the bundled official SDK; an empty binary path enables SDK resolution.
@@ -291,8 +141,6 @@ impl BrowserLauncher {
                 data_dir,
                 verified_data_dir,
                 business_scope,
-                child: None,
-                bridge: None,
                 chromix: Some(process),
             })
             .await;
@@ -306,21 +154,6 @@ impl BrowserLauncher {
         };
         if let Some(process) = handle.chromix.take() {
             process.close().await;
-        }
-        // Stop bridge first (cuts network traffic).
-        if let Some(bridge) = handle.bridge.take() {
-            let _ = bridge.stop().await;
-        }
-        // Graceful shutdown: SIGTERM → wait 2s → SIGKILL → wait 2s.
-        if let Some(mut child) = handle.child.take() {
-            let _ = child.start_kill();
-            let _ =
-                tokio::time::timeout(std::time::Duration::from_millis(2000), child.wait()).await;
-            if child.try_wait().ok().flatten().is_none() {
-                let _ = child.kill().await;
-                let _ = tokio::time::timeout(std::time::Duration::from_millis(2000), child.wait())
-                    .await;
-            }
         }
         Ok(())
     }

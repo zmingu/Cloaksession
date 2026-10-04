@@ -529,24 +529,19 @@ async fn launcher_task(
                     launcher
                         .validate_business_directory(&profile, engine, &chromix, None)
                         .await?;
-                    if engine == BrowserEngine::Chromix {
-                        let config = chromix.with_profile_options(&profile.chromix_options);
-                        launcher
-                            .launch_with_chromix(
-                                &profile_id,
-                                &binary,
-                                companion.as_deref(),
-                                &config,
-                                &chromix_runtime,
-                                skip_download,
-                                hidden,
-                            )
-                            .await
-                    } else {
-                        launcher
-                            .launch(&profile_id, &binary, engine, companion.as_deref(), hidden)
-                            .await
-                    }
+                    // Chromix is the only engine: always launch through the SDK bridge.
+                    let config = chromix.with_profile_options(&profile.chromix_options);
+                    launcher
+                        .launch_with_chromix(
+                            &profile_id,
+                            &binary,
+                            companion.as_deref(),
+                            &config,
+                            &chromix_runtime,
+                            skip_download,
+                            hidden,
+                        )
+                        .await
                 }
                 .await;
                 if let Ok(launched) = &result {
@@ -822,24 +817,24 @@ impl BrowserDriver for TauriBrowserDriver {
         {
             Ok(session) => session,
             Err(e) => {
-                if self.engine == BrowserEngine::Chromix {
-                    let (resp, receive) = oneshot::channel();
-                    if self
-                        .launcher_tx
-                        .send(LauncherCmd::ClosePrepared {
-                            profile_id: profile_id.to_string(),
-                            slot: slot.clone(),
-                            resp,
+                // Chromix owns a persistent SDK context; close only this generation if attachment fails.
+                let (resp, receive) = oneshot::channel();
+                if self
+                    .launcher_tx
+                    .send(LauncherCmd::ClosePrepared {
+                        profile_id: profile_id.to_string(),
+                        slot: slot.clone(),
+                        resp,
+                    })
+                    .await
+                    .is_ok()
+                    && matches!(receive.await, Ok(Ok(true)))
+                {
+                    self.registry
+                        .with_absent(profile_id, || {
+                            self.running.lock().unwrap().remove(profile_id);
                         })
-                        .await
-                        .is_ok()
-                        && matches!(receive.await, Ok(Ok(true))) {
-                            self.registry
-                                .with_absent(profile_id, || {
-                                    self.running.lock().unwrap().remove(profile_id);
-                                })
-                                .await;
-                        }
+                        .await;
                 }
                 self.emit(
                     "chromium:status",

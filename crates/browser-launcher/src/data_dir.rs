@@ -8,8 +8,6 @@ use std::path::{Component, Path, PathBuf};
 pub fn default_data_dir(profile: &Profile, engine: BrowserEngine) -> PathBuf {
     let root = Path::new(&profile.data_dir);
     match engine {
-        BrowserEngine::Cft => root.to_path_buf(),
-        BrowserEngine::Cloakbrowser => root.join("engines").join("cloakbrowser"),
         BrowserEngine::Chromix => root.join("engines").join("chromix"),
     }
 }
@@ -25,9 +23,8 @@ pub fn effective_data_dir(
     engine: BrowserEngine,
     config: &ChromixSettings,
 ) -> Result<PathBuf> {
-    if engine != BrowserEngine::Chromix {
-        return Ok(default_data_dir(profile, engine));
-    }
+    // Chromix is the only engine: its SDK options can override the data dir.
+    debug_assert!(matches!(engine, BrowserEngine::Chromix));
     validate_layer(&config.options, false)?;
     for name in ["launchOptions", "contextOptions"] {
         if let Some(value) = config.options.get(name) {

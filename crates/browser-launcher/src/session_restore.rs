@@ -34,9 +34,9 @@ pub fn has_restorable_session(browser_data_dir: &Path) -> bool {
 /// Best-effort remove `SingletonLock` / `SingletonSocket` / `SingletonCookie`.
 ///
 /// The TS version parses the symlink target PID and only removes dead ones.
-/// Rust version simplifies to unconditional removal: CloakBrowser on Windows
-/// doesn't use symlink locks, and on Unix this is best-effort cleanup. If
-/// integration tests surface issues, add PID liveness checks later.
+/// Rust version simplifies to unconditional removal: on Windows the locks are
+/// not symlinks, and on Unix this is best-effort cleanup. If integration tests
+/// surface issues, add PID liveness checks later.
 pub fn clean_stale_singleton_locks(browser_data_dir: &Path) {
     for name in ["SingletonLock", "SingletonSocket", "SingletonCookie"] {
         let p = browser_data_dir.join(name);

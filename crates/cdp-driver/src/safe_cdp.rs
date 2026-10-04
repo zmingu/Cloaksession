@@ -1,15 +1,15 @@
-//! Safe-CDP gate: refcount of which CDP domains are currently enabled, plus
-//! CloakBrowser policy. On CloakBrowser, enabling `Runtime` or `Network`
-//! trips a DCHECK in the patched browser and crashes the process, so
-//! `cloak_allows_domain` returns `false` for those domains.
+//! Safe-CDP gate: refcount of which CDP domains are currently enabled.
 //!
-//! Full enforcement (wrapping every chromiumoxide CDP call that could enable
-//! a domain, or a custom `Client::connect` that suppresses `Runtime.enable`)
-//! is deferred to Plan 3 — chromiumoxide auto-enables `Runtime` and `Page`
-//! on `Browser::connect`/`new_page`, which is hard to suppress without
-//! forking. For now, `BrowserSession::safe_enable_check` exposes the gate
-//! state as observability (`tracing::debug!` in tools) and as a real API
-//! for Plan 3 to call before issuing domain-enabling CDP commands.
+//! The former CloakBrowser-specific policy (`CLOAK_RISKY_ENABLE_DOMAINS`)
+//! existed because the patched CloakBrowser build tripped a DCHECK when
+//! `Runtime`/`Network` were enabled. Chromix does not have that restriction, so
+//! the policy is now unconditional.
+//!
+//! Full enforcement (wrapping every chromiumoxide CDP call that could enable a
+//! domain, or a custom `Client::connect` that suppresses `Runtime.enable`)
+//! remains deferred — chromiumoxide auto-enables `Runtime` and `Page` on
+//! `Browser::connect`/`new_page`. `BrowserSession::safe_enable_check` exposes the
+//! refcount state as observability.
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -18,7 +18,6 @@ use multizen_core::BrowserEngine;
 
 pub const SAFE_PAIRED_DISABLE_DOMAINS: &[&str] =
     &["Runtime", "Network", "DOM", "Accessibility", "Log", "Performance"];
-pub const CLOAK_RISKY_ENABLE_DOMAINS: &[&str] = &["Runtime", "Network"];
 
 pub struct SafeEnableRefcount {
     inner: Mutex<HashMap<String, u32>>,
@@ -57,11 +56,8 @@ impl Default for SafeEnableRefcount {
     fn default() -> Self { Self::new() }
 }
 
-/// CloakBrowser rejects Runtime/Network enables (a paired disable cannot
-/// undo the DCHECK tripwire). CFT allows everything.
-pub fn cloak_allows_domain(domain: &str, engine: BrowserEngine) -> bool {
-    match engine {
-        BrowserEngine::Cloakbrowser => !CLOAK_RISKY_ENABLE_DOMAINS.contains(&domain),
-        BrowserEngine::Cft | BrowserEngine::Chromix => true,
-    }
+/// Chromix allows every CDP domain. Kept as a named API so call sites and the
+/// safe-enable gate stay explicit.
+pub fn cloak_allows_domain(_domain: &str, _engine: BrowserEngine) -> bool {
+    true
 }

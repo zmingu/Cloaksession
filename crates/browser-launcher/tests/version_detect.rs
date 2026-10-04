@@ -71,7 +71,7 @@ fn parses_chrome_version_line() {
 }
 
 #[test]
-fn parses_cft_version_line() {
+fn parses_version_line_with_prefix() {
     assert_eq!(
         parse_version_output("Google Chrome for Testing 145.0.6123.5"),
         Some("145.0.6123.5".to_string())

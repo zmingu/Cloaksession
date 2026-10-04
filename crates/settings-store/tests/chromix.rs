@@ -72,7 +72,8 @@ fn old_settings_get_empty_chromix_configuration() {
     )
     .unwrap();
     let actual = SettingsStore::new(&path).load().unwrap();
-    assert_eq!(actual.browser_engine, BrowserEngine::Cft);
+    // The removed "cft" engine is normalized to Chromix for backward compat.
+    assert_eq!(actual.browser_engine, BrowserEngine::Chromix);
     assert_eq!(actual.browser_binary_path.as_deref(), Some("/local/chrome"));
     assert_eq!(actual.chromix.node_path, "node");
     assert!(actual.chromix.options.is_empty());

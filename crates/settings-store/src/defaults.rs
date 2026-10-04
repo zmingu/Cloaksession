@@ -60,11 +60,12 @@ impl SettingsStore {
         if let Some(v) = raw.mcp_http_port {
             merged.mcp_http_port = v;
         }
+        // Chromix is the only engine. Tolerant read: any historical value
+        // ("cloakbrowser"/"cft"), an unknown string, or a missing field all
+        // normalize to Chromix so old settings.json keeps loading.
         merged.browser_engine = match raw.browser_engine.as_deref() {
-            Some("cft") => BrowserEngine::Cft,
-            Some("cloakbrowser") => BrowserEngine::Cloakbrowser,
-            Some("chromix") => BrowserEngine::Chromix,
-            _ => BrowserEngine::default(),
+            Some(_) => BrowserEngine::Chromix,
+            None => BrowserEngine::default(),
         };
         merged.browser_binary_path = raw.browser_binary_path.filter(|s| !s.trim().is_empty());
         merged.chromix = raw.chromix.unwrap_or_default();

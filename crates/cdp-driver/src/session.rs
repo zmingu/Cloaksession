@@ -109,20 +109,6 @@ impl BrowserSession {
             avatar_locks: crate::task_page::TaskLocks::default(),
         };
 
-        // C1: The safe-CDP gate is not yet wired into chromiumoxide's
-        // auto-enable. chromiumoxide auto-enables `Runtime` and `Page` on
-        // `Browser::connect`/`new_page`; on CloakBrowser, `Runtime` is
-        // exactly the `CLOAK_RISKY_ENABLE_DOMAINS` tripwire. Log the gap so
-        // integrators (Plan 3) see it; a full enforcement gate is deferred.
-        if engine == BrowserEngine::Cloakbrowser {
-            tracing::warn!(
-                engine = "cloakbrowser",
-                "safe_cdp gate not yet wired into chromiumoxide auto-enable; \
-                 CloakBrowser sessions may trip the Runtime/Network DCHECK and crash. \
-                 See safe_cdp module comment for the deferred enforcement plan."
-            );
-        }
-
         Ok(session)
     }
 
@@ -283,7 +269,7 @@ impl BrowserSession {
     /// script on Chrome Web Store pages writes the extension id to
     /// `<html data-mz-add-ext="…">` and the host polls it via
     /// `Runtime.evaluate`. The DOM is shared across content-script worlds,
-    /// so this works even though CloakBrowser isolates content scripts.
+    /// so this works regardless of how the engine isolates content scripts.
     ///
     /// Returns the first non-empty attribute value found across all matching
     /// pages, or `None` if no page has a signal.
@@ -328,12 +314,9 @@ impl BrowserSession {
     }
 
     /// safe-CDP gate check for a domain. Returns `true` if the domain is not
-    /// yet enabled (`SafeEnableRefcount::should_enable`) AND CloakBrowser
-    /// policy allows it (`cloak_allows_domain`). Plan 3 should call this
-    /// before issuing domain-enabling CDP commands. Today tools use it for
-    /// `tracing::debug!` observability only (chromiumoxide already
-    /// auto-enabled `Runtime`), so `SafeEnableRefcount` and
-    /// `cloak_allows_domain` are not dead code.
+    /// yet enabled (`SafeEnableRefcount::should_enable`) AND the engine policy
+    /// allows it (`cloak_allows_domain`, always true for Chromix). Tools use it
+    /// for `tracing::debug!` observability; a full enforcement gate is deferred.
     pub fn safe_enable_check(&self, domain: &str) -> bool {
         self.safe.should_enable(domain) && safe_cdp::cloak_allows_domain(domain, self.engine)
     }

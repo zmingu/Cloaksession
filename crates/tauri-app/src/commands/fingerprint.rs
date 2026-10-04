@@ -1,10 +1,10 @@
 //! Fingerprint commands.
 //!
-//! - `generate`: delegates to `profile_manager::fingerprint::default_fingerprint`,
-//!   the only fingerprint generator that exists in the workspace. Takes a
-//!   `seed` string (any non-empty value; the generator currently ignores it
-//!   but the parameter is kept for forward compatibility with P5).
-//! - `devices` / `locales`: return static lists mirroring the private
+//! - `generate`: delegates to `profile_manager::fingerprint::default_fingerprint`.
+//!   An **empty** seed draws fresh entropy, so each call yields a different but
+//!   internally coherent persona (the wizard's "Re-roll"); a non-empty seed is
+//!   deterministic, so a profile id always regenerates the same fingerprint.
+//!   `devices` / `locales`: return static lists mirroring the private
 //!   `all_device_families()` / `common_locales()` in `mcp-server/src/tools.rs`.
 //!   Those helpers are private; rather than widen mcp-server's API for two
 //!   constant arrays, the lists are duplicated here. If the lists diverge,

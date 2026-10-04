@@ -247,9 +247,8 @@ impl<'a> PageOperations<'a> {
             .into_value::<serde_json::Value>()
             .map_err(|e| MultizenError::Cdp(format!("value: {e}")))?;
         // innerText fallback (full a11y tree extraction requires the
-        // Accessibility domain which is gated behind safe-enable; using
-        // innerText keeps the integration testable without CloakBrowser
-        // DCHECK risk).
+        // Accessibility domain which is gated behind safe-enable; innerText
+        // keeps extraction simple and CDP-light).
         let inner = page
             .evaluate("document.body ? document.body.innerText.slice(0,8000) : ''")
             .await

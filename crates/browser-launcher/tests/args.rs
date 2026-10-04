@@ -1,6 +1,4 @@
-use browser_launcher::args::{
-    build_cloak_fingerprint_args, build_spawn_args, device_memory_api_value, fingerprint_seed_value,
-};
+use browser_launcher::args::build_spawn_args;
 use multizen_core::{BrowserEngine, Profile};
 
 fn base_profile() -> Profile {
@@ -57,8 +55,11 @@ fn base_profile() -> Profile {
     }
 }
 
+/// Chromix is the only engine: the native spawn args are exactly the CDP
+/// endpoint contract. No CloakBrowser `--fingerprint-*`, no CFT `--user-agent`
+/// / `--test-type`, no proxy/DNS flags leak through.
 #[test]
-fn chromix_args_do_not_inherit_cloak_fingerprint_or_proxy_policy() {
+fn chromix_args_are_only_the_cdp_endpoint_contract() {
     let profile = base_profile();
     let args = build_spawn_args(
         &profile,
@@ -75,162 +76,24 @@ fn chromix_args_do_not_inherit_cloak_fingerprint_or_proxy_policy() {
         "--remote-debugging-address=127.0.0.1",
         "--remote-debugging-port=12345",
     ]);
+    assert!(args.iter().all(|a| !a.starts_with("--fingerprint")));
+    assert!(args.iter().all(|a| !a.starts_with("--user-agent")));
+    assert!(args.iter().all(|a| a != "--test-type=gpu"));
+    assert!(args.iter().all(|a| !a.starts_with("--proxy-server")));
 }
 
+/// Hidden launch and every fingerprint/proxy input are irrelevant to the native
+/// args for Chromix: they are owned by the SDK bridge (`launch_with_chromix`
+/// appends `--window-position` into `launchOptions.args`). This locks in that no
+/// engine-specific flag can reappear here.
 #[test]
-fn hidden_launch_moves_the_window_off_screen_without_headless() {
+fn chromix_args_ignore_hidden_and_fingerprint_inputs() {
     let profile = base_profile();
-    let visible = build_spawn_args(
-        &profile,
-        BrowserEngine::Cloakbrowser,
-        9222,
-        "/tmp/p1",
-        None,
-        None,
-        None,
-        false,
-    );
-    let hidden = build_spawn_args(
-        &profile,
-        BrowserEngine::Cloakbrowser,
-        9222,
-        "/tmp/p1",
-        None,
-        None,
-        None,
-        true,
-    );
-    assert!(!visible.iter().any(|arg| arg.starts_with("--window-position")));
-    assert!(hidden.iter().any(|arg| arg == "--window-position=-32000,-32000"));
-    // Headed, not headless: the fingerprint must stay identical to a visible launch.
-    assert!(!hidden.iter().any(|arg| arg.starts_with("--headless")));
-    // Hidden only adds the position switch — everything else is unchanged.
-    assert_eq!(
-        hidden.iter().filter(|arg| !arg.starts_with("--window-position")).collect::<Vec<_>>(),
-        visible.iter().collect::<Vec<_>>(),
-    );
-}
-
-#[test]
-fn base_args_always_present() {
-    let p = base_profile();
-    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/tmp/p1/engines/cloakbrowser", None, None, None, false);
-    assert!(args.iter().any(|a| a == "--user-data-dir=/tmp/p1/engines/cloakbrowser"));
-    assert!(args.iter().any(|a| a == "--remote-debugging-port=9222"));
-    assert!(args.iter().any(|a| a == "--no-first-run"));
-    assert!(args.iter().any(|a| a == "--no-default-browser-check"));
-    assert!(args.iter().any(|a| a == "--restore-last-session"));
-    assert!(args.iter().any(|a| a == "--lang=en-US"));
-    assert!(args.iter().any(|a| a == "--accept-lang=en-US,en;q=0.9"));
-    assert!(args.iter().any(|a| a == "--window-size=1920,1080"));
-    assert!(args.iter().any(|a| a == "--force-device-scale-factor=1"));
-    assert!(args.iter().all(|a| a != "--incognito" && a != "--guest"));
-}
-
-#[test]
-fn cloak_engine_adds_fingerprint_flags() {
-    let p = base_profile();
-    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/tmp/p1/engines/cloakbrowser", None, None, None, false);
-    assert!(args.iter().any(|a| a.starts_with("--fingerprint=")), "cloak must pass --fingerprint=");
-    assert!(args.iter().any(|a| a.starts_with("--fingerprint-platform=")));
-    assert!(args.iter().any(|a| a.starts_with("--fingerprint-timezone=America/New_York")));
-}
-
-#[test]
-fn cft_engine_adds_user_agent_and_test_type() {
-    let p = base_profile();
-    let args = build_spawn_args(&p, BrowserEngine::Cft, 9222, "/tmp/p1", None, None, None, false);
-    assert!(args.iter().any(|a| a.starts_with("--user-agent=")));
-    assert!(args.iter().any(|a| a == "--test-type=gpu"));
-    // CFT must NOT pass --fingerprint-*
-    assert!(args.iter().all(|a| !a.starts_with("--fingerprint=")));
-}
-
-#[test]
-fn cft_engine_preserves_custom_user_agent() {
-    let mut p = base_profile();
-    p.fingerprint.user_agent = "Custom/99.1 test-agent".into();
-    let args = build_spawn_args(&p, BrowserEngine::Cft, 9222, "/tmp/p1", None, None, None, false);
-    assert!(args.iter().any(|a| a == "--user-agent=Custom/99.1 test-agent"));
-}
-
-#[test]
-fn cloak_engine_passes_custom_user_agent() {
-    let mut p = base_profile();
-    p.fingerprint.user_agent = "Custom/99.1 test-agent".into();
-    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/tmp/p1", None, None, None, false);
-    assert!(args.iter().any(|a| a == "--fingerprint-user-agent=Custom/99.1 test-agent"));
-}
-
-#[test]
-fn proxy_adds_bridge_url_and_dns_flags() {
-    let p = base_profile();
-    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/d", Some("socks5://127.0.0.1:1080"), None, None, false);
-    assert!(args.iter().any(|a| a == "--proxy-server=socks5://127.0.0.1:1080"));
-    assert!(args.iter().any(|a| a == "--force-webrtc-ip-handling-policy=disable_non_proxied_udp"));
-    assert!(args.iter().any(|a| a == "--dns-over-https-mode=off"));
-    assert!(args.iter().any(|a| a == "--disable-background-networking"));
-}
-
-#[test]
-fn geo_coords_add_fingerprint_location_and_webrtc_ip() {
-    let p = base_profile();
-    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/d", Some("socks5://127.0.0.1:1080"), Some((40.7, -74.0)), None, false);
-    assert!(args.iter().any(|a| a == "--fingerprint-location=40.7,-74"));
-    assert!(args.iter().any(|a| a == "--fingerprint-webrtc-ip=auto"));
-}
-
-#[test]
-fn fingerprint_seed_is_5_digit_numeric() {
-    let s = fingerprint_seed_value("p1", Some("abc"));
-    assert!(s.len() == 5, "seed must be 5 digits, got {s}");
-    assert!(s.chars().all(|c| c.is_ascii_digit()));
-    let n: u32 = s.parse().unwrap();
-    assert!((10000..=99999).contains(&n));
-}
-
-#[test]
-fn device_memory_api_value_clamps() {
-    assert_eq!(device_memory_api_value(8), 8);
-    assert_eq!(device_memory_api_value(16), 8, "clamped to 8");
-    assert_eq!(device_memory_api_value(4), 4);
-    assert_eq!(device_memory_api_value(6), 8, "round(log2(6))=3 → 2^3=8");
-    assert_eq!(device_memory_api_value(2), 2);
-}
-
-#[test]
-fn cloak_default_storage_quota_is_two_gb() {
-    let mut p = base_profile();
-    p.fingerprint = profile_manager::fingerprint::default_fingerprint("abc");
-    assert_eq!(p.fingerprint.storage_quota, Some(2_000_000_000));
-    let args = build_spawn_args(&p, BrowserEngine::Cloakbrowser, 9222, "/tmp/p1", None, None, None, false);
-    assert!(args.iter().any(|a| a == "--fingerprint-storage-quota=2000000000"));
-}
-
-#[test]
-fn cloak_storage_quota_preserves_custom_values_in_bytes() {
-    let mut p = base_profile();
-    for bytes in [500_000_000, 3_210_000_000, 32_000_000_000] {
-        p.fingerprint.storage_quota = Some(bytes);
-        let args = build_cloak_fingerprint_args(&p.id, &p.fingerprint);
-        assert!(args.contains(&format!("--fingerprint-storage-quota={bytes}")));
-    }
-}
-
-#[test]
-fn cloak_storage_quota_unset_or_zero_uses_engine_default() {
-    let mut p = base_profile();
-    for quota in [None, Some(0)] {
-        p.fingerprint.storage_quota = quota;
-        let args = build_cloak_fingerprint_args(&p.id, &p.fingerprint);
-        assert!(args.iter().all(|a| !a.starts_with("--fingerprint-storage-quota=")));
-    }
-}
-
-#[test]
-fn cloak_fingerprint_args_include_gpu_and_storage() {
-    let p = base_profile();
-    let fp_args = build_cloak_fingerprint_args(&p.id, &p.fingerprint);
-    assert!(fp_args.iter().any(|a| a.starts_with("--fingerprint-gpu-vendor=Google Inc. (Intel)")));
-    assert!(fp_args.iter().any(|a| a.starts_with("--fingerprint-storage-quota=")));
+    let visible = build_spawn_args(&profile, BrowserEngine::Chromix, 9222, "/d", None, None, None, false);
+    let hidden = build_spawn_args(&profile, BrowserEngine::Chromix, 9222, "/d", None, None, None, true);
+    assert_eq!(visible, hidden);
+    assert!(visible.iter().all(|a| !a.starts_with("--window-position")));
+    assert!(visible.iter().all(|a| !a.starts_with("--headless")));
+    assert!(visible.iter().any(|a| a == "--user-data-dir=/d"));
+    assert!(visible.iter().any(|a| a == "--remote-debugging-port=9222"));
 }

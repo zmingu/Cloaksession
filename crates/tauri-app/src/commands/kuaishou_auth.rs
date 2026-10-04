@@ -13,6 +13,7 @@ use std::sync::Arc;
 
 use cdp_driver::platforms::kuaishou::{
     self, AuthPhase, EnsureAuthOptions, EnsureAuthResult, KS_CONNECT_TIMEOUT, KS_LOGIN_TIMEOUT,
+    KS_SELECTOR_POLL,
 };
 use cdp_driver::session::BrowserSession;
 use cdp_driver::TaskCancel;
@@ -78,12 +79,15 @@ pub async fn kuaishou_login(
         .map_err(|e| format!("快手扫码登录失败或超时：{e}"))
 }
 
-/// Capture the profile's current page as a base64 PNG.
+/// Read the shop login QR from the running profile's page.
 ///
-/// Used by the shop account wizard to show the login QR while the browser
-/// window stays off-screen (see `profiles_launch { hidden: true }`). Returns
-/// `Ok(None)` when the profile has no running session yet — the wizard keeps
-/// polling instead of treating that as an error.
+/// The login page renders the QR as an inline `data:image/png;base64,…` `<img>`,
+/// so the exact image is lifted from the DOM instead of screenshotting (and
+/// cropping) the whole page. Used by the shop account wizard while the browser
+/// window stays off-screen (see `profiles_launch { hidden: true }`). Returns the
+/// bare base64 payload, or `Ok(None)` when the profile has no running session or
+/// the QR has not rendered yet — the wizard keeps polling instead of treating
+/// either as an error.
 #[tauri::command]
 pub async fn kuaishou_login_qr(
     state: State<'_, AppState>,
@@ -92,11 +96,22 @@ pub async fn kuaishou_login_qr(
     let Some(session) = state.driver.registry().get(&profile_id).await else {
         return Ok(None);
     };
-    session
-        .screenshot()
+    let pages = session
+        .browser
+        .pages()
         .await
-        .map(Some)
-        .map_err(|e| format!("二维码截图失败：{e}"))
+        .map_err(|e| format!("二维码页面读取失败：{e}"))?;
+    // Try every attached page: the login tab is not necessarily the first one,
+    // and a page that is blank, mid-navigation, or not the login page simply has
+    // no QR — keep looking rather than failing the poll.
+    for page in pages {
+        let target_id = page.target_id().as_ref().to_string();
+        match kuaishou::qr_image(&session, &target_id, TaskCancel::new(), KS_SELECTOR_POLL).await {
+            Ok(Some(image)) => return Ok(Some(image)),
+            Ok(None) | Err(_) => continue,
+        }
+    }
+    Ok(None)
 }
 
 /// Full flow: cookie-reuse verify first (`scanned: false`), otherwise wait

@@ -16,12 +16,8 @@ fn default_and_real_shallow_merged_overrides() {
         .unwrap();
     let mut global = ChromixSettings::default();
     assert_eq!(
-        default_data_dir(&p, Engine::Cft),
-        std::path::PathBuf::from(&p.data_dir)
-    );
-    assert_eq!(
-        default_data_dir(&p, Engine::Cloakbrowser),
-        std::path::Path::new(&p.data_dir).join("engines/cloakbrowser")
+        default_data_dir(&p, Engine::Chromix),
+        std::path::Path::new(&p.data_dir).join("engines/chromix")
     );
     assert_eq!(
         effective_data_dir(&p, Engine::Chromix, &global).unwrap(),
@@ -49,10 +45,6 @@ fn default_and_real_shallow_merged_overrides() {
         )
         .unwrap(),
         d.path().join("profile")
-    );
-    assert_eq!(
-        effective_data_dir(&p, Engine::Cft, &global).unwrap(),
-        default_data_dir(&p, Engine::Cft)
     );
 }
 
