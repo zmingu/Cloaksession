@@ -1,10 +1,10 @@
 import type { JSX } from "react";
-import { Boxes, Command, Plug, Settings } from "lucide-react";
+import { Boxes, Command, MessagesSquare, Plug, Settings } from "lucide-react";
 import { cn } from "../../lib/cn";
 import type { ProfileGroup } from "../../types";
 import { useT } from "../../i18n/LanguageProvider";
 
-export type Section = "profiles" | "mcp" | "settings";
+export type Section = "profiles" | "mcp" | "business" | "settings";
 
 /** Sidebar group filter — mirrors `Constellation.GroupFilter` structurally. */
 export type GroupFilter = "all" | "ungrouped" | (string & {});
@@ -18,6 +18,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { id: "profiles", icon: Boxes, kbd: "1" },
   { id: "mcp", icon: Plug, kbd: "2" },
+  { id: "business", icon: MessagesSquare, kbd: "3" },
   { id: "settings", icon: Settings, kbd: "," },
 ];
 
@@ -42,7 +43,13 @@ export function Sidebar({
 }: Props): JSX.Element {
   const t = useT();
   const navLabel = (id: Section): string =>
-    id === "profiles" ? t("nav.profiles") : id === "settings" ? t("nav.settings") : "MCP";
+    id === "profiles"
+      ? t("nav.profiles")
+      : id === "settings"
+        ? t("nav.settings")
+        : id === "business"
+          ? t("nav.business")
+          : "MCP";
   const namedGroups = groups.filter((g) => g.name != null);
   const ungrouped = groups.find((g) => g.name == null);
   const ungroupedCount = ungrouped?.count ?? 0;
