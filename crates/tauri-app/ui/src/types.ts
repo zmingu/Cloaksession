@@ -562,3 +562,41 @@ export interface SceneFinishedPayload {
   stopped: boolean | null;
   reason: string | null;
 }
+
+// E-group: jinniu promote — crates/tauri-app/src/driver/jinniu_promote.rs
+// (serde `camelCase`; mirrors the Rust structs 1:1)
+// ---------------------------------------------------------------------------
+
+/** One promotable live user (jieger `LiveUserInfo`). */
+export interface JinniuLiveUser {
+  uid: string;
+  displayName: string;
+  fullText: string;
+  isSelected: boolean;
+}
+
+/** `getLiveUsers` result. */
+export interface JinniuLiveUsers {
+  accountId: string;
+  users: JinniuLiveUser[];
+}
+
+/** Opened (or reused) storeCreate tab. */
+export interface StoreCreateTab {
+  accountId: string;
+  url: string;
+  targetId: string;
+}
+
+/**
+ * Phase-1 config (jieger `StoreCreatePhase1Config`). All fields optional;
+ * the backend fills jieger's defaults.
+ */
+export interface StoreCreatePhase1Config {
+  enableNetRoi?: boolean | null;
+  dailyBudget?: string | null;
+  roiCoefficient?: string | null;
+  promoteType?: string | null;
+  roiTargetMode?: string | null;
+  creativeMode?: string | null;
+}

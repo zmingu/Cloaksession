@@ -28,6 +28,10 @@ interface MockScene {
  * assertions (including the no-character-spacing-injection guard).
  */
 export async function installCGroupMock(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    localStorage.setItem("multizen.ui.section", JSON.stringify("business"));
+    localStorage.setItem("multizen.ui.onboarded", "true");
+  });
   await installTauriMock(page);
   await page.goto("/");
   await page.evaluate(() => {

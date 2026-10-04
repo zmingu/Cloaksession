@@ -1,17 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
 import { cgroupRequests, installCGroupMock } from "./cScriptSceneMock";
 
-const scriptsNav = (page: Page) =>
-  page.getByRole("button", { name: /自动剧本|Scripts/ });
+// The mock already landed on the business section during its first load.
+async function openScripts(page: Page): Promise<void> {
+  await page.getByRole("tab", { name: /主播互动|Auto messages/ }).click();
+}
 
 // Every navigation is loopback and every C-group command is a local Tauri fake.
 test.beforeEach(async ({ page }) => {
   await installCGroupMock(page);
 });
-
-async function openScripts(page: Page): Promise<void> {
-  await scriptsNav(page).click();
-}
 
 test("tabs switch between auto-message, auto-reply and scene panels", async ({ page }) => {
   await openScripts(page);
