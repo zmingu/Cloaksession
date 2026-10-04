@@ -12,11 +12,14 @@ test.beforeEach(async ({ page }) => {
   await installListenSubMock(page);
 });
 
+const commentsTab = (page: Page) => page.getByRole("tab", { name: "Comment listener" });
+const subTab = (page: Page) => page.getByRole("tab", { name: "Sub-accounts" });
 const commentsPage = (page: Page) => page.getByTestId("comments-page");
 const subPage = (page: Page) => page.getByTestId("sub-page");
 const profileInput = (page: Page) => commentsPage(page).getByLabel("Profile ID", { exact: true });
 
 test("listener start/stop drives status pill and streams snake_case events", async ({ page }) => {
+  await commentsTab(page).click();
   await setListenSubFixture(page, {
     events: [
       {
@@ -49,6 +52,7 @@ test("listener start/stop drives status pill and streams snake_case events", asy
 });
 
 test("listener backend errors render the raw message under a Chinese template", async ({ page }) => {
+  await commentsTab(page).click();
   await profileInput(page).fill("p1");
   await page.evaluate(() => {
     const internals = (window as any).__TAURI_INTERNALS__;
@@ -73,7 +77,7 @@ test("sub-account list, batch login, and interaction history render from IPC", a
       },
     ],
   });
-  await page.getByRole("tab", { name: "Sub-accounts", exact: true }).click();
+  await subTab(page).click();
   await expect(subPage(page)).toBeVisible();
   await expect(subPage(page).getByTestId("sub-list")).toContainText("小号甲");
   await subPage(page).getByRole("checkbox", { name: "Select 小号甲" }).check();
@@ -87,7 +91,7 @@ test("sub-account list, batch login, and interaction history render from IPC", a
 
 test("unbind and danmaku send both require confirmation then invoke", async ({ page }) => {
   await setListenSubFixture(page, { accounts: [subFixture()] });
-  await page.getByRole("tab", { name: "Sub-accounts", exact: true }).click();
+  await subTab(page).click();
   await subPage(page).getByRole("button", { name: "Unbind", exact: true }).click();
   await expect(page.getByText("Unbind this sub-account?")).toBeVisible();
   await expect.poll(async () => (await listenSubRequests(page)).filter((r) => r.command === "unbind_sub_account")).toEqual([]);

@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { Boxes, Briefcase, Command, Plug, Settings } from "lucide-react";
+import { Boxes, Command, MessagesSquare, Plug, Settings } from "lucide-react";
 import { cn } from "../../lib/cn";
 import type { ProfileGroup } from "../../types";
 import { useT } from "../../i18n/LanguageProvider";
@@ -18,7 +18,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { id: "profiles", icon: Boxes, kbd: "1" },
   { id: "mcp", icon: Plug, kbd: "2" },
-  { id: "business", icon: Briefcase, kbd: "3" },
+  { id: "business", icon: MessagesSquare, kbd: "3" },
   { id: "settings", icon: Settings, kbd: "," },
 ];
 

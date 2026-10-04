@@ -31,6 +31,10 @@ export function subFixture(patch: Partial<BusinessAccount> = {}): BusinessAccoun
 }
 
 export async function installListenSubMock(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    localStorage.setItem("multizen.ui.section", JSON.stringify("business"));
+    localStorage.setItem("multizen.ui.onboarded", "true");
+  });
   await installTauriMock(page);
   await page.goto("/");
   await page.evaluate(() => {

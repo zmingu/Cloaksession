@@ -378,3 +378,628 @@ export interface BindCreatorResult {
   ok: boolean;
   error?: string;
 }
+
+// ---------------------------------------------------------------------------
+// D-group shop (product scripts / shop helper / auto popup)
+//
+// Frontend mirrors of:
+//   crates/profile-manager/src/shop_product_script.rs
+//   crates/tauri-app/src/driver/shop_helper.rs
+//   crates/tauri-app/src/driver/auto_popup.rs
+// All Rust structs use `#[serde(rename_all = "camelCase")]` except
+// `ScriptLineAction` (kebab-case), `KnowledgeField` (kebab-case) and
+// `PopupEventKind` (kebab-case). `None` serializes as `null`.
+// ---------------------------------------------------------------------------
+
+/** 话术行动作：`ScriptLineAction` (kebab-case over IPC). */
+export type ScriptLineAction = "on-shelf" | "off-shelf" | "explain" | "cancel-explain";
+
+/** 商品话术脚本（库条目）。Rust `ShopProductScript`. */
+export interface ShopProductScript {
+  id: string;
+  name: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 脚本明细：脚本 + 按 `sortOrder` 排序的话术行。 */
+export interface ShopProductScriptDetail {
+  script: ShopProductScript;
+  lines: ShopProductScriptLine[];
+}
+
+/** 话术行：动作 + 商品 + 视频时间点 + 提前量 + 话术内容。 */
+export interface ShopProductScriptLine {
+  id: string;
+  scriptId: string;
+  sortOrder: number;
+  action: ScriptLineAction;
+  goodsId: string;
+  goodsName: string | null;
+  videoTimeSec: number;
+  leadSec: number;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 创建脚本入参。`description` 缺省 = 无描述。 */
+export interface CreateShopProductScriptInput {
+  name: string;
+  description?: string | null;
+}
+
+/**
+ * 更新脚本入参（三态 `description`）：
+ * - `undefined`（字段缺省）= 保持原值；
+ * - `null`（`Some(None)`）= 清空描述；
+ * - `string`（`Some(Some(v))`）= 设为新值（空字符串按后端规则归一为 `None`）。
+ */
+export interface UpdateShopProductScriptInput {
+  name?: string;
+  description?: string | null;
+}
+
+/** 新增话术行入参：`sortOrder` 缺省时追加到末尾。 */
+export interface AddShopProductScriptLineInput {
+  scriptId: string;
+  action: ScriptLineAction;
+  goodsId: string;
+  goodsName?: string | null;
+  videoTimeSec: number;
+  leadSec?: number;
+  content?: string;
+  sortOrder?: number | null;
+}
+
+/**
+ * 更新话术行入参：缺省字段保持原值。
+ * `goodsName` 三态：`undefined` = 保持；`null`（`Some(None)`）= 清空；
+ * `string` = 设为新值（空字符串归一为 `None`）。
+ */
+export interface UpdateShopProductScriptLineInput {
+  action?: ScriptLineAction;
+  goodsId?: string;
+  goodsName?: string | null;
+  videoTimeSec?: number;
+  leadSec?: number;
+  content?: string;
+}
+
+/** 商品 Tab：小黄车内商品 / 待上车商品。 */
+export type HelperGoodTab = "inCart" | "toAdd";
+
+/** 商品状态（Rust `HelperGoodStatus`, camelCase）。 */
+export type HelperGoodStatus = "available" | "onShelf" | "offShelf" | "unknown";
+
+/** 跟播助手商品信息。Rust `HelperGoodInfo`. */
+export interface HelperGoodInfo {
+  goodsId: string;
+  goodsName: string;
+  rawText: string;
+  /** 可用动作（`上车`/`下车`子集）。 */
+  availableActions: string[];
+  status: HelperGoodStatus;
+  /** 读取来源 Tab（`inCart`/`toAdd`）。 */
+  sourceTab: string;
+}
+
+/** 上车/下车写动作结果（含操作后重读的商品列表）。 */
+export interface HelperGoodActionResult {
+  ok: boolean;
+  goodsId: string;
+  /** `on`（上车）/`off`（下车）。 */
+  action: string;
+  detail: string;
+  goods: HelperGoodInfo[];
+}
+
+/** `shop-helper:goods-changed` 推送载荷（camelCase）。 */
+export interface ShopHelperGoodsChanged {
+  profileId: string;
+  goodsId: string;
+  action: string;
+  ok: boolean;
+}
+
+/** 增强商品队列项。Rust `AutoPopUpGoodsItem`. */
+export interface AutoPopUpGoodsItem {
+  id: string;
+  repeatCount?: number | null;
+  interval?: [number, number] | null;
+}
+
+/** 失败重试配置。Rust `AutoPopUpRetryConfig`. */
+export interface AutoPopUpRetryConfig {
+  maxRetries?: number | null;
+  retryDelayMs?: number | null;
+}
+
+/** 自动弹品配置。`goodsItems` 优先，缺席时回退到 `goodsIds`。 */
+export interface AutoPopUpConfig {
+  goodsIds?: string[] | null;
+  interval: [number, number];
+  perGoodsInterval?: Record<string, [number, number]> | null;
+  goodsItems?: AutoPopUpGoodsItem[] | null;
+  random?: boolean;
+  retry?: AutoPopUpRetryConfig | null;
+}
+
+/** 配置热更新补丁：`Some` 字段覆盖运行中配置，缺省保持不变。 */
+export interface AutoPopUpConfigPatch {
+  goodsIds?: string[] | null;
+  interval?: [number, number] | null;
+  perGoodsInterval?: Record<string, [number, number]> | null;
+  goodsItems?: AutoPopUpGoodsItem[] | null;
+  random?: boolean | null;
+  retry?: AutoPopUpRetryConfig | null;
+}
+
+/** 商品行。空字符串后端归一为 `None` → 前端 `null`。 */
+export interface PopupGoodsInfo {
+  serial: string;
+  title: string | null;
+  price: string | null;
+}
+
+/** 已入库的商品知识（标题 / 价格，弹窗扫描用；与 C 组回复预览的同名类型区分）。 */
+export interface PopupGoodsKnowledge {
+  title?: string | null;
+  price?: string | null;
+}
+
+/** 知识差异字段（kebab-case）。 */
+export type KnowledgeField = "title" | "price";
+
+export interface PopupScanDiff {
+  goodsId: string;
+  field: KnowledgeField;
+  current: string | null;
+  candidate: string | null;
+}
+
+export interface PopupScanReport {
+  scannedCount: number;
+  diffs: PopupScanDiff[];
+  candidates: Record<string, PopupGoodsKnowledge>;
+}
+
+export interface ShortcutFailure {
+  accelerator: string;
+  error: string;
+}
+
+export interface ShortcutRegisterResult {
+  ok: boolean;
+  registered: string[];
+  failed: ShortcutFailure[];
+}
+
+/** 运行状态快照（命令返回 + `auto-popup:state` 广播载荷）。 */
+export interface AutoPopUpStatus {
+  profileId: string;
+  running: boolean;
+  queueLen: number;
+  lastGoodsId: string | null;
+  lastError: string | null;
+  updatedAt: string;
+}
+
+/** 广播事件种类（kebab-case）。 */
+export type PopupEventKind =
+  | "started"
+  | "stopped"
+  | "explained"
+  | "explain-failed"
+  | "config-updated"
+  | "shortcut-triggered";
+
+/** 广播事件（`auto-popup:event` 载荷）。 */
+export interface AutoPopUpEvent {
+  profileId: string;
+  kind: PopupEventKind;
+  goodsId?: string | null;
+  reason?: string | null;
+}
+
+// C-group: auto-message / auto-reply / scene-play
+// (crates/tauri-app/src/driver/auto_message.rs, auto_reply.rs, scene_play.rs
+// + profile-manager scenes / auto_reply records).
+//
+// NOTE: the auto-message structs (`MessageLine`, `ScheduledLine`,
+// `AutoMessageState`, `AutoMessageStarted`, `AutoMessageStopped`) have no
+// `#[serde(rename_all)]`, so their wire keys stay snake_case (unlike the
+// camelCase structs elsewhere in this file). Scene / reply structs use
+// camelCase, `TriggerMode` is kebab-case, `SceneLineAction` lowercase.
+// Character-spacing injection is intentionally NOT modeled here:
+// the frontend never enables it.
+// ---------------------------------------------------------------------------
+
+/** One timeline entry: send `message` at `offset_sec` after run start. */
+export interface AutoMessageLine {
+  offset_sec: number;
+  message: string;
+  account_id: string;
+}
+
+/** Options for `auto_message_start` (random-space injection excluded). */
+export interface AutoMessageStartOptions {
+  nickname?: string | null;
+  anchor?: string | null;
+  startAt?: number | null;
+}
+
+/** A line with its absolute fire time resolved. */
+export interface AutoMessageScheduledLine {
+  offset_sec: number;
+  trigger_at: number;
+  message: string;
+  account_id: string;
+}
+
+/** Snapshot emitted on start and after every dispatch. */
+export interface AutoMessageState {
+  started_at: number;
+  total_count: number;
+  sent_count: number;
+  schedule: AutoMessageScheduledLine[];
+}
+
+/** Return value of `auto_message_start`. */
+export interface AutoMessageStarted {
+  run_id: string;
+  started_at: number;
+  scheduled_count: number;
+}
+
+/** Payload of the `auto-message:stopped` push event. */
+export interface AutoMessageStopped {
+  run_id: string;
+  reason: string;
+}
+
+/** One goods' reply knowledge (caller-supplied snapshot for preview). */
+export interface GoodsKnowledge {
+  goodsId: string;
+  title: string;
+  price?: string | null;
+  promotion?: string | null;
+  status?: string | null;
+  highlights?: string[];
+  tokens?: string[];
+  qa?: GoodsQa[];
+}
+
+export interface GoodsQa {
+  question: string;
+  answer: string;
+}
+
+/** Where a reply came from (`Ai` is hook-only, never auto-sent). */
+export type ReplySource = "knowledge" | "ai" | "template";
+
+/** Resolution outcome for one comment. */
+export interface ReplyResult {
+  ok: boolean;
+  reply: string | null;
+  source: ReplySource;
+  goodsId: string | null;
+  intent: string | null;
+  error: string | null;
+  knowledgeHit: boolean;
+}
+
+/** One persisted auto-reply resolution row. */
+export interface AutoReplyRecord {
+  id: number;
+  accountId: string;
+  content: string;
+  reply: string;
+  source: string;
+  goodsId: string | null;
+  createdAt: string;
+}
+
+/** Scene trigger mode (wire: kebab-case). */
+export type SceneTriggerMode = "relative-time" | "local-time";
+
+/** Per-line action (wire: lowercase). */
+export type SceneLineAction = "danmaku" | "like" | "follow";
+
+export interface SceneLine {
+  id: number;
+  sceneId: number;
+  ord: number;
+  message: string;
+  timeOffsetSec: number;
+  actionType: SceneLineAction;
+}
+
+export interface Scene {
+  id: number;
+  name: string;
+  triggerMode: SceneTriggerMode;
+  groupId: string | null;
+  lines: SceneLine[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Tri-state `group_id` patch for `scene_update`, mirroring the Rust
+ * `Option<Option<String>>`: `keep` omits the field, `clear` sends null,
+ * `set` sends the new id.
+ */
+export type SceneGroupIdPatch =
+  | { mode: "keep" }
+  | { mode: "clear" }
+  | { mode: "set"; groupId: string };
+
+/** A line pinned to an account and an absolute fire time (ms epoch). */
+export interface SceneScheduledItem {
+  lineId: number;
+  ord: number;
+  accountId: string;
+  profileId: string;
+  accountName: string;
+  message: string;
+  actionType: SceneLineAction;
+  triggerAtMs: number;
+}
+
+/** Options for `scene_play` (also the `PlaySceneOptions` IPC payload). */
+export interface PlaySceneOptions {
+  startAtMs?: number | null;
+  allowDynamicPool?: boolean;
+  groupId?: string | null;
+}
+
+/** `scene_play` result. */
+export interface PlayStarted {
+  sceneId: number;
+  scheduledCount: number;
+  schedule: SceneScheduledItem[];
+}
+
+/** Payload of the `scene:started` push event. */
+export interface SceneStartedPayload {
+  sceneId: number;
+  schedule: SceneScheduledItem[];
+  startedAt: number;
+}
+
+/** Payload of the `scene:progress` push event. */
+export interface SceneProgressPayload {
+  sceneId: number;
+  sentCount: number;
+  totalCount: number;
+  lastItem: SceneScheduledItem;
+  ok: boolean;
+  error: string | null;
+}
+
+/** Payload of the `scene:finished` push event. */
+export interface SceneFinishedPayload {
+  sceneId: number;
+  stopped: boolean | null;
+  reason: string | null;
+}
+
+// E-group: jinniu promote — crates/tauri-app/src/driver/jinniu_promote.rs
+// (serde `camelCase`; mirrors the Rust structs 1:1)
+// ---------------------------------------------------------------------------
+
+/** One promotable live user (jieger `LiveUserInfo`). */
+export interface JinniuLiveUser {
+  uid: string;
+  displayName: string;
+  fullText: string;
+  isSelected: boolean;
+}
+
+/** `getLiveUsers` result. */
+export interface JinniuLiveUsers {
+  accountId: string;
+  users: JinniuLiveUser[];
+}
+
+/** Opened (or reused) storeCreate tab. */
+export interface StoreCreateTab {
+  accountId: string;
+  url: string;
+  targetId: string;
+}
+
+/**
+ * Phase-1 config (jieger `StoreCreatePhase1Config`). All fields optional;
+ * the backend fills jieger's defaults.
+ */
+export interface StoreCreatePhase1Config {
+  enableNetRoi?: boolean | null;
+  dailyBudget?: string | null;
+  roiCoefficient?: string | null;
+  promoteType?: string | null;
+  roiTargetMode?: string | null;
+  creativeMode?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Frontend A group: accounts & live launch (kuaishou_auth / mate_login /
+// live_launch / live_room_monitor). Mirrors:
+//   crates/cdp-driver/src/platforms/kuaishou.rs (EnsureAuthResult, AuthPhase)
+//   crates/tauri-app/src/driver/mate_login.rs
+//   crates/tauri-app/src/driver/live_launch.rs
+//   crates/tauri-app/src/driver/live_room_monitor.rs
+// All structs use `#[serde(rename_all = "camelCase")]` except where noted.
+// ---------------------------------------------------------------------------
+
+/** `AuthPhase::as_str()` snake_case wire values for `kuaishou-auth-phase`. */
+export type KuaishouAuthPhase =
+  | "launching_browser"
+  | "verifying_session"
+  | "waiting_for_login"
+  | "restoring_headless";
+
+export interface KuaishouAuthPhaseEvent {
+  profileId: string;
+  phase: KuaishouAuthPhase;
+}
+
+/** Outcome of `ensure_kuaishou_auth` (cdp-driver kuaishou.rs:409). */
+export interface EnsureAuthResult {
+  ok: boolean;
+  scanned: boolean;
+  error?: string;
+}
+
+/** `MateLoginStage`, `#[serde(rename_all = "kebab-case")]`. */
+export type MateLoginStage =
+  | "idle"
+  | "starting"
+  | "awaiting-scan"
+  | "awaiting-confirm"
+  | "receiving"
+  | "success"
+  | "expired"
+  | "cancelled"
+  | "error";
+
+export interface MateLoginUser {
+  userId: string;
+  userName: string;
+  avatarUrl?: string | null;
+}
+
+/** Full login snapshot (driver/mate_login.rs:106). */
+export interface MateLoginState {
+  accountId: string;
+  stage: MateLoginStage;
+  qrImageDataUrl?: string | null;
+  qrLoginToken?: string | null;
+  qrLoginSignature?: string | null;
+  expireAt?: number | null;
+  errorMessage?: string | null;
+  user?: MateLoginUser | null;
+  startedAt?: number | null;
+  finishedAt?: number | null;
+}
+
+/** Terminal stages: polling stops. */
+export const MATE_LOGIN_TERMINAL_STAGES: readonly MateLoginStage[] = [
+  "success",
+  "expired",
+  "cancelled",
+  "error",
+] as const;
+
+/** `StreamingStatus`, `#[serde(rename_all = "camelCase")]`. */
+export type StreamingStatus =
+  | "idle"
+  | "starting"
+  | "streaming"
+  | "stopping"
+  | "stopped"
+  | "error";
+
+/** `StreamMode`, `#[serde(rename_all = "camelCase")]`. */
+export type StreamMode = "heartbeat" | "realtime";
+
+/** `StreamCredentials` (driver/live_launch.rs:153). streamKey never logged. */
+export interface StreamCredentials {
+  rtmpServer: string;
+  streamKey: string;
+  liveStreamId: string;
+  placeholder: boolean;
+}
+
+/** `StreamingState` (driver/live_launch.rs:220). `target` is redacted. */
+export interface StreamingState {
+  profileId: string;
+  status: StreamingStatus;
+  mode?: StreamMode | null;
+  target?: string | null;
+  pid?: number | null;
+  stderrTail: string[];
+  exitCode?: number | null;
+  error?: string | null;
+  placeholderCredentials: boolean;
+  startedAt?: string | null;
+}
+
+/** Subset pushed via `live-launch-state-changed`. */
+export interface LiveLaunchStateChanged {
+  profileId: string;
+  status: StreamingStatus;
+  mode?: StreamMode | null;
+  target?: string | null;
+  pid?: number | null;
+  exitCode?: number | null;
+  error?: string | null;
+  placeholderCredentials: boolean;
+}
+
+/** `PrerequisitesReport` (driver/live_launch.rs:284). */
+export interface PrerequisitesReport {
+  available: boolean;
+  ffmpegPath?: string | null;
+  searched: string[];
+  error?: string | null;
+}
+
+/** `MonitorConfig` (driver/live_room_monitor.rs:184). */
+export interface MonitorConfig {
+  liveRoomUrl: string;
+  sceneId?: number | null;
+  groupId?: string | null;
+  productScriptId?: number | null;
+  productScriptAccountId?: string | null;
+  autoExitSubAccounts: boolean;
+}
+
+/** `LiveRoomMonitorStatus`, `#[serde(rename_all = "lowercase")]`. */
+export type LiveRoomMonitorStatus =
+  | "idle"
+  | "checking"
+  | "offline"
+  | "live"
+  | "triggering"
+  | "triggered"
+  | "error";
+
+/** `LiveRoomLiveStatus`, `#[serde(rename_all = "lowercase")]`. */
+export type LiveRoomLiveStatus = "unknown" | "offline" | "live";
+
+/** Downstream batch result (enter/exit/product-script share shape). */
+export interface TriggerBatchResult {
+  attempted: number;
+  succeeded: number;
+  failed: number;
+  message?: string | null;
+  error?: string | null;
+  at: string;
+}
+
+/** `LiveRoomMonitorState` (driver/live_room_monitor.rs:197). */
+export interface LiveRoomMonitorState {
+  enabled: boolean;
+  profileId?: string | null;
+  liveRoomUrl?: string | null;
+  sceneId?: number | null;
+  groupId?: string | null;
+  productScriptId?: number | null;
+  productScriptAccountId?: string | null;
+  autoExitSubAccounts: boolean;
+  status: LiveRoomMonitorStatus;
+  liveStatus: LiveRoomLiveStatus;
+  triggeredForCurrentLive: boolean;
+  enteringRooms: boolean;
+  exitingRooms: boolean;
+  lastCheckedAt?: number | null;
+  lastTriggeredAt?: number | null;
+  nextCheckAt?: number | null;
+  lastEnterAllResult?: TriggerBatchResult | null;
+  lastExitAllResult?: TriggerBatchResult | null;
+  lastProductScriptResult?: TriggerBatchResult | null;
+  error?: string | null;
+}
