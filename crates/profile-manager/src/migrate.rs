@@ -36,6 +36,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
     crate::shop_product_script::migrate(conn)?;
     crate::kuaishou_identity::migrate(conn)?;
     crate::kuaishou_account::migrate(conn)?;
+    crate::mate_account::migrate(conn)?;
     crate::live_events::migrate(conn)?;
     Ok(())
 }

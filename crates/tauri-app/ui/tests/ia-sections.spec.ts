@@ -9,7 +9,7 @@ import { defaultSettings, installTauriMock } from "./tauriMock";
  *   直播互动 → 三个堆叠子区（互动账号脚本互动 / 自动上车 / 自动发言），各含真实组件
  *   投流     → 金牛推广 + 达人授权
  * 快手账号内含 小店 / 直播伴侣 / 互动账号 三个二级菜单：
- *   直播伴侣 → 伴侣扫码登录（MateLoginPage）
+ *   直播伴侣 → 直播伴侣账号管理（MateLoginPage）
  * 「其它」板块内容已清空，只剩空态占位。
  *
  * 只验证结构（标题/子区/空态），不触碰任何业务 IPC。用 zh-CN 断言中文标签。
@@ -50,20 +50,20 @@ test("Live section renders three tabs and the prepare tab hosts both launch page
   const mate = page.getByTestId("live-prepare-mate");
   await expect(mate.getByRole("heading", { name: "伴侣开播", exact: true })).toBeVisible();
   await expect(mate.getByRole("region", { name: "开播", exact: true })).toBeVisible();
-  // 伴侣扫码登录页不再属于开播准备（它落在「快手账号 › 直播伴侣」）。
-  await expect(page.getByRole("heading", { name: "伴侣扫码登录", exact: true })).toHaveCount(0);
+  // 伴侣账号管理页不再属于开播准备（它落在「快手账号 › 直播伴侣」）。
+  await expect(page.getByRole("heading", { name: "直播伴侣账号", exact: true })).toHaveCount(0);
 });
 
-test("Kuaishou › 直播伴侣 tab hosts the mate QR login page", async ({ page }) => {
+test("Kuaishou › 直播伴侣 tab hosts the mate account manager", async ({ page }) => {
   await gotoSection(page, "kuaishou", "mate");
 
   await expect(page.getByRole("button", { name: "快手账号", exact: true })).toBeVisible();
-  const login = page.getByRole("heading", { name: "伴侣扫码登录", exact: true });
+  const login = page.getByRole("heading", { name: "直播伴侣账号", exact: true });
   await expect(login).toBeVisible();
-  await expect(page.getByRole("region", { name: "伴侣扫码登录", exact: true })).toBeVisible();
-  await expect(page.getByPlaceholder("account-id")).toBeVisible();
-  await expect(page.getByRole("button", { name: "开始登录", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "取消", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "直播伴侣账号", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "添加账号", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "刷新", exact: true })).toBeVisible();
+  await expect(page.getByPlaceholder("account-id")).toHaveCount(0);
 });
 
 test("Live ads tab hosts Jinniu promote and creator authorize", async ({ page }) => {

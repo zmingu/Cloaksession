@@ -122,6 +122,12 @@ export async function installTauriMock(page: Page, initial: AppSettings = defaul
             // recorded and resolved without touching any real platform.
             case "kuaishou_init_retry": return undefined;
             case "kuaishou_ocr_availability": return { available: false, message: "本地测试未启用 OCR" };
+            // Co-mounted live-launch (伴侣开播) block: benign defaults so the
+            // base mock stays quiet when the Live section boots. Individual
+            // specs override these with their own fixtures.
+            case "mate_accounts_list": return [];
+            case "live_launch_prerequisites":
+              return { available: true, ffmpegPath: "/fixture/ffmpeg", searched: [], error: null };
             // Write-capable initialization commands deliberately remain unhandled here.
             case "activity_recent": return [];
             case "update_status":

@@ -65,6 +65,8 @@ mod business_tests;
 mod shop_login_tests;
 mod identity;
 mod account_init;
+mod kuaishou_sign;
+mod live_mate;
 mod mate_login;
 mod running_monitor;
 #[cfg(test)]
@@ -272,6 +274,11 @@ enum LauncherCmd {
     JinniuDb {
         operation: Box<dyn FnOnce(&profile_manager::ProfileManager) + Send>,
     },
+    /// 直播伴侣账号存储的一次 ProfileManager 操作（SQLite 留在 launcher 线程）。
+    /// 登录成功的 token 持久化与账号 CRUD 都经此路由。
+    MateDb {
+        operation: Box<dyn FnOnce(&profile_manager::ProfileManager) + Send>,
+    },
     Scene(scene_play::SceneCmd),
     // --- Shop product scripts (jieger 商品话术库) ---------------------------
     // Storage primitives live in profile-manager; playback stays in
@@ -326,6 +333,8 @@ pub struct TauriBrowserDriver {
     identity: Arc<identity::IdentityRuntime>,
     account_init: Arc<account_init::InitRuntime>,
     mate_login: Arc<mate_login::MateLoginRuntime>,
+    /// 直播伴侣推流接口客户端（三步开播 / 关播 / 心跳）。
+    live_mate: live_mate::LiveMateClient,
     /// 磁力金牛多大户运行时（状态机 + 单活跃会话槽位）。
     pub(crate) jinniu: Arc<jinniu::JinniuRuntime>,
     sub_account: Arc<sub_account::SubAccountRuntime>,
@@ -389,11 +398,16 @@ impl TauriBrowserDriver {
             })
             .map_err(|e| MultizenError::Launch(format!("launcher thread spawn: {e}")))?;
         let _ = handle; // detached; exits on Shutdown or channel close
+        let mate_login = Arc::new(mate_login::MateLoginRuntime::new());
+        // Wire the launcher channel so a successful mate login can persist its
+        // tokens/identity into `mate_accounts` on this thread.
+        mate_login.set_launcher(tx.clone());
         Ok(Self {
             launcher_tx: tx,
             identity,
             account_init,
-            mate_login: Arc::new(mate_login::MateLoginRuntime::new()),
+            mate_login,
+            live_mate: live_mate::LiveMateClient::new(),
             jinniu: Arc::new(jinniu::JinniuRuntime::new()),
             sub_account: Arc::new(sub_account::SubAccountRuntime::new()),
             registry,
@@ -744,6 +758,9 @@ async fn launcher_task(
                 operation(&pm);
             }
             LauncherCmd::JinniuDb { operation } => {
+                operation(&pm);
+            }
+            LauncherCmd::MateDb { operation } => {
                 operation(&pm);
             }
             LauncherCmd::Scene(cmd) => scene_play::handle(cmd, &pm).await,

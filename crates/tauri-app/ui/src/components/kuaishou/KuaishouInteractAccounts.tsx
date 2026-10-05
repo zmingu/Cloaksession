@@ -1,14 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
 import {
-  DoorOpen,
-  History,
   Loader2,
   LogIn,
   Play,
   Plus,
   RefreshCw,
   Search,
-  Send,
   Square,
   Trash2,
   Unlink,
@@ -20,11 +17,7 @@ import { cn } from "../../lib/cn";
 import type { BusinessAccount } from "../../lib/businessAccounts";
 import { onRunningChanged, profiles as profilesApi } from "../../lib/ipc";
 import { useKuaishouIdentities, useKuaishouIdentity } from "../../lib/KuaishouIdentityProvider";
-import {
-  subAccounts,
-  type SubAccountInteraction,
-  type SubAccountLoginResult,
-} from "../../lib/subAccounts";
+import { subAccounts } from "../../lib/subAccounts";
 import type { ProfileSummary } from "../../types";
 import { Avatar, Pill, confirm } from "../atoms";
 import { Button } from "../atoms/Button";
@@ -35,7 +28,7 @@ import { KuaishouInteractWizard } from "./KuaishouInteractWizard";
 const CONTROL =
   "h-8 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 text-[12px] text-slate-200 outline-none focus:border-purple-400/60 disabled:opacity-50";
 
-type RowOp = "launch" | "stop" | "relogin" | "login" | "enter" | "send" | "unbind" | "delete" | "history";
+type RowOp = "launch" | "stop" | "relogin" | "login" | "unbind" | "delete";
 
 /** One list row: the interact record joined with its browser environment. */
 interface InteractRow {
@@ -64,7 +57,9 @@ function errorText(cause: unknown): string {
  * 登录/扫码由 `KuaishouInteractWizard` 承担；行内「重新登录」走
  * `profiles_launch(entry="kuaishou-sub")` 打开可见登录页，不发任何平台写请求。
  *
- * 危险操作（发弹幕、解绑、删除）保留二次确认。
+ * 本页只做小号管理（环境化列表 + 登录 + 解绑 + 删除），不含任何直播间互动
+ * （进房 / 发弹幕 / 互动记录）能力——那些属于「直播 › 直播互动」板块。
+ * 危险操作（解绑、删除）保留二次确认。
  */
 export function KuaishouInteractAccounts(): JSX.Element {
   const t = useT();
@@ -76,13 +71,7 @@ export function KuaishouInteractAccounts(): JSX.Element {
   const [actionError, setActionError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [liveUrl, setLiveUrl] = useState("");
-  const [danmaku, setDanmaku] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [results, setResults] = useState<SubAccountLoginResult[]>([]);
-  const [interactions, setInteractions] = useState<SubAccountInteraction[]>([]);
-  const [interactAccount, setInteractAccount] = useState("");
-  const [roomMap, setRoomMap] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<Record<string, RowOp>>({});
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchDeleteBusy, setBatchDeleteBusy] = useState(false);
@@ -265,7 +254,6 @@ export function KuaishouInteractAccounts(): JSX.Element {
     try {
       const r = await subAccounts.login(accountId);
       if (!mounted.current) return;
-      setResults([r]);
       setStatus(r.ok ? t("kuaishou.interact.loginOk", { id: r.accountId }) : (r.error ?? t("kuaishou.interact.loginFail", { id: r.accountId })));
     } catch (cause) {
       if (mounted.current) setActionError(t("kuaishou.interact.failedToast", { detail: errorText(cause) }));
@@ -282,7 +270,6 @@ export function KuaishouInteractAccounts(): JSX.Element {
     try {
       const list = await subAccounts.batchLogin(ids);
       if (!mounted.current) return;
-      setResults(list);
       const ok = list.filter((r) => r.ok).length;
       setStatus(t("kuaishou.interact.batchDone", { ok: String(ok), n: String(list.length) }));
     } catch (cause) {
@@ -342,72 +329,6 @@ export function KuaishouInteractAccounts(): JSX.Element {
       await Promise.all([refresh(), refreshProfiles()]);
     } finally {
       if (mounted.current) setBatchDeleteBusy(false);
-    }
-  }
-
-  async function onEnterRoom(accountId: string): Promise<void> {
-    const url = liveUrl.trim();
-    if (!url) return;
-    setRowBusy(accountId, "enter");
-    setActionError(null);
-    try {
-      await subAccounts.enterLiveRoom(accountId, url);
-      if (!mounted.current) return;
-      setRoomMap((prev) => ({ ...prev, [accountId]: url }));
-      setStatus(t("kuaishou.interact.enteredToast", { id: accountId }));
-    } catch (cause) {
-      if (mounted.current) setActionError(t("kuaishou.interact.failedToast", { detail: errorText(cause) }));
-    } finally {
-      clearRowBusy(accountId);
-    }
-  }
-
-  async function askSendDanmaku(accountId: string): Promise<void> {
-    const content = danmaku.trim();
-    if (!content) return;
-    if (content.length > 500) {
-      setActionError(t("kuaishou.interact.failedToast", { detail: t("kuaishou.interact.danmakuTooLong", { n: String(content.length) }) }));
-      return;
-    }
-    const ok = await confirm({
-      title: t("kuaishou.interact.sendConfirmTitle"),
-      body: t("kuaishou.interact.sendConfirmBody", { content }),
-      confirmLabel: t("kuaishou.interact.send"),
-    });
-    if (!ok) return;
-    setRowBusy(accountId, "send");
-    setActionError(null);
-    try {
-      const row = await subAccounts.sendDanmaku(accountId, content);
-      if (!mounted.current) return;
-      setStatus(row.ok ? t("kuaishou.interact.sentToast", { id: String(row.id) }) : (row.error ?? t("kuaishou.interact.sendFail")));
-      if (interactAccount === accountId) {
-        try {
-          const list = await subAccounts.interactions(accountId);
-          if (mounted.current) setInteractions(list);
-        } catch {
-          /* 历史刷新失败不覆盖发送结果 */
-        }
-      }
-    } catch (cause) {
-      if (mounted.current) setActionError(t("kuaishou.interact.failedToast", { detail: errorText(cause) }));
-    } finally {
-      clearRowBusy(accountId);
-    }
-  }
-
-  async function onQueryInteractions(accountId: string): Promise<void> {
-    setRowBusy(accountId, "history");
-    setActionError(null);
-    try {
-      const list = await subAccounts.interactions(accountId);
-      if (!mounted.current) return;
-      setInteractAccount(accountId);
-      setInteractions(list);
-    } catch (cause) {
-      if (mounted.current) setActionError(t("kuaishou.interact.failedToast", { detail: errorText(cause) }));
-    } finally {
-      clearRowBusy(accountId);
     }
   }
 
@@ -524,27 +445,10 @@ export function KuaishouInteractAccounts(): JSX.Element {
         cell: (row) => <StatusCell row={row} />,
       },
       {
-        id: "room",
-        header: t("kuaishou.interact.col.room"),
-        width: 150,
-        showFrom: 960,
-        cell: (row) => {
-          const url = roomMap[row.record.id];
-          return (
-            <span
-              className={cn("mono block truncate text-[11px]", url ? "text-slate-300" : "text-slate-600")}
-              title={url ?? undefined}
-            >
-              {url ?? "—"}
-            </span>
-          );
-        },
-      },
-      {
         id: "actions",
         header: t("kuaishou.interact.col.actions"),
-        // Fits the whole row action set on one 36px line: launch/stop, enter
-        // room, send, then five icon buttons (with slack for locale metrics).
+        // Fits the whole row action set on one 36px line: launch/stop, then the
+        // five icon buttons (with slack for locale metrics).
         width: 460,
         align: "right",
         cell: (row) => {
@@ -552,8 +456,6 @@ export function KuaishouInteractAccounts(): JSX.Element {
           const pending = op !== undefined;
           const profileId = row.record.profileId;
           const running = !!row.profile?.isRunning;
-          const liveEmpty = liveUrl.trim().length === 0;
-          const dmEmpty = danmaku.trim().length === 0;
           return (
             <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
               {running ? (
@@ -593,37 +495,6 @@ export function KuaishouInteractAccounts(): JSX.Element {
                   {t("kuaishou.interact.launch")}
                 </Button>
               )}
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={pending || liveEmpty}
-                title={t("kuaishou.interact.enterRoom")}
-                aria-label={t("kuaishou.interact.enterRoom")}
-                onClick={() => void onEnterRoom(row.record.id)}
-                leftIcon={op === "enter" ? <Loader2 size={10} className="animate-spin" /> : <DoorOpen size={10} />}
-              >
-                {t("kuaishou.interact.enterRoom")}
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={pending || dmEmpty}
-                title={t("kuaishou.interact.send")}
-                aria-label={t("kuaishou.interact.send")}
-                onClick={() => void askSendDanmaku(row.record.id)}
-                leftIcon={op === "send" ? <Loader2 size={10} className="animate-spin" /> : <Send size={10} />}
-              >
-                {t("kuaishou.interact.send")}
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                disabled={pending}
-                title={t("kuaishou.interact.history")}
-                aria-label={t("kuaishou.interact.history")}
-                onClick={() => void onQueryInteractions(row.record.id)}
-                leftIcon={op === "history" ? <Loader2 size={12} className="animate-spin" /> : <History size={12} />}
-              />
               <Button
                 size="icon"
                 variant="ghost"
@@ -667,7 +538,7 @@ export function KuaishouInteractAccounts(): JSX.Element {
     ],
     // Row cells read live toolbar state; refresh the memo with them like the shop page does.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, busy, entries, roomMap, selected, allSelected, liveUrl, danmaku],
+    [t, busy, entries, selected, allSelected],
   );
 
   const error = rowsError ? t("kuaishou.interact.loadingFailed", { error: rowsError }) : actionError;
@@ -703,20 +574,6 @@ export function KuaishouInteractAccounts(): JSX.Element {
             className={cn(CONTROL, "w-full max-w-[240px] pl-8")}
           />
         </div>
-        <input
-          value={liveUrl}
-          onChange={(event) => setLiveUrl(event.target.value)}
-          placeholder="https://live.kuaishou.com/…"
-          aria-label={t("kuaishou.interact.liveUrl")}
-          className={cn(CONTROL, "w-[220px]")}
-        />
-        <input
-          value={danmaku}
-          onChange={(event) => setDanmaku(event.target.value)}
-          placeholder={t("kuaishou.interact.danmaku")}
-          aria-label={t("kuaishou.interact.danmaku")}
-          className={cn(CONTROL, "w-[220px]")}
-        />
         <Button
           size="sm"
           variant="secondary"
@@ -762,48 +619,6 @@ export function KuaishouInteractAccounts(): JSX.Element {
           }
         />
       </div>
-
-      {(results.length > 0 || interactAccount) && (
-        <div className="mt-3 flex max-h-[38%] flex-none flex-col gap-3 overflow-y-auto pb-4">
-          {results.length > 0 && (
-            <section aria-label={t("kuaishou.interact.resultsTitle")}>
-              <h3 className="mb-1 text-[13px] font-semibold text-slate-200">{t("kuaishou.interact.resultsTitle")}</h3>
-              <ul className="flex flex-col gap-1 text-sm" data-testid="interact-results">
-                {results.map((r) => (
-                  <li key={r.accountId} className="flex items-center gap-2">
-                    <Pill kind={r.ok ? "running" : "error"}>{r.ok ? t("kuaishou.interact.ok") : t("kuaishou.interact.fail")}</Pill>
-                    <span className="mono text-xs text-slate-300">{r.accountId}</span>
-                    {r.error && <span className="text-xs text-red-300">{r.error}</span>}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {interactAccount && (
-            <section aria-label={t("kuaishou.interact.interactionsTitle")}>
-              <h3 className="mb-1 text-[13px] font-semibold text-slate-200">
-                {t("kuaishou.interact.interactionsTitle")} · <span className="mono text-xs">{interactAccount}</span>
-              </h3>
-              {interactions.length === 0 ? (
-                <p className="text-[12px] text-slate-500">{t("kuaishou.interact.interactionsEmpty")}</p>
-              ) : (
-                <ul className="flex flex-col gap-1 text-sm" data-testid="interact-interactions">
-                  {interactions.map((row) => (
-                    <li key={row.id} className="flex items-center gap-2">
-                      <Pill kind={row.ok ? "running" : "error"}>{row.action}</Pill>
-                      <span className="truncate text-[12px] text-slate-300">
-                        {row.message ?? row.liveRoomUrl ?? `#${row.id}`}
-                      </span>
-                      {row.error && <span className="text-xs text-red-300">{row.error}</span>}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          )}
-        </div>
-      )}
 
       {/* 建号向导：创建环境 → 隐藏启动快手主站 → 扫码 → 登记互动账号。 */}
       <KuaishouInteractWizard

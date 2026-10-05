@@ -975,6 +975,31 @@ export const MATE_LOGIN_TERMINAL_STAGES: readonly MateLoginStage[] = [
   "error",
 ] as const;
 
+/**
+ * 一行直播伴侣账号（`profile-manager::MateAccount`，serde `camelCase`）。
+ *
+ * 与 `business_accounts` 不同：伴侣账号**不绑定浏览器环境**，没有 `profileId`
+ * 列——登录是纯 HTTP 4 步，开播取推流码走签名直调。是否已登录由 `loginAt`
+ * 表达（后端暂未落 `status` 列）。
+ *
+ * token 字段由后端返回，但前端**不渲染、不写日志**。
+ */
+export interface MateAccount {
+  id: string;
+  label: string;
+  platformUserId?: string | null;
+  userName?: string | null;
+  avatarUrl?: string | null;
+  matePassToken?: string | null;
+  mateToken?: string | null;
+  mateSt?: string | null;
+  mateH5St?: string | null;
+  mateLmtoken?: string | null;
+  loginAt?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** `StreamingStatus`, `#[serde(rename_all = "camelCase")]`. */
 export type StreamingStatus =
   | "idle"
@@ -995,9 +1020,22 @@ export interface StreamCredentials {
   placeholder: boolean;
 }
 
-/** `StreamingState` (driver/live_launch.rs:220). `target` is redacted. */
+/**
+ * `SubjectKind` (driver/live_launch.rs:177), serde `camelCase`.
+ * `profile` = 浏览器环境桶（key = `profileId`）；`mate` = 直播伴侣账号桶
+ * （key = `mateAccountId`）。两桶 key 互不混用。
+ */
+export type SubjectKind = "profile" | "mate";
+
+/**
+ * `StreamingState` (driver/live_launch.rs:269). `target` is redacted.
+ *
+ * `profileId` 是推流主体 id：profile 模式为 `profile_id`，mate 模式为
+ * `mate_account_id`（字段名沿用后端，前端按 `subjectKind` 区分）。
+ */
 export interface StreamingState {
   profileId: string;
+  subjectKind: SubjectKind;
   status: StreamingStatus;
   mode?: StreamMode | null;
   target?: string | null;
@@ -1006,12 +1044,15 @@ export interface StreamingState {
   exitCode?: number | null;
   error?: string | null;
   placeholderCredentials: boolean;
+  /** mate 取流得到的 `liveStreamId`（关播回传平台）；profile 模式多为 null。 */
+  liveStreamId?: string | null;
   startedAt?: string | null;
 }
 
 /** Subset pushed via `live-launch-state-changed`. */
 export interface LiveLaunchStateChanged {
   profileId: string;
+  subjectKind: SubjectKind;
   status: StreamingStatus;
   mode?: StreamMode | null;
   target?: string | null;
@@ -1019,6 +1060,7 @@ export interface LiveLaunchStateChanged {
   exitCode?: number | null;
   error?: string | null;
   placeholderCredentials: boolean;
+  liveStreamId?: string | null;
 }
 
 /** `PrerequisitesReport` (driver/live_launch.rs:284). */

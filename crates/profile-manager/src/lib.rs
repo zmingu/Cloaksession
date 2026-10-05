@@ -3,6 +3,7 @@ mod jinniu_account;
 pub mod fingerprint;
 mod kuaishou_account;
 mod kuaishou_identity;
+mod mate_account;
 mod auto_reply;
 mod jinniu_authorize;
 mod kuaishou_init;
@@ -16,6 +17,8 @@ pub mod row;
 pub use auto_reply::AutoReplyRecord;
 // Re-export Jinniu account state at the crate root for driver/IPC use.
 pub use jinniu_account::{JinniuAccountRecord, JinniuAccountState};
+// Re-export live-mate account storage types at the crate root for driver/IPC use.
+pub use mate_account::{MateAccount, MateLoginTokens, MATE_PLACEHOLDER_LABEL};
 // Re-export authorize types at the crate root for driver/IPC use.
 pub use jinniu_authorize::{JinniuAuthorizeItem, JinniuAuthorizeRecord};
 pub use kuaishou_init::KuaishouInitLease;

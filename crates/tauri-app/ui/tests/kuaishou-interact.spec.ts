@@ -9,10 +9,13 @@ import type { BusinessAccount } from "../src/lib/businessAccounts";
  * 运行态/身份 join `profiles_list` 与后端身份检测。建号走独立向导
  * （`KuaishouInteractWizard`），列表不再内嵌创建表单。
  *
- * 桌面布局专用：room / actions 列在窄视口会被 DataTable 依次丢弃，
+ * 本页只做小号管理：搜索 + 批量登录/删除 + 行内启动/停止/重新登录/登录/解绑/删除，
+ * 不含直播间互动（进房 / 发弹幕 / 互动记录）——那些属于「直播 › 直播互动」板块。
+ *
+ * 桌面布局专用：actions 列在窄视口会被 DataTable 丢弃，
  * 断言只在 desktop-chrome 有意义（照抄 kuaishou-shop.spec.ts 风格）。
  *
- * 全部 IPC 走本地 mock：只读 list 与受控 fixture，不写真实平台弹幕。
+ * 全部 IPC 走本地 mock：只读 list 与受控 fixture，不写真实平台。
  */
 
 interface InteractCall {
@@ -161,13 +164,15 @@ test("interact tab renders environment-joined rows with a new-account action", a
   await expect(t.getByRole("row").filter({ hasText: "Alpha One" })).toBeVisible();
   await expect(t.getByRole("row").filter({ hasText: "Beta Two" })).toBeVisible();
 
-  // The row action set: launch/stop + the retained live-room operations.
+  // The row action set: launch/stop + relogin/login/unbind/delete icon buttons.
   const alpha = t.getByRole("row").filter({ hasText: "Alpha One" });
   await expect(alpha.getByRole("button", { name: "Launch", exact: true })).toBeVisible();
-  await expect(alpha.getByRole("button", { name: "Enter room", exact: true })).toBeVisible();
-  await expect(alpha.getByRole("button", { name: "Send", exact: true })).toBeVisible();
   await expect(alpha.getByRole("button", { name: "Sign in again", exact: true })).toBeVisible();
   await expect(alpha.getByRole("button", { name: "Delete", exact: true })).toBeVisible();
+  // Live-room interactions (enter room / send / history) are not part of this page.
+  await expect(alpha.getByRole("button", { name: "Enter room", exact: true })).toHaveCount(0);
+  await expect(alpha.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
+  await expect(alpha.getByRole("button", { name: "History", exact: true })).toHaveCount(0);
 
   await expect(
     scope(page).getByRole("button", { name: "New account", exact: true }),
@@ -235,7 +240,7 @@ test("new account opens the wizard without firing any IPC write", async ({ page 
   ).toEqual([]);
 });
 
-test("batch login is disabled without selection; enter/send need toolbar input; nothing is written", async ({ page }, testInfo) => {
+test("the page keeps only the small-account toolbar (search + batch login/delete)", async ({ page }, testInfo) => {
   desktopOnly(testInfo);
   await gotoInteract(page, [ALPHA()]);
 
@@ -245,22 +250,24 @@ test("batch login is disabled without selection; enter/send need toolbar input; 
   await expect(row).toBeVisible();
 
   await expect(s.getByRole("button", { name: "Batch login (0)", exact: true })).toBeDisabled();
-  await expect(row.getByRole("button", { name: "Enter room", exact: true })).toBeDisabled();
-  await expect(row.getByRole("button", { name: "Send", exact: true })).toBeDisabled();
+  await expect(s.getByRole("button", { name: "Batch delete (0)", exact: true })).toBeDisabled();
   // Buttons that need no toolbar input stay available.
   await expect(row.getByRole("button", { name: "Launch", exact: true })).toBeEnabled();
 
-  // Typing toolbar input enables the gated buttons without firing any IPC write.
-  await s.getByLabel("Live room URL", { exact: true }).fill("https://live.kuaishou.com/u/fixture");
-  await s.getByLabel("Danmaku content", { exact: true }).fill("fixture hello (mocked, never sent)");
-  await expect(row.getByRole("button", { name: "Enter room", exact: true })).toBeEnabled();
-  await expect(row.getByRole("button", { name: "Send", exact: true })).toBeEnabled();
+  // The live-room inputs and their row actions are gone from this page.
+  await expect(s.getByLabel("Live room URL", { exact: true })).toHaveCount(0);
+  await expect(s.getByLabel("Danmaku content", { exact: true })).toHaveCount(0);
+  await expect(row.getByRole("button", { name: "Enter room", exact: true })).toHaveCount(0);
+  await expect(row.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
+  await expect(row.getByRole("button", { name: "History", exact: true })).toHaveCount(0);
+  // ...and the live-room column is no longer rendered.
+  await expect(t.getByRole("columnheader", { name: "Live room" })).toHaveCount(0);
 
   const writes = (await interactRequests(page)).filter((call) => call.command !== "list_sub_accounts");
   expect(writes).toEqual([]);
 });
 
-test("selecting a row enables batch login and renders mock login results", async ({ page }, testInfo) => {
+test("selecting a row enables batch login; the login outcome is reported as status text", async ({ page }, testInfo) => {
   desktopOnly(testInfo);
   await gotoInteract(page, [ALPHA(), BETA()]);
 
@@ -273,7 +280,6 @@ test("selecting a row enables batch login and renders mock login results", async
   await expect(batch).toBeEnabled();
   await batch.click();
 
-  await expect(s.getByTestId("interact-results")).toContainText("interact-1");
   await expect(s.getByRole("status")).toContainText("1 / 1 logged in.");
 
   const calls = await interactRequests(page);
@@ -696,14 +702,14 @@ test("business page scrolls inside its table region and the drawer never covers 
   expect(bounds.scroll).toBeLessThanOrEqual(bounds.client + 1);
 
   // The collapsed activity drawer (36px) sits below the content and never covers row actions.
-  const send = t
+  const lastAction = t
     .getByRole("row")
     .filter({ hasText: "Alpha One" })
-    .getByRole("button", { name: "Send", exact: true });
-  await expect(send).toBeVisible();
-  const sendBox = await send.boundingBox();
+    .getByRole("button", { name: "Delete", exact: true });
+  await expect(lastAction).toBeVisible();
+  const actionBox = await lastAction.boundingBox();
   const drawerBox = await page.getByText("MCP activity").boundingBox();
-  expect(sendBox).not.toBeNull();
+  expect(actionBox).not.toBeNull();
   expect(drawerBox).not.toBeNull();
-  expect(sendBox!.y + sendBox!.height).toBeLessThanOrEqual(drawerBox!.y + 1);
+  expect(actionBox!.y + actionBox!.height).toBeLessThanOrEqual(drawerBox!.y + 1);
 });

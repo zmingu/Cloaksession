@@ -20,11 +20,14 @@
 //!
 //! # Token policy
 //!
-//! Login tokens (`passToken`/`token`/`lmtoken`/`mate_st`/`mate_h5_st`) are
-//! deliberately NOT persisted: every login re-scans a fresh QR code. The
-//! success state carries only the confirmed user identity; binding that
-//! identity to a `business_accounts` row stays an explicit manual
-//! `business_accounts_save` call with kind `kuaishou-mate`.
+//! Login tokens (`passToken`/`token`/`lmtoken`/`kuaishou.live.mate_st`/
+//! `kuaishou.live.mate.h5_st`) ARE persisted on success: the flow writes them
+//! (together with the confirmed user identity and `login_at`) into the
+//! dedicated `mate_accounts` table (see `profile_manager::mate_account`), so
+//! the live-launch step can reuse the credentials. Tokens never enter the log
+//! nor the pushed [`MateLoginState`] snapshot — the in-memory state still
+//! carries only the user identity. Accounts live in `mate_accounts` with no
+//! browser profile binding; `business_accounts` is not used by this flow.
 //!
 //! # Cancellation
 //!
@@ -40,7 +43,7 @@ use std::sync::{
 };
 
 use cdp_driver::TaskCancel;
-use multizen_core::{BusinessAccountKind, MultizenError, Result};
+use multizen_core::{MultizenError, Result};
 use serde::{Deserialize, Serialize};
 use tauri::Emitter;
 
@@ -97,6 +100,13 @@ pub struct MateLoginUser {
     pub user_id: String,
     pub user_name: String,
     pub avatar_url: Option<String>,
+}
+
+/// Successful `receive` result: confirmed identity + the push credentials to
+/// persist. `tokens` never leaves the driver (never logged, never emitted).
+pub struct MateLoginSuccess {
+    pub user: MateLoginUser,
+    pub tokens: profile_manager::MateLoginTokens,
 }
 
 /// Full login snapshot pushed via [`MATE_LOGIN_STATE_CHANGED`].
@@ -173,23 +183,60 @@ struct QrStartResp {
     error_msg: Option<String>,
 }
 
+/// Lenient `user_id`: the platform returns a JSON **number** (e.g.
+/// `1683574018`), but a few flows stringify it. Accept both.
+fn de_string_or_number<'de, D>(deserializer: D) -> std::result::Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::Deserialize;
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(match value {
+        serde_json::Value::String(s) => s,
+        serde_json::Value::Number(n) => n.to_string(),
+        other => other.to_string(),
+    })
+}
+
+/// `headurls` items are **objects** `{ cdn, url }` (not plain strings) on the
+/// live platform; accept either shape.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum HeadUrlItem {
+    Str(String),
+    Obj {
+        #[serde(default)]
+        url: Option<String>,
+    },
+}
+
+impl HeadUrlItem {
+    fn into_url(self) -> Option<String> {
+        match self {
+            HeadUrlItem::Str(s) => Some(s),
+            HeadUrlItem::Obj { url } => url,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct QrUserJson {
-    #[serde(rename = "user_id")]
+    #[serde(rename = "user_id", deserialize_with = "de_string_or_number")]
     user_id: String,
     #[serde(rename = "user_name")]
     user_name: String,
     #[serde(default)]
     headurl: Option<String>,
     #[serde(default)]
-    headurls: Option<Vec<String>>,
+    headurls: Option<Vec<HeadUrlItem>>,
 }
 
 impl QrUserJson {
     fn into_user(self) -> MateLoginUser {
-        let avatar_url = self
-            .headurl
-            .or_else(|| self.headurls.and_then(|urls| urls.into_iter().next()));
+        let avatar_url = self.headurl.or_else(|| {
+            self.headurls
+                .and_then(|urls| urls.into_iter().find_map(HeadUrlItem::into_url))
+        });
         MateLoginUser {
             user_id: self.user_id,
             user_name: self.user_name,
@@ -225,6 +272,21 @@ struct AcceptResultResp {
 struct ReceiveResp {
     #[serde(default)]
     result: i64,
+    /// `passToken` (jieger `ReceiveResp.passToken`).
+    #[serde(default)]
+    pass_token: Option<String>,
+    /// `token` (jieger `ReceiveResp.token`).
+    #[serde(default)]
+    token: Option<String>,
+    /// `lmtoken` (jieger `ReceiveResp.lmtoken`).
+    #[serde(default)]
+    lmtoken: Option<String>,
+    /// `kuaishou.live.mate_st` — dotted key needs an explicit rename.
+    #[serde(default, rename = "kuaishou.live.mate_st")]
+    mate_st: Option<String>,
+    /// `kuaishou.live.mate.h5_st` — dotted key needs an explicit rename.
+    #[serde(default, rename = "kuaishou.live.mate.h5_st")]
+    mate_h5_st: Option<String>,
     #[serde(default)]
     user: Option<QrUserJson>,
     #[serde(default, rename = "error_msg")]
@@ -498,14 +560,15 @@ fn with_platform_error(transport: String, platform: Option<String>) -> String {
 
 /// Terminal outcome of one flow run.
 enum FlowOutcome {
-    Success(MateLoginUser),
+    Success(MateLoginSuccess),
     Expired,
     Cancelled,
     Failed(String),
 }
 
-/// Full 4-step flow (jieger `runFlow`, `index.ts:265-372`) minus token
-/// persistence: tokens are dropped after `receive`, only the user is kept.
+/// Full 4-step flow (jieger `runFlow`, `index.ts:265-372`). Tokens captured at
+/// `receive` are carried out in [`MateLoginSuccess`] and persisted by the
+/// caller; the pushed state still only exposes the user identity.
 async fn flow_inner(
     client: &reqwest::Client,
     endpoints: &MateLoginEndpoints,
@@ -539,6 +602,7 @@ async fn flow_inner(
             ..
         } if result == RESULT_OK => (token, signature, image),
         other => {
+            tracing::warn!(result = other.result, "mate start failed");
             return FlowOutcome::Failed(format!(
                 "获取二维码失败：result={} {}",
                 other.result,
@@ -546,6 +610,7 @@ async fn flow_inner(
             ));
         }
     };
+    tracing::info!(account = %account_id, "mate start ok (qr issued)");
     rt.patch(account_id, MateLoginStage::AwaitingScan, |s| {
         s.qr_image_data_url = Some(format!("data:image/png;base64,{image_data}"));
         s.qr_login_token = Some(qr_login_token.clone());
@@ -629,20 +694,42 @@ async fn flow_inner(
         ReceiveResp {
             result,
             user: Some(user),
+            pass_token,
+            token,
+            lmtoken,
+            mate_st,
+            mate_h5_st,
             ..
-        } if result == RESULT_OK => FlowOutcome::Success(user.into_user()),
-        other => FlowOutcome::Failed(format!(
-            "领取登录凭证失败：result={} {}",
-            other.result,
-            error_text(other.error_msg)
-        )),
+        } if result == RESULT_OK => {
+            tracing::info!(account = %account_id, "mate receive ok");
+            FlowOutcome::Success(MateLoginSuccess {
+                user: user.into_user(),
+                tokens: profile_manager::MateLoginTokens {
+                    pass_token,
+                    token,
+                    lmtoken,
+                    mate_st,
+                    mate_h5_st,
+                },
+            })
+        }
+        other => {
+            tracing::warn!(result = other.result, "mate receive failed");
+            FlowOutcome::Failed(format!(
+                "领取登录凭证失败：result={} {}",
+                other.result,
+                error_text(other.error_msg)
+            ))
+        }
     }
 }
 
 // --- runtime ---------------------------------------------------------------
 
 /// In-memory login runtime: one [`TaskCancel`] + one [`MateLoginState`] per
-/// account id. States are never written to disk (tokens live only here).
+/// account id. The pushed state never holds tokens; on success the credentials
+/// are persisted into `mate_accounts` through `launcher_tx` (the SQLite
+/// connection lives on the launcher thread).
 pub struct MateLoginRuntime {
     client: reqwest::Client,
     endpoints: MateLoginEndpoints,
@@ -650,6 +737,10 @@ pub struct MateLoginRuntime {
     cancels: StdMutex<HashMap<String, (u64, TaskCancel)>>,
     generation: AtomicU64,
     app: StdMutex<Option<tauri::AppHandle>>,
+    /// Channel to the launcher thread, used to persist the successful login
+    /// (identity + tokens + `login_at`). `None` in offline unit tests, where
+    /// persistence is skipped.
+    launcher_tx: StdMutex<Option<tokio::sync::mpsc::Sender<super::LauncherCmd>>>,
 }
 
 impl MateLoginRuntime {
@@ -667,11 +758,51 @@ impl MateLoginRuntime {
             cancels: StdMutex::new(HashMap::new()),
             generation: AtomicU64::new(0),
             app: StdMutex::new(None),
+            launcher_tx: StdMutex::new(None),
         }
     }
 
     pub fn set_app(&self, app: tauri::AppHandle) {
         *self.app.lock().unwrap() = Some(app);
+    }
+
+    /// Wire the launcher channel so successful logins can be persisted.
+    /// Called once from `TauriBrowserDriver::start`.
+    pub fn set_launcher(&self, tx: tokio::sync::mpsc::Sender<super::LauncherCmd>) {
+        *self.launcher_tx.lock().unwrap() = Some(tx);
+    }
+
+    /// Persist a successful login onto the launcher thread. No-op when no
+    /// launcher is wired (offline unit tests). Tokens are written to the
+    /// database only — never logged.
+    async fn persist_success(
+        tx: tokio::sync::mpsc::Sender<super::LauncherCmd>,
+        account_id: String,
+        success: MateLoginSuccess,
+    ) -> Result<()> {
+        let MateLoginSuccess { user, tokens } = success;
+        let (resp, receive) = tokio::sync::oneshot::channel();
+        tx.send(super::LauncherCmd::MateDb {
+            operation: Box::new(move |pm| {
+                if resp.is_closed() {
+                    return;
+                }
+                let _ = resp.send(pm.mate_account_record_login(
+                    &account_id,
+                    &user.user_id,
+                    &user.user_name,
+                    user.avatar_url.as_deref(),
+                    &tokens,
+                    now_ms(),
+                ));
+            }),
+        })
+        .await
+        .map_err(|_| MultizenError::Mcp("直播伴侣存储线程已关闭，请重启应用后重试".into()))?;
+        receive
+            .await
+            .map_err(|_| MultizenError::Mcp("直播伴侣存储响应已取消，请重试".into()))?
+            .map(|_| ())
     }
 
     /// Abort every in-flight flow (app shutdown path).
@@ -761,7 +892,20 @@ impl MateLoginRuntime {
             let current = rt.current_generation(&id) == Some(generation);
             match outcome {
                 _ if !current => {}
-                FlowOutcome::Success(user) => {
+                FlowOutcome::Success(success) => {
+                    let user = success.user.clone();
+                    // Persist identity + tokens + login_at (best-effort: a
+                    // storage failure is logged without token material and does
+                    // not undo the already-confirmed login). No-op when no
+                    // launcher is wired (offline unit tests).
+                    let tx = rt.launcher_tx.lock().unwrap().clone();
+                    if let Some(tx) = tx {
+                        if let Err(error) =
+                            Self::persist_success(tx, id.clone(), success).await
+                        {
+                            tracing::warn!(account = %id, error = %error, "mate login persist failed");
+                        }
+                    }
                     let mut state = rt.get_state(&id);
                     state.stage = MateLoginStage::Success;
                     state.user = Some(user.clone());
@@ -816,25 +960,22 @@ impl Default for MateLoginRuntime {
 // --- driver wiring -----------------------------------------------------------
 
 impl super::TauriBrowserDriver {
-    /// Start the mate QR flow. The account must be a registered
-    /// `business_accounts` row of kind `kuaishou-mate`; login tokens are
-    /// never persisted — each login re-scans a fresh QR code.
+    /// Start the mate QR flow. The account must exist in `mate_accounts`
+    /// (no browser profile binding, no `business_accounts` row). On success the
+    /// tokens are persisted into that same row.
     pub async fn mate_login_start(&self, account_id: &str) -> Result<MateLoginState> {
-        let accounts = self.business_accounts_list().await?;
-        match accounts.iter().find(|a| a.id == account_id) {
-            Some(account) if account.kind == BusinessAccountKind::KuaishouMate => {}
-            Some(_) => {
-                return Err(MultizenError::Config(format!(
-                    "账号 `{account_id}` 不是直播伴侣账号（kind 必须为 kuaishou-mate），已拒绝扫码"
-                )));
-            }
-            None => {
-                return Err(MultizenError::NotFound(format!(
-                    "直播伴侣账号 `{account_id}` 不存在，请刷新后重试"
-                )));
-            }
+        let account_id = account_id.to_string();
+        let lookup = account_id.clone();
+        let found = self
+            .mate_store(move |pm| pm.mate_account_get(&lookup))
+            .await?
+            .is_some();
+        if !found {
+            return Err(MultizenError::NotFound(format!(
+                "直播伴侣账号 `{account_id}` 不存在，请刷新后重试"
+            )));
         }
-        Ok(self.mate_login.begin(account_id))
+        Ok(self.mate_login.begin(&account_id))
     }
 
     pub async fn mate_login_cancel(&self, account_id: &str) -> Result<MateLoginState> {
@@ -843,6 +984,66 @@ impl super::TauriBrowserDriver {
 
     pub async fn mate_login_state(&self, account_id: &str) -> Result<MateLoginState> {
         Ok(self.mate_login.get_state(account_id))
+    }
+
+    /// 在 launcher 线程上执行一次 ProfileManager 操作（SQLite 不离开该线程）。
+    pub(super) async fn mate_store<T: Send + 'static>(
+        &self,
+        op: impl FnOnce(&profile_manager::ProfileManager) -> Result<T> + Send + 'static,
+    ) -> Result<T> {
+        let (resp, receive) = tokio::sync::oneshot::channel();
+        self.launcher_tx
+            .send(super::LauncherCmd::MateDb {
+                operation: Box::new(move |pm| {
+                    if resp.is_closed() {
+                        return;
+                    }
+                    let _ = resp.send(op(pm));
+                }),
+            })
+            .await
+            .map_err(|_| MultizenError::Mcp("直播伴侣存储线程已关闭，请重启应用后重试".into()))?;
+        receive
+            .await
+            .map_err(|_| MultizenError::Mcp("直播伴侣存储响应已取消，请重试".into()))?
+    }
+
+    /// 所有直播伴侣账号，按创建时间升序（无环境绑定）。
+    pub async fn mate_accounts_list(&self) -> Result<Vec<profile_manager::MateAccount>> {
+        self.mate_store(|pm| pm.mate_accounts_list()).await
+    }
+
+    /// 新建伴侣账号（UUID 主键，仅别名）。
+    ///
+    /// `label` 可选：`None` 时存储层落占位别名
+    /// （`profile_manager::MATE_PLACEHOLDER_LABEL`），待首次扫码登录成功后由
+    /// `mate_account_record_login` 用平台昵称覆盖。
+    pub async fn mate_account_add(
+        &self,
+        label: Option<&str>,
+    ) -> Result<profile_manager::MateAccount> {
+        let label = label.map(str::to_string);
+        self.mate_store(move |pm| pm.mate_account_add(label.as_deref()))
+            .await
+    }
+
+    /// 删除伴侣账号；同时取消该账号在途登录流程。
+    pub async fn mate_account_remove(&self, id: &str) -> Result<()> {
+        self.mate_login.cancel(id);
+        let id = id.to_string();
+        self.mate_store(move |pm| pm.mate_account_remove(&id)).await
+    }
+
+    /// 重命名伴侣账号别名。
+    pub async fn mate_account_rename(
+        &self,
+        id: &str,
+        label: &str,
+    ) -> Result<profile_manager::MateAccount> {
+        let id = id.to_string();
+        let label = label.to_string();
+        self.mate_store(move |pm| pm.mate_account_rename(&id, &label))
+            .await
     }
 }
 
@@ -1123,12 +1324,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn driver_start_rejects_unknown_account_and_wrong_kind() {
+    async fn driver_start_rejects_unknown_account() {
         let (_dir, driver) =
             crate::driver::business_tests::fixture(multizen_core::ChromixSettings::default());
+        // Unknown id → NotFound; no network is touched.
         let err = driver.mate_login_start("absent").await.unwrap_err();
         assert!(err.to_string().contains("不存在"), "unexpected: {err}");
 
+        // A `business_accounts` row is NOT a mate account (mate accounts live in
+        // `mate_accounts` and carry no profile binding) → also NotFound.
         let profile = driver
             .create_profile(multizen_core::CreateProfileInput {
                 name: "mate guard fixture".into(),
@@ -1147,9 +1351,22 @@ mod tests {
             .await
             .unwrap();
         let err = driver.mate_login_start(&shop.id).await.unwrap_err();
-        assert!(err.to_string().contains("直播伴侣"), "unexpected: {err}");
+        assert!(err.to_string().contains("不存在"), "unexpected: {err}");
 
-        // No network is touched on the rejection paths above; these stay local.
+        // Account CRUD works without ever starting a flow (no network).
+        let account = driver.mate_account_add(Some("伴侣甲")).await.unwrap();
+        assert_eq!(driver.mate_accounts_list().await.unwrap().len(), 1);
+        assert_eq!(
+            driver
+                .mate_account_rename(&account.id, "伴侣甲-改")
+                .await
+                .unwrap()
+                .label,
+            "伴侣甲-改"
+        );
+        driver.mate_account_remove(&account.id).await.unwrap();
+        assert!(driver.mate_accounts_list().await.unwrap().is_empty());
+
         assert_eq!(
             driver.mate_login_state("absent").await.unwrap().stage,
             MateLoginStage::Idle
@@ -1159,5 +1376,74 @@ mod tests {
             MateLoginStage::Idle
         );
         driver.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn success_persists_tokens_into_mate_account() {
+        async fn scan_ok_now() -> Json<Value> {
+            Json(json!({"result": 1, "user": user_json()}))
+        }
+        async fn receive_with_tokens() -> Json<Value> {
+            Json(json!({
+                "result": 1,
+                "user": user_json(),
+                "passToken": "pass-1",
+                "token": "tok-1",
+                "lmtoken": "lm-1",
+                "kuaishou.live.mate_st": "st-1",
+                "kuaishou.live.mate.h5_st": "h5-1",
+            }))
+        }
+        let router = Router::new()
+            .route("/start", post(start_ok))
+            .route("/scanResult", post(scan_ok_now))
+            .route("/acceptResult", post(accept_ok))
+            .route("/receive", post(receive_with_tokens));
+        let (endpoints, server) = spawn_mock(router).await;
+        let rt = Arc::new(MateLoginRuntime::with_endpoints(endpoints));
+
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("p.db");
+        let profiles_root = dir.path().join("profiles");
+        let pm = profile_manager::ProfileManager::new(&db_path, &profiles_root).unwrap();
+        let account_id = pm.mate_account_add(Some("伴侣甲")).unwrap().id;
+
+        // Stand in for the launcher thread: consume `MateDb` and run the op.
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<super::super::LauncherCmd>(8);
+        let worker = tokio::spawn(async move {
+            while let Some(cmd) = rx.recv().await {
+                if let super::super::LauncherCmd::MateDb { operation } = cmd {
+                    operation(&pm);
+                }
+            }
+        });
+        rt.set_launcher(tx);
+
+        rt.begin(&account_id);
+        let done = wait_for(
+            &rt,
+            &account_id,
+            |s| matches!(s.stage, MateLoginStage::Success | MateLoginStage::Error),
+            Duration::from_secs(15),
+        )
+        .await;
+        assert_eq!(done.stage, MateLoginStage::Success, "state: {done:?}");
+
+        // Success is published only after persist_success committed.
+        let reader = profile_manager::ProfileManager::new(&db_path, &profiles_root).unwrap();
+        let saved = reader.mate_account_get(&account_id).unwrap().unwrap();
+        assert_eq!(saved.platform_user_id.as_deref(), Some("u1001"));
+        assert_eq!(saved.user_name.as_deref(), Some("测试主播"));
+        assert_eq!(saved.avatar_url.as_deref(), Some("http://example.com/a.png"));
+        assert_eq!(saved.mate_pass_token.as_deref(), Some("pass-1"));
+        assert_eq!(saved.mate_token.as_deref(), Some("tok-1"));
+        assert_eq!(saved.mate_lmtoken.as_deref(), Some("lm-1"));
+        assert_eq!(saved.mate_st.as_deref(), Some("st-1"));
+        assert_eq!(saved.mate_h5_st.as_deref(), Some("h5-1"));
+        assert!(saved.login_at.is_some());
+
+        drop(rt);
+        worker.abort();
+        server.abort();
     }
 }

@@ -76,7 +76,10 @@ use crate::commands::{
         kuaishou_subject_attachment, kuaishou_subject_confirm, kuaishou_subject_correct,
         kuaishou_subject_detail, kuaishou_subject_list, kuaishou_subject_reocr,
     },
-    mate_login::{mate_login_cancel, mate_login_start, mate_login_state},
+    mate_login::{
+        mate_account_add, mate_account_remove, mate_account_rename, mate_accounts_list,
+        mate_login_cancel, mate_login_start, mate_login_state,
+    },
     jinniu::{
         jinniu_account_add, jinniu_account_get_active, jinniu_account_remove,
         jinniu_account_set_active, jinniu_accounts_list, jinniu_disconnect, jinniu_login,
@@ -88,8 +91,9 @@ use crate::commands::{
     },
     live_launch::{
         live_launch_credentials, live_launch_heartbeat_start, live_launch_heartbeat_stop,
-        live_launch_prerequisites, live_launch_status, live_launch_stream_start,
-        live_launch_stream_stop,
+        live_launch_mate_credentials, live_launch_mate_heartbeat, live_launch_mate_stream_start,
+        live_launch_mate_stream_stop, live_launch_prerequisites, live_launch_status,
+        live_launch_stream_start, live_launch_stream_stop,
     },
     live_room_monitor::{
         get_live_room_monitor_state, start_live_room_monitor, stop_live_room_monitor,
@@ -652,7 +656,11 @@ pub fn run() {
             scene_reorder_lines,
             scene_play,
             scene_stop,
-            // live-mate HTTP QR login (tokens never persisted)
+            // live-mate accounts + HTTP QR login (tokens persisted on success)
+            mate_accounts_list,
+            mate_account_add,
+            mate_account_remove,
+            mate_account_rename,
             mate_login_start,
             mate_login_cancel,
             mate_login_state,
@@ -664,6 +672,11 @@ pub fn run() {
             live_launch_heartbeat_stop,
             live_launch_stream_start,
             live_launch_stream_stop,
+            // live launch — mate (伴侣账号，liveMate 取流，不启浏览器)
+            live_launch_mate_credentials,
+            live_launch_mate_stream_start,
+            live_launch_mate_stream_stop,
+            live_launch_mate_heartbeat,
             // live room monitor (jieger 调度中枢)
             start_live_room_monitor,
             stop_live_room_monitor,

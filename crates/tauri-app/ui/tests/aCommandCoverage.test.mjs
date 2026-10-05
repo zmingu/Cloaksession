@@ -10,7 +10,7 @@ function read(rel) {
   return readFileSync(join(root, rel), "utf8");
 }
 
-// All 16 A-group commands must have a typed TS wrapper, per
+// All A-group commands must have a typed TS wrapper, per
 // `.trellis/tasks/10-04-jieger-frontend-catchup/research/command-surface.md` §1-4.
 const EXPECTED = {
   "src/lib/kuaishouAuth.ts": ["kuaishou_connect", "kuaishou_login", "ensure_kuaishou_auth"],
@@ -19,6 +19,9 @@ const EXPECTED = {
     "live_launch_status", "live_launch_prerequisites", "live_launch_credentials",
     "live_launch_heartbeat_start", "live_launch_heartbeat_stop",
     "live_launch_stream_start", "live_launch_stream_stop",
+    // mate（伴侣）模式：以 mateAccountId 为键，走 liveMate 取流，不启浏览器。
+    "live_launch_mate_credentials", "live_launch_mate_stream_start",
+    "live_launch_mate_stream_stop",
   ],
   "src/lib/liveRoomMonitor.ts": [
     "start_live_room_monitor", "stop_live_room_monitor", "get_live_room_monitor_state",
@@ -34,7 +37,7 @@ const EVENTS = {
   "src/lib/liveRoomMonitor.ts": "live-room-monitor-state-changed",
 };
 
-test("all 16 A-group commands have TS wrappers", () => {
+test("all A-group commands have TS wrappers", () => {
   let total = 0;
   for (const [file, commands] of Object.entries(EXPECTED)) {
     const body = read(file);
@@ -43,7 +46,11 @@ test("all 16 A-group commands have TS wrappers", () => {
       total += 1;
     }
   }
-  assert.equal(total, 16, "3 kuaishou-auth + 3 mate-login + 7 live-launch + 3 live-room-monitor");
+  assert.equal(
+    total,
+    19,
+    "3 kuaishou-auth + 3 mate-login + 10 live-launch (7 profile + 3 mate) + 3 live-room-monitor",
+  );
 });
 
 test("A-group event subscriptions are awaitable and return an unlisten", () => {
