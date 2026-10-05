@@ -389,6 +389,9 @@ pub fn run() {
             // The sub-account login poller is read-only and independent.
             state.driver.start_kuaishou_monitors();
             state.driver.start_sub_account_login_monitor();
+            // Reconciles the sync `running` cache with real process liveness and
+            // pushes `Closed`/`stopped` when a browser exits on its own.
+            state.driver.start_running_monitor();
 
             // Spawn a background task that bridges `ActivityLog`'s broadcast
             // stream to the Tauri frontend via `activity:event`. Every
@@ -725,6 +728,7 @@ pub fn run() {
                 state.driver.stop_kuaishou_identity_monitor();
                 state.driver.stop_kuaishou_init_monitor();
                 state.driver.stop_sub_account_login_monitor();
+                state.driver.stop_running_monitor();
             }
         });
 }

@@ -441,6 +441,7 @@ export const zhCN: Record<TranslationKey, string> = {
   "kuaishou.shop.deleteConfirm": "是，删除",
   "kuaishou.shop.deleteFailed": "删除失败：{{error}}",
   "kuaishou.shop.unnamed": "未命名",
+  "kuaishou.shop.viewDetails": "查看账号信息：{{name}}",
   // --- account initialization status (shop list column) -------------
   "kuaishou.init.state.pending": "待执行",
   "kuaishou.init.state.running": "执行中",

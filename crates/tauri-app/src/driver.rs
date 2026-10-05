@@ -28,7 +28,7 @@
 //! |---------------------|---------------------------------------------------------|
 //! | `launch`            | Send `LauncherCmd::Launch` to the launcher thread → receive `LaunchedProfile` → `registry.get_or_connect(endpoint, engine)`. Update `running` cache. |
 //! | `close`             | `registry.remove` (drops CDP `Arc<BrowserSession>` → CDP closes) **then** `LauncherCmd::Close` (kills process). `BrowserSession::close(mut self)` is consuming and cannot be called through `Arc`, so the drop path is the intended teardown. |
-//! | `is_running` (SYNC) | `BrowserLauncher::is_running_async` is async. The driver maintains a local `std::sync::Mutex<HashSet<ProfileId>>` updated by `launch`/`close`. Cache; can be stale if the process died externally. |
+//! | `is_running` (SYNC) | `BrowserLauncher::is_running_async` is async. The driver maintains a local `std::sync::Mutex<HashSet<ProfileId>>` updated by `launch`/`close`. The bounded `running_monitor` task reconciles it with the launcher's authoritative probe and emits `Closed`/`stopped` when a process exits on its own. |
 //! | `navigate`          | `registry.get` → `session.navigate(url, timeout_ms)` → returns `NavResult.url`. |
 //! | `click`             | `session.click(selector)`. |
 //! | `type_text`         | `session.type_text(selector, text)`. |
@@ -65,6 +65,9 @@ mod shop_login_tests;
 mod identity;
 mod account_init;
 mod mate_login;
+mod running_monitor;
+#[cfg(test)]
+mod running_monitor_tests;
 
 pub use mate_login::{MateLoginStage, MateLoginState, MateLoginUser};
 
@@ -111,8 +114,9 @@ pub enum RunningStateChange {
     /// winding down but hasn't fully exited. Not currently emitted.
     Closing { profile_id: String },
     /// Emitted after a successful close — the profile is no longer running.
-    /// `reason: "user-close"` is the explicit close path; `"external-exit"`
-    /// would be used if we ever detect an externally-killed process.
+    /// `reason: "user-close"` is the explicit close path; `"external-exit"` is
+    /// emitted by the bounded `running_monitor` when it detects a process that
+    /// exited on its own.
     Closed {
         profile_id: String,
         reason: &'static str,
@@ -155,6 +159,14 @@ enum LauncherCmd {
     Close {
         profile_id: String,
         resp: oneshot::Sender<Result<()>>,
+    },
+    /// Authoritative liveness probe routed onto the launcher thread (the only
+    /// owner of the `BrowserLauncher`). The reply is `true` while the process
+    /// is genuinely alive. Used by the bounded running monitor so the sync
+    /// `running` cache can be reconciled with reality.
+    HealthCheck {
+        profile_id: String,
+        resp: oneshot::Sender<bool>,
     },
     ClosePrepared {
         profile_id: String,
@@ -325,6 +337,10 @@ pub struct TauriBrowserDriver {
     /// `BrowserLauncher::is_running_async` cannot be awaited from a sync
     /// context.
     running: StdMutex<HashSet<String>>,
+    /// Bounded health-check task that reconciles `running` with the launcher's
+    /// authoritative liveness probe and pushes `Closed`/`stopped` for a
+    /// process that exited on its own. See `driver/running_monitor.rs`.
+    running_monitor: Arc<running_monitor::RunningMonitorRuntime>,
     /// Optional Tauri `AppHandle` used to emit push events
     /// (`profiles:running-changed`, `chromium:status`). Populated by
     /// `set_app` during `run()` setup. `None` in unit tests / before
@@ -378,6 +394,7 @@ impl TauriBrowserDriver {
             extensions_root,
             profiles_root,
             running: StdMutex::new(HashSet::new()),
+            running_monitor: Arc::new(running_monitor::RunningMonitorRuntime::new()),
             app: StdMutex::new(None),
         })
     }
@@ -440,6 +457,7 @@ impl TauriBrowserDriver {
         self.account_init.stop.cancel();
         self.mate_login.cancel_all();
         self.sub_account.stop.cancel();
+        self.running_monitor.stop.cancel();
         self.registry.clear().await;
         let _ = tokio::time::timeout(
             std::time::Duration::from_secs(2),
@@ -572,6 +590,11 @@ async fn launcher_task(
                 registry.remove(&profile_id).await;
                 let result = launcher.close(&profile_id).await;
                 let _ = resp.send(result);
+            }
+            LauncherCmd::HealthCheck { profile_id, resp } => {
+                // `is_running_async` filters through `BrowserHandle::is_alive`,
+                // so a process that exited on its own already reads `false`.
+                let _ = resp.send(launcher.is_running_async(&profile_id).await);
             }
             LauncherCmd::ClosePrepared {
                 profile_id,
@@ -950,9 +973,10 @@ impl BrowserDriver for TauriBrowserDriver {
 
     fn is_running(&self, profile_id: &str) -> bool {
         // Sync trait method — cannot await launcher.is_running_async.
-        // Use the local cache. Stale if the process died externally; callers
-        // that need authoritative state should invoke a follow-up async
-        // health check (deferred — see task P4.8).
+        // Use the local cache, which the bounded `running_monitor` task
+        // reconciles with the launcher's authoritative liveness probe (see
+        // `driver/running_monitor.rs`), so an externally-exited process
+        // converges to `false` within one poll interval.
         self.running.lock().unwrap().contains(profile_id)
     }
 
@@ -1222,5 +1246,6 @@ impl Drop for TauriBrowserDriver {
         self.identity.stop.cancel();
         self.account_init.stop.cancel();
         self.sub_account.stop.cancel();
+        self.running_monitor.stop.cancel();
     }
 }

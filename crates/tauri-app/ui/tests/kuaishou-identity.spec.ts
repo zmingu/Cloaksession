@@ -36,14 +36,12 @@ test("detected cards and rows preserve the profile emoji; details copy only ID a
   await openDetails(page);
   await page.screenshot({ path: testInfo.outputPath("identity-detail.png"), animations: "disabled" });
   await expect(page.getByRole("dialog")).toHaveCount(1);
-  await expect(detail(page)).toContainText("后台自动补做");
-  await expect(detail(page)).toContainText("下方按钮用于手动补做");
-  await expect(detail(page).getByTestId("subject-panel")).toContainText("暂无主体档案");
-  await expect(detail(page)).toContainText("Rust 后台");
-  await expect(detail(page)).toContainText("2026-09-30T08:00:00Z");
-  await detail(page).getByRole("button", { name: "复制快手ID", exact: true }).click();
-  await expect(detail(page).getByRole("status")).toHaveText("快手ID已复制");
-  expect(await page.evaluate(() => (window as any).__COPIED_ID__)).toBe("00123456");
+  // Slim dialog: the Kuaishou ID stays; detection timestamps, provenance and
+  // the photo/validation/retry panels are gone.
+  await expect(detail(page)).toContainText("00123456");
+  await detail(page).getByRole("button", { name: "复制信息", exact: true }).click();
+  await expect(detail(page).getByRole("status")).toHaveText("已复制快手ID、姓名、身份证号");
+  expect(await page.evaluate(() => (window as any).__COPIED_ID__)).toBe("快手ID：00123456\n姓名：\n身份证号：");
   const widths = await detail(page).evaluate((element) => ({ client: element.clientWidth, scroll: element.scrollWidth }));
   expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
   await page.keyboard.press("Escape");
@@ -64,9 +62,7 @@ test("offline snapshots show last identity, never a current green result, and ca
   await expect(summary(page)).not.toContainText("本轮已识别");
   await expect(detectButton(page)).toBeDisabled();
   await openDetails(page);
-  await expect(detail(page)).toContainText("上次识别信息");
-  await expect(detail(page).getByRole("button", { name: "重新检测", exact: true })).toBeDisabled();
-  await expect(detail(page)).toContainText("不能据此确认当前已登录");
+  await expect(detail(page)).toContainText("00123456");
   expect(await identityCalls(page, DETECT)).toEqual([]);
 });
 
@@ -76,7 +72,7 @@ test("no identity is not fake data; not-detected, skipped and error preserve his
   await expect(summary(page).locator("img")).toHaveCount(0);
   await expect(summary(page)).not.toContainText("快手ID：");
   await openDetails(page);
-  await expect(detail(page).getByRole("button", { name: "复制快手ID" })).toBeDisabled();
+  await expect(detail(page).getByRole("button", { name: "复制信息", exact: true })).toBeDisabled();
   await closeDetails(page);
   for (const status of ["not-detected", "skipped", "error"] as const) {
     await page.evaluate((snapshot) => { (window as any).__TEST_IDENTITY__.snapshots = [snapshot]; }, identityFixture({ status }));
@@ -93,7 +89,7 @@ test("registration conflicts do not overwrite manual records, autosave or unbind
   await setBusinessFixture(page, [account], { [FIRST_PROFILE]: "kuaishou" });
   await expect(summary(page)).toContainText("登记冲突");
   await openDetails(page);
-  await expect(detail(page)).toContainText("后台检测到登记冲突");
+  await expect(detail(page)).toContainText("00123456");
   await closeDetails(page);
   await page.getByRole("button", { name: /Regression profile/ }).click();
   await page.getByRole("dialog").getByRole("button", { name: "General", exact: true }).click();
@@ -114,11 +110,9 @@ test("manual detection is shared and ignores duplicate clicks, including another
   await detectButton(page).evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
   await waitIdentity(page, key);
   await openDetails(page);
-  await expect(detail(page).getByRole("button", { name: "检测中…", exact: true })).toBeDisabled();
   expect(await identityCalls(page, DETECT)).toEqual([{ command: DETECT, args: { profileId: FIRST_PROFILE } }]);
   await releaseIdentity(page, key);
   await expect(detail(page)).toContainText("22222222");
-  await expect(detail(page).getByRole("button", { name: "重新检测", exact: true })).toBeEnabled();
   await expect(summary(page)).toContainText("22222222");
 });
 
@@ -129,10 +123,10 @@ test("failed manual detection preserves the last ID as unknown and can be retrie
   await expect(summary(page)).toHaveAttribute("data-status", "unknown");
   await expect(summary(page)).toContainText("00123456");
   await openDetails(page);
-  await expect(detail(page).getByRole("alert")).toContainText("fixture CDP failure");
-  await expect(detail(page).getByRole("button", { name: "重新检测", exact: true })).toBeEnabled();
-  await detail(page).getByRole("button", { name: "重新检测", exact: true }).click();
-  await expect(detail(page).getByRole("alert")).toHaveCount(0);
+  await expect(detail(page)).toContainText("00123456");
+  await closeDetails(page);
+  // Retry from the summary: the slim detail dialog no longer owns a detect control.
+  await detectButton(page).click();
   await expect(summary(page)).toHaveAttribute("data-status", "detected");
   expect(await identityCalls(page, DETECT)).toHaveLength(2);
 });
@@ -182,8 +176,8 @@ test("multi-profile late manual responses cannot alter the selected profile's de
   await expect(detail(page)).toContainText("77777777");
   await expect(detail(page)).not.toContainText("88888888");
   await expect(detail(page)).not.toContainText("迟到第一小店");
-  await detail(page).getByRole("button", { name: "复制快手ID" }).click();
-  expect(await page.evaluate(() => (window as any).__COPIED_ID__)).toBe("77777777");
+  await detail(page).getByRole("button", { name: "复制信息", exact: true }).click();
+  expect(await page.evaluate(() => (window as any).__COPIED_ID__)).toBe("快手ID：77777777\n姓名：\n身份证号：");
 });
 
 test("avatars accept local raster data only; invalid payloads and failures fall back without network", async ({ page }) => {
@@ -269,9 +263,7 @@ test("malformed list and mismatched manual profile IDs are visible errors, never
   await page.evaluate(({ id, snapshot }) => { (window as any).__TEST_IDENTITY__.detections[id] = snapshot; }, { id: FIRST_PROFILE, snapshot: identityFixture({ profileId: SECOND_PROFILE, platformUserId: "55555555" }) });
   await detectButton(page).click();
   await openDetails(page);
-  await expect(detail(page).getByRole("alert")).toContainText("与请求的 Profile 不符");
   await expect(detail(page)).not.toContainText("55555555");
-  await expect(detail(page).getByRole("button", { name: "重新检测", exact: true })).toBeEnabled();
 });
 
 test("details opened from registration close with Escape without disturbing the profile or registration draft", async ({ page }) => {
@@ -283,7 +275,7 @@ test("details opened from registration close with Escape without disturbing the 
   await region.getByLabel("账号别名（必填）", { exact: true }).fill("未保存登记草稿");
   await region.getByRole("button", { name: "快手详情", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(2);
-  await detail(page).getByRole("button", { name: "复制快手ID", exact: true }).click();
+  await detail(page).getByRole("button", { name: "复制信息", exact: true }).click();
   await page.keyboard.press("Escape");
   await expect(detail(page)).toHaveCount(0);
   await expect(page.getByRole("dialog")).toHaveCount(1);

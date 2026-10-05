@@ -78,10 +78,14 @@ type ShopRow = { id: string; name: string };
  * Local shop fixture: profiles + identity snapshots + init steps, injected before
  * the app boots so the first (and only) provider read already sees them. No
  * profile is launched and no platform request is made.
+ *
+ * `running` seeds which environments report `isRunning: true`; the mutable
+ * `__TEST_SHOP__.running` array lets a test flip it before delivering a
+ * synthetic `profiles:running-changed` event.
  */
 async function installShopMock(
   page: Page,
-  data: { profiles: ShopRow[]; snapshots: unknown[]; stepsByUser?: Record<string, unknown[]> },
+  data: { profiles: ShopRow[]; snapshots: unknown[]; stepsByUser?: Record<string, unknown[]>; running?: string[] },
 ): Promise<void> {
   await installTauriMock(page, { ...defaultSettings, language: "en" });
   await page.addInitScript((payload) => {
@@ -89,13 +93,14 @@ async function installShopMock(
     localStorage.setItem("multizen.ui.kuaishouTab", JSON.stringify("shop"));
     const internals = (window as any).__TAURI_INTERNALS__;
     const original = internals.invoke;
-    const mock = { calls: [] as Array<{ command: string; args: Record<string, any> }> };
+    const mock = { calls: [] as Array<{ command: string; args: Record<string, any> }>, running: payload.running };
     Object.assign(window, { __TEST_SHOP__: mock });
     internals.invoke = async (command: string, args: Record<string, any> = {}) => {
       if (command === "profiles_list") {
+        mock.calls.push({ command, args: structuredClone(args) });
         return payload.profiles.map((profile) => ({
           id: profile.id, name: profile.name, tags: [], group: null, icon: null,
-          isRunning: false, timezone: "Asia/Shanghai",
+          isRunning: mock.running.includes(profile.id), timezone: "Asia/Shanghai",
         }));
       }
       if (command === "kuaishou_identity_list") return structuredClone(payload.snapshots);
@@ -106,7 +111,7 @@ async function installShopMock(
       }
       return original(command, args);
     };
-  }, { profiles: data.profiles, snapshots: data.snapshots, stepsByUser: data.stepsByUser ?? {} });
+  }, { profiles: data.profiles, snapshots: data.snapshots, stepsByUser: data.stepsByUser ?? {}, running: data.running ?? [] });
   await page.goto("/");
   await expect(page.getByRole("region", { name: "Shop" })).toBeVisible();
 }
@@ -166,6 +171,16 @@ test("shop list renders the initialization column and only reads rows with a Kua
   const table = page.getByRole("region", { name: "Shop" });
   await expect(table.getByRole("columnheader", { name: "Initialization" })).toBeVisible();
 
+  // Column order: the initialization column sits right after the Kuaishou ID and
+  // before the detection status.
+  const headers = await table.getByRole("columnheader").allTextContents();
+  const idIdx = headers.indexOf("Kuaishou ID");
+  const initIdx = headers.indexOf("Initialization");
+  const statusIdx = headers.indexOf("Detection");
+  expect(idIdx).toBeGreaterThanOrEqual(0);
+  expect(initIdx).toBe(idIdx + 1);
+  expect(statusIdx).toBe(initIdx + 1);
+
   // Both steps done → green "Done".
   const done = page.getByTestId("init-cell-profile-done");
   await expect(done).toHaveAttribute("data-state", "done");
@@ -187,4 +202,65 @@ test("shop list renders the initialization column and only reads rows with a Kua
   );
   // Only the two rows with a Kuaishou ID are read; the id-less row is never queried.
   expect(new Set(reads.map((call: any) => call.args.platformUserId))).toEqual(new Set(["11111111", "22222222"]));
+});
+
+/**
+ * (B) The avatar + name block is a single accessible button that opens the shared
+ * Kuaishou identity dialog (mounted once at the app root — no local popup here).
+ */
+test("clicking the account avatar or name opens the shared Kuaishou detail dialog", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chrome", "desktop layout only");
+  await installShopMock(page, {
+    profiles: [{ id: "detail-profile", name: "本地小店" }],
+    snapshots: [identity("detail-profile", "00123456", "平台昵称")],
+  });
+
+  const table = page.getByRole("region", { name: "Shop" });
+  const row = table.getByRole("row").filter({ hasText: "本地小店" });
+  await expect(row).toBeVisible();
+
+  // The whole avatar+name block is one button, labelled with the account name.
+  await row.getByRole("button", { name: "View account info: 本地小店", exact: true }).click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText("快手详情", { exact: true })).toBeVisible();
+  const detail = page.getByTestId("kuaishou-detail");
+  await expect(detail).toBeVisible();
+  await expect(detail).toContainText("00123456");
+  await expect(detail).toContainText("平台昵称");
+});
+
+/**
+ * (A) The list subscribes to `profiles:running-changed` and refetches, so an
+ * environment that dies on its own (window closed directly) converges without
+ * the user touching the page.
+ */
+test("a profiles:running-changed event refreshes the shop list automatically", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chrome", "desktop layout only");
+  await installShopMock(page, {
+    profiles: [{ id: "running-profile", name: "运行中小店" }],
+    snapshots: [identity("running-profile", "00123456", "运行中小店")],
+    running: ["running-profile"],
+  });
+
+  const table = page.getByRole("region", { name: "Shop" });
+  const row = table.getByRole("row").filter({ hasText: "运行中小店" });
+  await expect(row.getByRole("button", { name: "Stop" })).toBeVisible();
+  const listCalls = () =>
+    page.evaluate(() => (window as any).__TEST_SHOP__.calls.filter((call: any) => call.command === "profiles_list").length);
+  const before = await listCalls();
+
+  // Flip the fixture (the process is gone) and deliver the backend event the way
+  // Tauri would; no local button is pressed.
+  await page.evaluate(() => {
+    const mock = (window as any).__TEST_SHOP__;
+    mock.running = [];
+    (window as any).__TEST_IPC__.emit("profiles:running-changed", {
+      kind: "closed", profileId: "running-profile", reason: "external-exit",
+    });
+  });
+
+  await expect(row.getByRole("button", { name: "Launch" })).toBeVisible();
+  expect(await listCalls()).toBeGreaterThan(before);
 });

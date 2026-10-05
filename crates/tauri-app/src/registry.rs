@@ -146,6 +146,12 @@ impl ProfileRegistry {
             .filter(|s| s.session.get().is_some() && !s.cancel.is_cancelled())
             .cloned()
     }
+    /// Unfiltered slot lookup (no session/cancel filters). The running monitor
+    /// snapshots the exact generation it is about to probe, so `remove_current`
+    /// can reject a slot a relaunch has already replaced.
+    pub(crate) async fn raw_slot(&self, profile_id: &str) -> Option<Arc<SessionSlot>> {
+        self.sessions.lock().await.get(profile_id).cloned()
+    }
     pub async fn get(&self, profile_id: &str) -> Option<Arc<BrowserSession>> {
         self.slot(profile_id).await.and_then(|s| s.session())
     }

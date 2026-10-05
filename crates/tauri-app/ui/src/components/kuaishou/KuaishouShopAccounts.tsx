@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type JSX } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
 import { Loader2, Play, Plus, Search, Square, Trash2 } from "lucide-react";
 
 import { useT } from "../../i18n/LanguageProvider";
 import type { TranslationKey } from "../../i18n/en";
 import { cn } from "../../lib/cn";
-import { profiles as profilesApi } from "../../lib/ipc";
+import { onRunningChanged, profiles as profilesApi } from "../../lib/ipc";
 import { useKuaishouIdentities, useKuaishouIdentity } from "../../lib/KuaishouIdentityProvider";
 import {
   kuaishouSubject,
@@ -53,25 +53,45 @@ export function KuaishouShopAccounts({ onAddAccount }: { onAddAccount?: () => vo
     };
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    void profilesApi
-      .list()
-      .then((list) => {
-        if (!active) return;
+  const refresh = useCallback(async (): Promise<void> => {
+    try {
+      const list = await profilesApi.list();
+      if (mounted.current) {
         setRows(list);
         setRowsError(null);
-      })
-      .catch((cause: unknown) => {
-        if (active) setRowsError(errorText(cause));
-      })
-      .finally(() => {
-        if (active) setFirstLoad(false);
-      });
+      }
+    } catch (cause) {
+      if (mounted.current) setRowsError(errorText(cause));
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void refresh().finally(() => {
+      if (active) setFirstLoad(false);
+    });
     return () => {
       active = false;
     };
-  }, []);
+  }, [refresh]);
+
+  // Any running-state change (including a Chromium window the user closed
+  // directly) refreshes this page's copy of the profile list, so the row's
+  // launch/stop control converges without a manual action. The page keeps its
+  // own `rows` state, so it cannot ride on App's global refresh.
+  useEffect(() => {
+    let off = (): void => {};
+    let active = true;
+    void onRunningChanged(() => {
+      void refresh();
+    }).then((fn) => {
+      if (active) off = fn;
+    });
+    return () => {
+      active = false;
+      off();
+    };
+  }, [refresh]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
@@ -168,17 +188,17 @@ export function KuaishouShopAccounts({ onAddAccount }: { onAddAccount?: () => vo
         },
       },
       {
-        id: "status",
-        header: t("kuaishou.shop.col.status"),
-        width: 150,
-        cell: (row) => <StatusCell row={row} />,
-      },
-      {
         id: "init",
         header: t("kuaishou.shop.col.init"),
         width: 170,
         showFrom: 820,
         cell: (row) => <InitCell row={row} />,
+      },
+      {
+        id: "status",
+        header: t("kuaishou.shop.col.status"),
+        width: 150,
+        cell: (row) => <StatusCell row={row} />,
       },
       {
         id: "tags",
@@ -270,27 +290,39 @@ export function KuaishouShopAccounts({ onAddAccount }: { onAddAccount?: () => vo
   );
 }
 
-/** Avatar + profile name, with the running state as a ring on the avatar. */
+/** Avatar + profile name, with the running state as a ring on the avatar.
+ *  The avatar/name block is a real button that opens the shared Kuaishou
+ *  identity dialog (mounted once at the app root). */
 function AccountCell({ row }: { row: ProfileSummary }): JSX.Element {
-  const { entries } = useKuaishouIdentities();
+  const t = useT();
+  const { entries, openDetails } = useKuaishouIdentities();
   const snapshot = entries.get(row.id)?.snapshot ?? null;
+  const label = t("kuaishou.shop.viewDetails", { name: row.name });
   return (
     <div className="flex min-w-0 items-center gap-2.5">
-      <span
-        className="flex shrink-0 rounded-[9px] p-[1.5px] transition-colors"
-        style={{
-          background: row.isRunning ? "rgba(52,211,153,0.6)" : "rgba(148,163,184,0.3)",
-        }}
+      <button
+        type="button"
+        aria-label={label}
+        title={label}
+        onClick={() => openDetails(row.id)}
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-md text-left outline-none hover:bg-white/[0.04] focus-visible:ring-1 focus-visible:ring-purple-400/60"
       >
-        {snapshot?.platformUserId ? (
-          <IdentityAvatar snapshot={snapshot} size={24} />
-        ) : (
-          <Avatar initials={row.name.slice(0, 2).toUpperCase()} size={24} />
-        )}
-      </span>
-      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-100">
-        {row.name}
-      </span>
+        <span
+          className="flex shrink-0 rounded-[9px] p-[1.5px] transition-colors"
+          style={{
+            background: row.isRunning ? "rgba(52,211,153,0.6)" : "rgba(148,163,184,0.3)",
+          }}
+        >
+          {snapshot?.platformUserId ? (
+            <IdentityAvatar snapshot={snapshot} size={24} />
+          ) : (
+            <Avatar initials={row.name.slice(0, 2).toUpperCase()} size={24} />
+          )}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-100 hover:underline">
+          {row.name}
+        </span>
+      </button>
       {/* The wizard renames the environment from the detected nickname, so the two
        *  strings are usually identical. Only surface the nickname when it adds
        *  information — otherwise the row would show the same name twice. */}

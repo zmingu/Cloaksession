@@ -5,7 +5,7 @@ import { useKuaishouIdentity } from "../../lib/KuaishouIdentityProvider";
 
 const stateLabels = { pending: "待执行", running: "执行中", done: "已完成", failed: "未完成" };
 const errorLabels: Record<string, string> = { "interrupted-needs-verification": "上次中断，需重新验证", "context-changed": "账号或会话已改变", "timed-out": "执行超时", "page-unsupported": "页面结构不支持", "page-crashed": "浏览器页面已崩溃并重建", "attachment-unavailable": "照片不可用", "ocr-unavailable": "中文 OCR 不可用", "ocr-failed": "识别失败", "validation-failed": "自动校验未通过", "persistence-unverified": "平台保存尚未验证" };
-export function InitSteps({ steps }: { steps: KuaishouInitStepRecord[] }): JSX.Element {
+export function InitSteps({ steps, compact = false }: { steps: KuaishouInitStepRecord[]; compact?: boolean }): JSX.Element {
   return <div aria-label="持久初始化状态" className="space-y-1">
     {(["subject", "slice"] as const).map(key => {
       const s = steps.find(item => item.step === key);
@@ -14,7 +14,7 @@ export function InitSteps({ steps }: { steps: KuaishouInitStepRecord[] }): JSX.E
         {s && <> · 尝试 {s.attempts} 次{s.lastErrorCode && ` · ${errorLabels[s.lastErrorCode] ?? "需重试"}`}{s.nextRetryAt && ` · 下次重试 ${s.nextRetryAt}`}</>}
       </p>;
     })}
-    <p className="text-slate-500">身份识别不等于初始化完成；采集完成不等于人工已核对。</p>
+    {!compact && <p className="text-slate-500">身份识别不等于初始化完成；采集完成不等于人工已核对。</p>}
   </div>;
 }
 

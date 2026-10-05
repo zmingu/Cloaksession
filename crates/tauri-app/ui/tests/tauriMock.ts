@@ -50,6 +50,9 @@ export async function installTauriMock(page: Page, initial: AppSettings = defaul
     localStorage.setItem("multizen.ui.onboarded", "true");
     let callbackId = 0;
     const callbacks = new Map<number, (...args: unknown[]) => void>();
+    // Event name -> registered handler callback ids, so a test can deliver a
+    // synthetic backend event (`__TEST_IPC__.emit`) exactly as Tauri would.
+    const listeners = new Map<string, Set<number>>();
     const mock = {
       updates: [] as Record<string, unknown>[],
       profileUpdates: [] as Record<string, unknown>[],
@@ -61,6 +64,13 @@ export async function installTauriMock(page: Page, initial: AppSettings = defaul
       initStepsByUser: {} as Record<string, Array<Record<string, unknown>>>,
       settings: () => JSON.parse(localStorage.getItem(key)!),
       profile: () => JSON.parse(localStorage.getItem(profileKey)!),
+      // Deliver a synthetic push event to every listener registered for it.
+      // The handler receives the Tauri `{ event, id, payload }` shape.
+      emit: (event: string, payload: unknown) => {
+        for (const id of listeners.get(event) ?? []) {
+          callbacks.get(id)?.({ event, id, payload });
+        }
+      },
     };
     Object.assign(window, {
       __TEST_IPC__: mock,
@@ -118,8 +128,16 @@ export async function installTauriMock(page: Page, initial: AppSettings = defaul
             case "update_check": return { kind: "idle" };
             case "update_last_checked": return 0;
             case "dialog_pick_browser_binary": return "/fixture/custom-chromix";
-            case "plugin:event|listen": return ++callbackId;
-            case "plugin:event|unlisten": return;
+            case "plugin:event|listen": {
+              const ids = listeners.get(args.event) ?? new Set<number>();
+              ids.add(args.handler);
+              listeners.set(args.event, ids);
+              return args.handler;
+            }
+            case "plugin:event|unlisten": {
+              listeners.get(args.event)?.delete(args.eventId);
+              return;
+            }
             case "extensions_list":
             case "extensions_store_entries": return [];
             case "fingerprint_devices": return [{ family: "macbook-pro-14-m3", label: "MacBook Pro 14", screens: [{ width: 1440, height: 900, label: "1440 × 900" }] }];

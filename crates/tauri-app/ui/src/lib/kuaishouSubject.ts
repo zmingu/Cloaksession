@@ -49,6 +49,10 @@ export function canConfirm(a: KuaishouSubjectArchive): boolean {
 export function subjectCopy(a: KuaishouSubjectArchive): string {
   return `${a.reviewStatus === "confirmed" ? "已核对" : "未核对"}\n快手ID：${a.platformUserId}\n姓名：${a.realName}\n身份证号：${a.idCard}`;
 }
+/** Three-line clipboard payload for the identity detail dialog (no review prefix). */
+export function identityCopyText(platformUserId: string, realName: string, idCard: string): string {
+  return `快手ID：${platformUserId}\n姓名：${realName}\n身份证号：${idCard}`;
+}
 export const kuaishouSubject = {
   list: async (search: string, offset: number, limit = 10): Promise<KuaishouSubjectPage> => {
     const v = await invoke<unknown>("kuaishou_subject_list", { query: { search, offset, limit } });

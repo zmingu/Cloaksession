@@ -447,6 +447,7 @@ export const en = {
   "kuaishou.shop.deleteConfirm": "Yes, delete",
   "kuaishou.shop.deleteFailed": "Delete failed: {{error}}",
   "kuaishou.shop.unnamed": "Unnamed",
+  "kuaishou.shop.viewDetails": "View account info: {{name}}",
   // --- account initialization status (shop list column) -------------
   "kuaishou.init.state.pending": "Pending",
   "kuaishou.init.state.running": "Running",

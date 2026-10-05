@@ -5,7 +5,8 @@ import { useKuaishouIdentities, useKuaishouIdentity } from "../../lib/KuaishouId
 import { Modal } from "../atoms";
 import { Button } from "../atoms/Button";
 import { profiles } from "../../lib/ipc";
-import { InitSummary, SubjectPanel } from "./KuaishouSubject";
+import { identityCopyText, kuaishouSubject, type KuaishouSubjectDetail } from "../../lib/kuaishouSubject";
+import { InitSteps, InitSummary } from "./KuaishouSubject";
 
 function AvatarImage({ avatarKey, size }: { avatarKey: string | null; size: number }): JSX.Element {
   const { avatar } = useKuaishouIdentities();
@@ -125,61 +126,92 @@ export function KuaishouIdentityDialog(): JSX.Element | null {
   return selectedId ? <IdentityDetails key={selectedId} profileId={selectedId} /> : null;
 }
 
+/**
+ * Slim identity dialog: avatar + nickname, Kuaishou ID, the subject archive's
+ * real name and ID-card number, the account's initialization status, and one
+ * copy button. Detection timestamps, provenance, photo/validation panels and
+ * the manual retry controls live elsewhere (account archives / the shop list).
+ */
 function IdentityDetails({ profileId }: { profileId: string }): JSX.Element {
   const identity = useKuaishouIdentity(profileId);
-  const { openDetails, refresh, loading } = useKuaishouIdentities();
+  const { openDetails } = useKuaishouIdentities();
+  const [detail, setDetail] = useState<KuaishouSubjectDetail | null>(null);
   const [copyMessage, setCopyMessage] = useState("");
-  const mounted = useRef(false);
+  const alive = useRef(false);
+  const version = useRef(0);
   const copyTicket = useRef(0);
-  const platformId = identity.snapshot?.platformUserId;
+  const platformId = identity.snapshot?.platformUserId ?? null;
+  const archive = detail?.archive ?? null;
+
+  // One read fills both the subject fields and the init steps. Late responses
+  // are dropped by the version ticket, and unmount stops any setState.
   useEffect(() => {
-    mounted.current = true;
+    alive.current = true;
     setCopyMessage("");
     ++copyTicket.current;
-    return () => { mounted.current = false; ++copyTicket.current; };
+    setDetail(null);
+    if (!platformId) {
+      return () => {
+        alive.current = false;
+        ++version.current;
+        ++copyTicket.current;
+      };
+    }
+    const ticket = ++version.current;
+    void kuaishouSubject.detail(platformId).then(
+      (value) => {
+        if (alive.current && ticket === version.current) setDetail(value);
+      },
+      () => {
+        if (alive.current && ticket === version.current) setDetail(null);
+      },
+    );
+    return () => {
+      alive.current = false;
+      ++version.current;
+      ++copyTicket.current;
+    };
   }, [platformId]);
-  async function copyId(): Promise<void> {
+
+  async function copyInfo(): Promise<void> {
     if (!platformId) return;
     const ticket = ++copyTicket.current;
     try {
-      await navigator.clipboard.writeText(platformId);
-      if (mounted.current && ticket === copyTicket.current) setCopyMessage("快手ID已复制");
+      await navigator.clipboard.writeText(
+        identityCopyText(platformId, archive?.realName ?? "", archive?.idCard ?? ""),
+      );
+      if (alive.current && ticket === copyTicket.current) setCopyMessage("已复制快手ID、姓名、身份证号");
     } catch {
-      if (mounted.current && ticket === copyTicket.current) setCopyMessage("复制失败，请手动选择快手ID复制");
+      if (alive.current && ticket === copyTicket.current) setCopyMessage("复制失败，请手动选择复制");
     }
   }
-  return <Modal open onClose={() => openDetails(null)} title="快手详情" subtitle={identity.profile?.name ?? profileId} width={760}>
-    <section data-testid="kuaishou-detail" aria-label="快手身份检测详情" className="p-5 space-y-5 min-w-0 text-sm text-slate-300 break-words">
-      <div className="flex gap-3 items-center min-w-0">
-        <IdentityAvatar snapshot={identity.snapshot} size={56} />
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold">{identity.snapshot?.nickname || "未读出昵称"}</h2>
-          <p data-status={identity.status} className={identity.current ? "text-emerald-300" : "text-amber-200"}>
-            {identity.label}{identity.history && " · 以下为上次识别信息"}
-          </p>
+
+  return (
+    <Modal open onClose={() => openDetails(null)} title="快手详情" subtitle={identity.profile?.name ?? profileId} width={520}>
+      <section data-testid="kuaishou-detail" aria-label="快手身份详情" className="p-5 space-y-4 min-w-0 text-sm text-slate-300 break-words">
+        <div className="flex gap-3 items-center min-w-0">
+          <IdentityAvatar snapshot={identity.snapshot} size={56} />
+          <h2 className="min-w-0 truncate text-base font-semibold">{identity.snapshot?.nickname || "未读出昵称"}</h2>
         </div>
-      </div>
-      <dl className="grid grid-cols-1 sm:grid-cols-[110px_minmax(0,1fr)] gap-2 rounded-xl border border-white/10 p-4">
-        <dt className="text-slate-500">快手ID</dt><dd className="font-mono select-text break-all">{platformId || "未读出"}</dd>
-        <dt className="text-slate-500">检测时间</dt><dd>{identity.snapshot?.checkedAt || "暂无检测时间"}</dd>
-        <dt className="text-slate-500">最后识别时间</dt><dd>{identity.snapshot?.lastSeenAt || "暂无识别时间"}</dd>
-        <dt className="text-slate-500">检测来源</dt><dd>Rust 后台 · 小店页面身份检测（本地结果）</dd>
-      </dl>
-      {identity.error && <p role="alert" className="text-amber-300">{identity.error}</p>}
-      {identity.snapshot?.message && <p className="text-amber-200 whitespace-pre-wrap">{identity.snapshot.message}</p>}
-      {identity.status === "conflict" && <p className="text-amber-300">登记冲突：识别身份与登记不一致或存在冲突。不会覆盖人工ID或解除绑定，请自行核对登记。</p>}
-      <div className="flex flex-wrap gap-2">
-        <Button disabled={!platformId} onClick={() => void copyId()} leftIcon={<Copy size={12} />}>复制快手ID</Button>
-        <DetectButton profileId={profileId} />
-        <Button disabled={loading} onClick={() => void refresh()}>刷新检测状态</Button>
-      </div>
-      {copyMessage && <p role="status">{copyMessage}</p>}
-      <div className="rounded-xl bg-white/[0.03] p-4 space-y-2 text-[12px] leading-relaxed text-slate-400">
-        <p>仅展示页面已读出的身份，不能据此确认当前已登录；离线或检测未成功时展示上次识别信息。重新检测的运行条件由后台最终判定。</p>
-        <p>检测到有效账号后，后台自动补做主体采集和切片权限关闭的未完成项；下方按钮用于手动补做。初始化状态与身份检测状态分开显示。</p>
-        <p>识别结果与手工登记分开保存，不会自动覆盖人工ID，也不会自动解绑或迁移账号。</p>
-      </div>
-      {platformId && <SubjectPanel key={platformId} platformUserId={platformId} profileId={profileId} />}
-    </section>
-  </Modal>;
+        <dl className="grid grid-cols-1 sm:grid-cols-[92px_minmax(0,1fr)] gap-2 rounded-xl border border-white/10 p-4">
+          <dt className="text-slate-500">快手ID</dt>
+          <dd className="font-mono select-text break-all">{platformId || "—"}</dd>
+          <dt className="text-slate-500">姓名</dt>
+          <dd className="select-text break-all">{archive?.realName || "—"}</dd>
+          <dt className="text-slate-500">身份证号</dt>
+          <dd className="font-mono select-text break-all">{archive?.idCard || "—"}</dd>
+          <dt className="text-slate-500">初始化状态</dt>
+          <dd>
+            <InitSteps steps={detail?.steps ?? []} compact />
+          </dd>
+        </dl>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button disabled={!platformId} onClick={() => void copyInfo()} leftIcon={<Copy size={12} />}>
+            复制信息
+          </Button>
+          {copyMessage && <p role="status">{copyMessage}</p>}
+        </div>
+      </section>
+    </Modal>
+  );
 }
