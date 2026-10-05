@@ -55,6 +55,9 @@ export const subAccounts = {
   unbind: (id: string): Promise<void> =>
     invoke<void>("unbind_sub_account", { id }),
 
+  /** delete_sub_account → removes the interact record entirely. */
+  delete: (id: string): Promise<void> => invoke<void>("delete_sub_account", { id }),
+
   /** `sub_account_login` → per-account login outcome (never throws on failure). */
   login: (accountId: string): Promise<SubAccountLoginResult> =>
     invoke<SubAccountLoginResult>("sub_account_login", { accountId }),

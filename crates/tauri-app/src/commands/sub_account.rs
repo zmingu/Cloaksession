@@ -28,6 +28,11 @@ pub async fn unbind_sub_account(state: State<'_, AppState>, id: String) -> Resul
 }
 
 #[tauri::command]
+pub async fn delete_sub_account(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    state.driver.delete_sub_account(&id).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn sub_account_login(
     state: State<'_, AppState>,
     account_id: String,
@@ -97,6 +102,7 @@ mod tests {
             "save_sub_account",
             "list_sub_accounts",
             "unbind_sub_account",
+            "delete_sub_account",
             "sub_account_login",
             "batch_login_sub_accounts",
             "sub_account_enter_live_room",
@@ -111,6 +117,6 @@ mod tests {
             );
         }
         let adapter = include_str!("sub_account.rs");
-        assert_eq!(adapter.matches("\n#[tauri::command]").count(), 8);
+        assert_eq!(adapter.matches("\n#[tauri::command]").count(), 9);
     }
 }

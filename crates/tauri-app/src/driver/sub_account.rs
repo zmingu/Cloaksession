@@ -567,6 +567,14 @@ impl TauriBrowserDriver {
         self.business_accounts_unbind(id).await
     }
 
+    /// Permanently delete a viewer sub-account record. Distinct from
+    /// `unbind_sub_account`, which only nulls `profile_id` and keeps the row —
+    /// this removes the registration itself, so rows whose profile is already
+    /// gone (profile_id NULL) can finally be deleted from the UI list.
+    pub async fn delete_sub_account(&self, id: &str) -> Result<()> {
+        self.delete_business_account(id).await
+    }
+
     async fn require_sub_profile(&self, account_id: &str) -> Result<(BusinessAccount, String)> {
         let account = self
             .business_accounts_list()
@@ -1447,6 +1455,81 @@ mod tests {
         driver.start_sub_account_login_monitor();
         driver.start_sub_account_login_monitor();
         driver.stop_sub_account_login_monitor();
+        driver.shutdown().await;
+    }
+
+    /// Regression for the reported "点删除没反应" bug: the interact list must be
+    /// able to permanently drop a registration, including rows whose profile is
+    /// already gone (profile_id NULL) where `unbind_sub_account` was a no-op.
+    #[tokio::test]
+    async fn delete_sub_account_removes_record_and_requires_stopped() {
+        use mcp_server::driver::BrowserDriver;
+        let (_dir, driver) =
+            super::super::business_tests::fixture(multizen_core::ChromixSettings::default());
+        let profile = driver
+            .create_profile(multizen_core::CreateProfileInput {
+                name: "del-sub".into(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        // save_sub_account forces kind=kuaishou_sub regardless of the incoming kind.
+        let sub = driver
+            .save_sub_account(multizen_core::SaveBusinessAccountInput {
+                id: None,
+                profile_id: profile.id.clone(),
+                kind: BusinessAccountKind::KuaishouShop,
+                display_name: "待删除".into(),
+                platform_user_id: None,
+            })
+            .await
+            .unwrap();
+        assert_eq!(sub.kind, BusinessAccountKind::KuaishouSub);
+        assert_eq!(driver.list_sub_accounts().await.unwrap().len(), 1);
+        driver.delete_sub_account(&sub.id).await.unwrap();
+        assert!(driver.list_sub_accounts().await.unwrap().is_empty());
+
+        // The exact user scenario: unbind leaves the row (profile_id NULL), then
+        // delete must actually remove it.
+        let unbound = driver
+            .save_sub_account(multizen_core::SaveBusinessAccountInput {
+                id: None,
+                profile_id: profile.id.clone(),
+                kind: BusinessAccountKind::KuaishouSub,
+                display_name: "环境缺失".into(),
+                platform_user_id: None,
+            })
+            .await
+            .unwrap();
+        driver.unbind_sub_account(&unbound.id).await.unwrap();
+        assert!(driver.list_sub_accounts().await.unwrap()[0]
+            .profile_id
+            .is_none());
+        driver.delete_sub_account(&unbound.id).await.unwrap();
+        assert!(driver.list_sub_accounts().await.unwrap().is_empty());
+
+        // A bound record on a running profile is refused by require_stopped —
+        // same guard as unbind, so deleting never strands a live cookie scope.
+        let bound = driver
+            .save_sub_account(multizen_core::SaveBusinessAccountInput {
+                id: None,
+                profile_id: profile.id.clone(),
+                kind: BusinessAccountKind::KuaishouSub,
+                display_name: "运行中".into(),
+                platform_user_id: None,
+            })
+            .await
+            .unwrap();
+        super::super::business_tests::launch_without_cdp(&driver, &profile)
+            .await
+            .unwrap();
+        let err = driver.delete_sub_account(&bound.id).await.unwrap_err();
+        assert!(err.to_string().contains("请先关闭Profile"), "{err}");
+        assert_eq!(driver.list_sub_accounts().await.unwrap().len(), 1);
+        // Once stopped, the same delete succeeds.
+        driver.close(&profile.id).await.unwrap();
+        driver.delete_sub_account(&bound.id).await.unwrap();
+        assert!(driver.list_sub_accounts().await.unwrap().is_empty());
         driver.shutdown().await;
     }
 }

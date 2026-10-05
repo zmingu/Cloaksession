@@ -69,6 +69,7 @@ async function gotoInteract(
         command === "list_sub_accounts" ||
         command === "save_sub_account" ||
         command === "unbind_sub_account" ||
+        command === "delete_sub_account" ||
         command === "sub_account_login" ||
         command === "batch_login_sub_accounts" ||
         command === "sub_account_enter_live_room" ||
@@ -102,6 +103,15 @@ async function gotoInteract(
           JSON.stringify(
             read().map((a: any) => (a.id === args.id ? { ...a, profileId: null } : a)),
           ),
+        );
+        return null;
+      }
+      if (command === "delete_sub_account") {
+        // Real delete: the registration row is removed outright, so the table
+        // drops it on the next list read (even when profile_id was already NULL).
+        localStorage.setItem(
+          "cloaksession.test.interactAccounts",
+          JSON.stringify(read().filter((a: any) => a.id !== args.id)),
         );
         return null;
       }
@@ -306,12 +316,40 @@ test("a record with no environment shows the missing pill and disables launch/st
   await expect(row.getByText("Environment missing")).toBeVisible();
   await expect(row.getByRole("button", { name: "Launch", exact: true })).toBeDisabled();
   await expect(row.getByRole("button", { name: "Sign in again", exact: true })).toBeDisabled();
-  // ...but the record can still be cleaned up (unbind / delete stay available).
-  await expect(row.getByRole("button", { name: "Unbind", exact: true })).toBeEnabled();
+  // ...unbind is a no-op without a bound environment (nothing to detach)...
+  await expect(row.getByRole("button", { name: "Unbind", exact: true })).toBeDisabled();
+  // ...but the record can still be removed outright.
   await expect(row.getByRole("button", { name: "Delete", exact: true })).toBeEnabled();
 });
 
-test("deleting a row confirms first, then removes the environment and unbinds the record", async ({ page }, testInfo) => {
+test("deleting an environment-less row removes the record only (no profile delete)", async ({ page }, testInfo) => {
+  desktopOnly(testInfo);
+  await gotoInteract(page, [ORPHAN()]);
+
+  const t = table(page);
+  const row = t.getByRole("row").filter({ hasText: "Gamma Three" });
+  await expect(row).toBeVisible();
+
+  await row.getByRole("button", { name: "Delete", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Delete this account?")).toBeVisible();
+  await dialog.getByRole("button", { name: "Yes, delete", exact: true }).click();
+
+  // The record is really deleted, so the row leaves the table.
+  await expect(row).toHaveCount(0);
+  await expect(t).toContainText("No interact accounts yet. Use New account to create one.");
+
+  const calls = await interactRequests(page);
+  // No environment → no profile lifecycle call, only the registration delete.
+  expect(calls.filter((call) => call.command === "profiles_delete")).toEqual([]);
+  expect(calls.filter((call) => call.command === "profiles_close")).toEqual([]);
+  expect(calls.filter((call) => call.command === "delete_sub_account")).toEqual([
+    { command: "delete_sub_account", args: { id: "interact-3" } },
+  ]);
+  expect(calls.some((call) => call.command === "unbind_sub_account")).toBe(false);
+});
+
+test("deleting a row confirms first, then removes the environment and the record", async ({ page }, testInfo) => {
   desktopOnly(testInfo);
   await gotoInteract(page, [ALPHA()]);
 
@@ -337,10 +375,103 @@ test("deleting a row confirms first, then removes the environment and unbinds th
   expect(calls.filter((call) => call.command === "profiles_delete")).toEqual([
     { command: "profiles_delete", args: { id: "fixture-profile" } },
   ]);
-  // The registration is retained (profile_id -> NULL), never deleted.
-  expect(calls.filter((call) => call.command === "unbind_sub_account")).toEqual([
-    { command: "unbind_sub_account", args: { id: "interact-1" } },
+  // The registration is removed outright, never merely unbound.
+  expect(calls.filter((call) => call.command === "delete_sub_account")).toEqual([
+    { command: "delete_sub_account", args: { id: "interact-1" } },
   ]);
+  expect(calls.some((call) => call.command === "unbind_sub_account")).toBe(false);
+
+  // The row is gone from the table after the delete.
+  await expect(row).toHaveCount(0);
+});
+
+test("batch delete is disabled without selection", async ({ page }, testInfo) => {
+  desktopOnly(testInfo);
+  await gotoInteract(page, [ALPHA()]);
+
+  const s = scope(page);
+  await expect(s.getByRole("button", { name: "Batch delete (0)", exact: true })).toBeDisabled();
+});
+
+test("batch delete confirms with the count, then removes every environment and record", async ({ page }, testInfo) => {
+  desktopOnly(testInfo);
+  await gotoInteract(page, [ALPHA(), BETA()]);
+
+  const s = scope(page);
+  const t = table(page);
+  await t.getByRole("checkbox", { name: "Select Alpha One" }).check();
+  await t.getByRole("checkbox", { name: "Select Beta Two" }).check();
+
+  const button = s.getByRole("button", { name: "Batch delete (2)", exact: true });
+  await expect(button).toBeEnabled();
+  await button.click();
+
+  // The confirm dialog names the selection size and stays destructive.
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Delete 2 accounts?")).toBeVisible();
+  await expect(dialog.getByText(/Delete the 2 selected accounts/)).toBeVisible();
+  const before = await interactRequests(page);
+  expect(before.some((call) => call.command === "profiles_delete")).toBe(false);
+
+  await dialog.getByRole("button", { name: "Yes, delete all", exact: true }).click();
+
+  // Both rows leave the table once the records are really removed.
+  await expect(t.getByRole("row").filter({ hasText: "Alpha One" })).toHaveCount(0);
+  await expect(t.getByRole("row").filter({ hasText: "Beta Two" })).toHaveCount(0);
+  // Selection is cleared → batch login returns to the disabled (0) state.
+  await expect(s.getByRole("button", { name: "Batch login (0)", exact: true })).toBeDisabled();
+  await expect(s.getByRole("status")).toContainText("2 / 2 deleted.");
+
+  const calls = await interactRequests(page);
+  // Every environment-bound row is closed then deleted exactly once.
+  expect(calls.filter((call) => call.command === "profiles_close")).toEqual([
+    { command: "profiles_close", args: { id: "fixture-profile" } },
+    { command: "profiles_close", args: { id: "fixture-profile" } },
+  ]);
+  expect(calls.filter((call) => call.command === "profiles_delete")).toEqual([
+    { command: "profiles_delete", args: { id: "fixture-profile" } },
+    { command: "profiles_delete", args: { id: "fixture-profile" } },
+  ]);
+  // Each row's registration is removed exactly once (order follows selection).
+  const deletes = calls
+    .filter((call) => call.command === "delete_sub_account")
+    .map((call) => call.args.id)
+    .sort();
+  expect(deletes).toEqual(["interact-1", "interact-2"]);
+  expect(calls.some((call) => call.command === "unbind_sub_account")).toBe(false);
+});
+
+test("batch delete handles an environment-less row: record only, no profile delete", async ({ page }, testInfo) => {
+  desktopOnly(testInfo);
+  await gotoInteract(page, [ALPHA(), ORPHAN()]);
+
+  const s = scope(page);
+  const t = table(page);
+  await t.getByRole("checkbox", { name: "Select Alpha One" }).check();
+  await t.getByRole("checkbox", { name: "Select Gamma Three" }).check();
+
+  await s.getByRole("button", { name: "Batch delete (2)", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Delete 2 accounts?")).toBeVisible();
+  await dialog.getByRole("button", { name: "Yes, delete all", exact: true }).click();
+
+  await expect(t.getByRole("row").filter({ hasText: "Alpha One" })).toHaveCount(0);
+  await expect(t.getByRole("row").filter({ hasText: "Gamma Three" })).toHaveCount(0);
+
+  const calls = await interactRequests(page);
+  // Only the bound row triggers the environment lifecycle...
+  expect(calls.filter((call) => call.command === "profiles_close")).toEqual([
+    { command: "profiles_close", args: { id: "fixture-profile" } },
+  ]);
+  expect(calls.filter((call) => call.command === "profiles_delete")).toEqual([
+    { command: "profiles_delete", args: { id: "fixture-profile" } },
+  ]);
+  // ...but both registrations are removed.
+  const deletes = calls
+    .filter((call) => call.command === "delete_sub_account")
+    .map((call) => call.args.id)
+    .sort();
+  expect(deletes).toEqual(["interact-1", "interact-3"]);
 });
 
 const PNG =
@@ -348,11 +479,11 @@ const PNG =
 
 /**
  * The full wizard path: create the environment → launch hidden on the Kuaishou
- * main site → poll the QR + identity → register the interact account. Every
- * command is a browser-local fake; no browser is launched and nothing is written
- * to the platform.
+ * main site → poll the QR + identity → auto-register the interact account and
+ * auto-close. Every command is a browser-local fake; no browser is launched and
+ * nothing is written to the platform.
  */
-test("interact wizard: create, hidden main-site launch, QR + detect, register", async ({ page }, testInfo) => {
+test("interact wizard: create, hidden main-site launch, QR + detect, auto-register", async ({ page }, testInfo) => {
   desktopOnly(testInfo);
   await installInteractWizardMock(page, "zh-CN");
 
@@ -391,8 +522,9 @@ test("interact wizard: create, hidden main-site launch, QR + detect, register", 
     { id: "fixture-profile", patch: { name: "本地小号" } },
   ]);
 
-  // Registration writes the interact record with the detected identity.
-  await dialog.getByRole("button", { name: "登记", exact: true }).click();
+  // Registration is automatic once the identity is read: no manual field, no
+  // Register button — the record is written from the detected identity.
+  await expect(dialog.getByRole("button", { name: "登记", exact: true })).toHaveCount(0);
   await expect(dialog.getByText("已登记为互动账号。")).toBeVisible();
   expect(await wizardCalls(page, "save_sub_account")).toEqual([
     {
@@ -405,11 +537,11 @@ test("interact wizard: create, hidden main-site launch, QR + detect, register", 
     },
   ]);
 
-  // Done stops the hidden browser and closes the wizard; the registered
-  // environment is never deleted.
-  await dialog.getByRole("button", { name: "完成", exact: true }).click();
-  await expect(dialog).toHaveCount(0);
-  expect((await wizardCalls(page, "profiles_close")).length).toBe(1);
+  // The wizard then closes itself (~1.2s success state); the registered
+  // environment is stopped but never deleted. Two closes: one before the bind
+  // (the business guard requires a stopped profile) and one on auto-close.
+  await expect(dialog).toHaveCount(0, { timeout: 5000 });
+  expect((await wizardCalls(page, "profiles_close")).length).toBe(2);
   expect(await wizardCalls(page, "profiles_delete")).toEqual([]);
 });
 

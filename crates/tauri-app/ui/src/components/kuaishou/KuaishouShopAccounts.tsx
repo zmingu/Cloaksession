@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
-import { Loader2, Play, Plus, Search, Square, Trash2 } from "lucide-react";
+import { ArrowLeftRight, Loader2, Play, Plus, Search, Square, Trash2 } from "lucide-react";
 
 import { useT } from "../../i18n/LanguageProvider";
 import type { TranslationKey } from "../../i18n/en";
@@ -11,11 +11,13 @@ import {
   type KuaishouInitErrorCode,
   type KuaishouInitStepRecord,
 } from "../../lib/kuaishouSubject";
+import { subAccounts } from "../../lib/subAccounts";
 import type { ProfileSummary } from "../../types";
 import { Avatar, Pill, confirm } from "../atoms";
 import { Button } from "../atoms/Button";
 import { IdentityAvatar } from "../profile/KuaishouIdentity";
 import { DataTable, type DataTableColumn } from "../table/DataTable";
+import { KuaishouConvertInteractDialog } from "./KuaishouConvertInteractDialog";
 
 const CONTROL =
   "h-8 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 text-[12px] text-slate-200 outline-none focus:border-purple-400/60 disabled:opacity-50";
@@ -44,6 +46,8 @@ export function KuaishouShopAccounts({ onAddAccount }: { onAddAccount?: () => vo
   const [busy, setBusy] = useState<Record<string, "launch" | "stop" | "delete">>({});
   const [actionError, setActionError] = useState<string | null>(null);
   const [firstLoad, setFirstLoad] = useState(true);
+  // Which environment is being converted into an interact account, if any.
+  const [convert, setConvert] = useState<{ id: string; name: string } | null>(null);
   const mounted = useRef(false);
 
   useEffect(() => {
@@ -56,10 +60,27 @@ export function KuaishouShopAccounts({ onAddAccount }: { onAddAccount?: () => vo
   const refresh = useCallback(async (): Promise<void> => {
     try {
       const list = await profilesApi.list();
-      if (mounted.current) {
-        setRows(list);
-        setRowsError(null);
+      if (!mounted.current) return;
+      // 小店列表排除已绑定互动登记（kind=kuaishou-sub）的环境——它们属于互动
+      // 账号列表。过滤失败时降级为不过滤，绝不阻塞主列表。
+      let subProfileIds = new Set<string>();
+      try {
+        const subs = await subAccounts.list();
+        subProfileIds = new Set(
+          subs
+            .filter((record) => record.kind === "kuaishou-sub" && record.profileId)
+            .map((record) => record.profileId as string),
+        );
+      } catch {
+        subProfileIds = new Set();
       }
+      if (!mounted.current) return;
+      setRows(
+        subProfileIds.size === 0
+          ? list
+          : list.filter((profile) => !subProfileIds.has(profile.id)),
+      );
+      setRowsError(null);
     } catch (cause) {
       if (mounted.current) setRowsError(errorText(cause));
     }
@@ -228,9 +249,17 @@ export function KuaishouShopAccounts({ onAddAccount }: { onAddAccount?: () => vo
       {
         id: "actions",
         header: "",
-        width: 150,
+        width: 190,
         align: "right",
-        cell: (row) => <ActionCell row={row} busy={busy[row.id]} onAct={act} onDelete={remove} />,
+        cell: (row) => (
+          <ActionCell
+            row={row}
+            busy={busy[row.id]}
+            onAct={act}
+            onDelete={remove}
+            onConvert={(target) => setConvert({ id: target.id, name: target.name })}
+          />
+        ),
       },
     ],
     // `busy` / `act` are read inside cells; the memo intentionally refreshes
@@ -286,6 +315,21 @@ export function KuaishouShopAccounts({ onAddAccount }: { onAddAccount?: () => vo
           }
         />
       </div>
+
+      {convert && (
+        <KuaishouConvertInteractDialog
+          open
+          profileId={convert.id}
+          profileName={convert.name}
+          onClose={() => {
+            setConvert(null);
+            // A cancelled run unbinds the record again, so re-read to bring the
+            // environment back into the list; a successful run re-reads too.
+            void refresh();
+          }}
+          onConverted={() => void refresh()}
+        />
+      )}
     </div>
   );
 }
@@ -510,17 +554,20 @@ function StatusCell({ row }: { row: ProfileSummary }): JSX.Element {
 
 /** Launch / stop plus a destructive delete, mirrored from the profiles list;
  *  the writes go to the same backend. Deleting the account = deleting the
- *  browser profile (account-as-profile), behind a confirm dialog. */
+ *  browser profile (account-as-profile), behind a confirm dialog.
+ *  「转为互动账号」opens the conversion dialog for this environment. */
 function ActionCell({
   row,
   busy,
   onAct,
   onDelete,
+  onConvert,
 }: {
   row: ProfileSummary;
   busy: "launch" | "stop" | "delete" | undefined;
   onAct: (row: ProfileSummary, kind: "launch" | "stop") => Promise<void>;
   onDelete: (row: ProfileSummary) => Promise<void>;
+  onConvert: (row: ProfileSummary) => void;
 }): JSX.Element {
   const t = useT();
   const pending = busy !== undefined;
@@ -560,6 +607,15 @@ function ActionCell({
           {t("kuaishou.shop.launch")}
         </Button>
       )}
+      <Button
+        size="icon"
+        variant="secondary"
+        disabled={pending}
+        title={t("kuaishou.shop.convert")}
+        aria-label={t("kuaishou.shop.convert")}
+        onClick={() => onConvert(row)}
+        leftIcon={<ArrowLeftRight size={12} />}
+      />
       <Button
         size="icon"
         variant="danger"

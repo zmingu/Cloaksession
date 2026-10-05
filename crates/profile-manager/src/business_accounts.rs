@@ -216,4 +216,21 @@ impl ProfileManager {
         tx.commit()?;
         Ok(())
     }
+
+    /// Permanently remove a business-account record. Distinct from
+    /// `business_accounts_unbind`: unbind only nulls `profile_id` and keeps the
+    /// row, while this drops the registration itself (used for rows whose
+    /// profile is already gone / never bound). The profile's cookie-scope
+    /// reservation in `business_profile_scopes` is intentionally preserved, in
+    /// line with the existing unbind behavior.
+    pub fn business_account_delete(&self, id: &str) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        get(&tx, id)?.ok_or_else(|| MultizenError::NotFound(format!("业务账号 {id}")))?;
+        tx.execute("DELETE FROM business_accounts WHERE id=?", [id])?;
+        // Interaction history is keyed by the account id as plain text (no FK),
+        // so clean it up in the same transaction to avoid orphaned rows.
+        tx.execute("DELETE FROM sub_account_interactions WHERE account_id=?", [id])?;
+        tx.commit()?;
+        Ok(())
+    }
 }

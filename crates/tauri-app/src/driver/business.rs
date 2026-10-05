@@ -76,4 +76,20 @@ impl TauriBrowserDriver {
             .await
             .map_err(|_| MultizenError::Mcp("launcher thread dropped response".into()))?
     }
+
+    /// Permanently delete a business-account record (not just unbind). The
+    /// launcher guard rejects the call while a bound profile is still running.
+    pub async fn delete_business_account(&self, id: &str) -> Result<()> {
+        let (resp, receive) = oneshot::channel();
+        self.launcher_tx
+            .send(LauncherCmd::DeleteBusinessAccount {
+                id: id.into(),
+                resp,
+            })
+            .await
+            .map_err(|_| MultizenError::Mcp("launcher thread closed".into()))?;
+        receive
+            .await
+            .map_err(|_| MultizenError::Mcp("launcher thread dropped response".into()))?
+    }
 }

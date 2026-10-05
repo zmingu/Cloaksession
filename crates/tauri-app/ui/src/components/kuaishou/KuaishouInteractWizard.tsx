@@ -38,6 +38,9 @@ import {
 /** How often the wizard re-captures the login page while waiting for a scan. */
 const QR_POLL_MS = 2000;
 
+/** How long the success state stays on screen before the wizard closes itself. */
+const AUTO_CLOSE_MS = 1200;
+
 /** Prefilled, editable home page for a viewer account: the Kuaishou main site. */
 const SUB_HOME_URL = "https://www.kuaishou.com/";
 
@@ -88,7 +91,8 @@ function errorText(cause: unknown): string {
  *
  * 二维码复用 `kuaishou_login_qr`：主站登录页与小店登录页同构，能取到就内嵌；
  * 取不到（或用户不想等）可一键改用可见窗口扫码，向导继续轮询识别。
- * 身份检测失败（`not-detected` / `unknown`）不阻断建号：降级为手动填别名登记。
+ * 身份检测成功即自动登记互动账号并自动关闭向导（无需手动点登记/完成）；
+ * 检测失败则保持等待，由用户取消（取消会删除本次创建且未登记的环境）。
  */
 export function KuaishouInteractWizard({ open, onClose, onCreated, onRegistered }: Props): JSX.Element {
   const t = useT();
@@ -107,9 +111,6 @@ export function KuaishouInteractWizard({ open, onClose, onCreated, onRegistered 
   const [snapshot, setSnapshot] = useState<KuaishouIdentitySnapshot | null>(null);
   const [visibleWindow, setVisibleWindow] = useState(false);
   const [switching, setSwitching] = useState(false);
-  const [alias, setAlias] = useState("");
-  const [manualId, setManualId] = useState("");
-  const [saving, setSaving] = useState(false);
   const [registeredName, setRegisteredName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -118,6 +119,14 @@ export function KuaishouInteractWizard({ open, onClose, onCreated, onRegistered 
   const created = useRef(false);
   // One rename per wizard run; guarded by a ref so the effect cannot double-fire.
   const renamed = useRef(false);
+  // One auto-registration per wizard run; guarded so the effect cannot re-enter.
+  const registered = useRef(false);
+  // Flips synchronously on a successful write so `close()` (which may run from a
+  // timer closure holding a stale `registeredName` state) never discards a
+  // registered environment.
+  const saved = useRef(false);
+  // The self-close timer scheduled after a successful auto-registration.
+  const closeTimer = useRef(0);
 
   const sections: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
     { id: "browser", label: t("kuaishou.wizard.section.home"), icon: Globe },
@@ -130,6 +139,7 @@ export function KuaishouInteractWizard({ open, onClose, onCreated, onRegistered 
     alive.current = true;
     return () => {
       alive.current = false;
+      window.clearTimeout(closeTimer.current);
     };
   }, []);
 
@@ -149,13 +159,12 @@ export function KuaishouInteractWizard({ open, onClose, onCreated, onRegistered 
     setSnapshot(null);
     setVisibleWindow(false);
     setSwitching(false);
-    setAlias("");
-    setManualId("");
-    setSaving(false);
     setRegisteredName(null);
     setError(null);
     created.current = false;
     renamed.current = false;
+    registered.current = false;
+    saved.current = false;
   }, [open]);
 
   const platformUserId = snapshot?.platformUserId ?? null;
@@ -181,12 +190,46 @@ export function KuaishouInteractWizard({ open, onClose, onCreated, onRegistered 
     })();
   }, [platformUserId, profileId, snapshot]);
 
-  // Prefill the manual alias with whatever the detector read, so the one-click
-  // registration uses the detected name and the manual field stays editable.
+  // Auto-register the moment the identity is read: write the interact record from
+  // the detected identity, show the success state, then close the wizard on its
+  // own. Guarded by a ref so it runs once per wizard run; a failure keeps the
+  // wizard open and surfaces the error (the next poll retries, the user can also
+  // cancel — cancelling discards the environment this run created).
   useEffect(() => {
-    const detected = (snapshot?.nickname || snapshot?.platformUserId || "").trim();
-    if (detected) setAlias((current) => (current.trim() ? current : detected));
-  }, [snapshot]);
+    if (!platformUserId || !profileId || registered.current) return;
+    const id = profileId;
+    const pid = platformUserId;
+    const name = (snapshot?.nickname || pid).trim();
+    if (!name) return;
+    registered.current = true;
+    void (async () => {
+      try {
+        // The business-account guard refuses to bind while the profile is running
+        // (`business_guard::require_stopped`), so stop the hidden browser first —
+        // the identity has already been read and stays persisted. Cancelling after
+        // this discards the just-created environment anyway.
+        await profilesApi.close(id).catch(() => {});
+        await subAccounts.save({
+          profileId: id,
+          kind: "kuaishou-sub",
+          displayName: name,
+          platformUserId: pid,
+        });
+        if (!alive.current) return;
+        saved.current = true;
+        setRegisteredName(name);
+        setStep("done");
+        onRegistered?.(id);
+        closeTimer.current = window.setTimeout(() => void close(), AUTO_CLOSE_MS);
+      } catch (cause) {
+        // Let a later detection retry the registration.
+        registered.current = false;
+        if (alive.current) {
+          setError(t("kuaishou.interact.failedToast", { detail: errorText(cause) }));
+        }
+      }
+    })();
+  }, [platformUserId, profileId, snapshot, onRegistered, t]);
 
   // While waiting, keep re-reading the page (for the QR) and asking the backend
   // whether the profile has signed in yet. Stops on unmount and when the wizard
@@ -313,48 +356,15 @@ export function KuaishouInteractWizard({ open, onClose, onCreated, onRegistered 
     }
   }
 
-  /**
-   * Register the interact account. The alias falls back to the detected
-   * nickname / Kuaishou ID, then to the manual input; the platform user ID
-   * prefers the detected value. `save_sub_account` upserts by profile, so a
-   * retry after a validation error is safe.
-   */
-  async function register(): Promise<void> {
-    const id = profileId;
-    if (!id || saving) return;
-    const detectedName = (snapshot?.nickname || snapshot?.platformUserId || "").trim();
-    const name = (detectedName || alias).trim();
-    if (!name) {
-      setError(t("kuaishou.interactWizard.aliasRequired"));
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      const pid = (snapshot?.platformUserId || manualId).trim();
-      await subAccounts.save({
-        profileId: id,
-        kind: "kuaishou-sub",
-        displayName: name,
-        platformUserId: pid || null,
-      });
-      if (!alive.current) return;
-      setRegisteredName(name);
-      setStep("done");
-      onRegistered?.(id);
-    } catch (cause) {
-      if (alive.current) setError(t("kuaishou.interact.failedToast", { detail: errorText(cause) }));
-    } finally {
-      if (alive.current) setSaving(false);
-    }
-  }
-
   async function close(): Promise<void> {
+    window.clearTimeout(closeTimer.current);
     const id = profileId;
     // A cancelled onboarding must not leave a stray "unnamed" environment. Only
     // discard it when it was created by this wizard run and the account was never
     // signed in / registered; a profile the user may have set up is never removed.
-    const discard = created.current && !registeredName;
+    // `saved` (a ref) is authoritative here because `close()` may run from the
+    // auto-close timer, whose closure would otherwise see a stale `registeredName`.
+    const discard = created.current && !registeredName && !saved.current;
     if (id) {
       await profilesApi.close(id).catch(() => {});
       if (discard) await profilesApi.delete(id).catch(() => {});
@@ -643,8 +653,8 @@ export function KuaishouInteractWizard({ open, onClose, onCreated, onRegistered 
                 )}
               </div>
 
-              {/* Detected identity preview; the manual fields stay editable so a
-                  missed detection can still be registered. */}
+              {/* Detected identity preview: registration is automatic, so this is
+                  a read-only confirmation of what was just registered. */}
               {platformUserId && (
                 <div className="flex items-center gap-3 min-w-0 rounded-lg border border-white/10 bg-white/[0.02] p-3">
                   <IdentityAvatar snapshot={snapshot} size={36} />
@@ -662,50 +672,6 @@ export function KuaishouInteractWizard({ open, onClose, onCreated, onRegistered 
                   {t("kuaishou.wizard.duplicate", { name: duplicateOf })}
                 </p>
               )}
-
-              <section
-                aria-label={t("kuaishou.interactWizard.manualTitle")}
-                className="space-y-2.5 rounded-lg border border-white/10 bg-white/[0.03] p-3"
-              >
-                <div className="space-y-1">
-                  <h3 className="text-[13px] font-semibold text-slate-200">
-                    {t("kuaishou.interactWizard.manualTitle")}
-                  </h3>
-                  <p className="text-[11px] leading-relaxed text-slate-500">
-                    {t("kuaishou.interactWizard.manualHint")}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-end gap-2">
-                  <Field label={t("kuaishou.interactWizard.alias")}>
-                    <input
-                      aria-label={t("kuaishou.interactWizard.alias")}
-                      value={alias}
-                      onChange={(event) => {
-                        setAlias(event.target.value);
-                        setError(null);
-                      }}
-                      className="h-8 w-44 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 text-[12px] text-slate-200 outline-none focus:border-purple-400/60"
-                    />
-                  </Field>
-                  <Field label={t("kuaishou.interactWizard.platformUserId")}>
-                    <input
-                      aria-label={t("kuaishou.interactWizard.platformUserId")}
-                      value={manualId}
-                      onChange={(event) => setManualId(event.target.value)}
-                      className="mono h-8 w-44 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 text-[12px] text-slate-200 outline-none focus:border-purple-400/60"
-                    />
-                  </Field>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    disabled={!profileId || saving}
-                    onClick={() => void register()}
-                    leftIcon={saving ? <Loader2 size={10} className="animate-spin" /> : undefined}
-                  >
-                    {t("kuaishou.interactWizard.register")}
-                  </Button>
-                </div>
-              </section>
             </div>
           )}
 
@@ -721,7 +687,7 @@ export function KuaishouInteractWizard({ open, onClose, onCreated, onRegistered 
                     {registeredName ?? snapshot?.nickname ?? snapshot?.platformUserId}
                   </p>
                   <p className="mono text-[11px] text-slate-400 truncate">
-                    {snapshot?.platformUserId ?? manualId}
+                    {snapshot?.platformUserId}
                   </p>
                 </div>
               </div>
@@ -729,11 +695,7 @@ export function KuaishouInteractWizard({ open, onClose, onCreated, onRegistered 
           )}
 
           <div className="flex justify-end gap-2 pt-1">
-            {step === "done" ? (
-              <Button variant="primary" onClick={() => void close()}>
-                {t("kuaishou.wizard.done")}
-              </Button>
-            ) : (
+            {step !== "done" && (
               <>
                 <span className="flex-1 self-center text-[11px] text-slate-500">
                   {created.current && !registeredName ? t("kuaishou.interactWizard.cancelCreated") : ""}

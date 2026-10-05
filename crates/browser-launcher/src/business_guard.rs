@@ -132,6 +132,21 @@ impl BrowserLauncher {
         self.pm.business_accounts_unbind(id)
     }
 
+    /// Permanently remove a business-account record. Unlike unbind this drops the
+    /// row entirely, so a bound-and-running profile must be closed first — the
+    /// same guard unbind applies, because deleting a registration out from under
+    /// a live browser would strand its cookie scope.
+    pub async fn delete_business_account(&self, id: &str) -> Result<()> {
+        let account = self
+            .pm
+            .business_account_get(id)?
+            .ok_or_else(|| MultizenError::NotFound(id.into()))?;
+        if let Some(profile_id) = account.profile_id {
+            self.require_stopped(&profile_id).await?;
+        }
+        self.pm.business_account_delete(id)
+    }
+
     pub async fn update_profile_guarded(
         &self,
         id: &str,

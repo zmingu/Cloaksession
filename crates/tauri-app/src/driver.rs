@@ -214,6 +214,10 @@ enum LauncherCmd {
         id: String,
         resp: oneshot::Sender<Result<()>>,
     },
+    DeleteBusinessAccount {
+        id: String,
+        resp: oneshot::Sender<Result<()>>,
+    },
     RecordInteraction {
         input: profile_manager::RecordInteractionInput,
         resp: oneshot::Sender<Result<profile_manager::SubAccountInteraction>>,
@@ -656,6 +660,9 @@ async fn launcher_task(
             }
             LauncherCmd::UnbindBusinessAccount { id, resp } => {
                 let _ = resp.send(launcher.unbind_business_account(&id).await);
+            }
+            LauncherCmd::DeleteBusinessAccount { id, resp } => {
+                let _ = resp.send(launcher.delete_business_account(&id).await);
             }
             LauncherCmd::RecordInteraction { input, resp } => {
                 let _ = resp.send(pm.record_interaction(&input));

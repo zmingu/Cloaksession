@@ -55,8 +55,12 @@ function errorText(cause: unknown): string {
  *  - 登记记录：`business_accounts(kind="kuaishou-sub")`（`subAccounts.list()`）；
  *  - 运行态：`profiles_list`（`isRunning`）；身份：后端身份检测 provider。
  *
- * 删除 = 删环境：`profiles_close` → `profiles_delete` → `subAccounts.unbind`
- * （登记记录保留，`profile_id` 置空，因此会退化为「环境缺失」行）。
+ * 删除 = 删环境 + 删登记记录：`profiles_close` → `profiles_delete` →
+ * `subAccounts.delete`（记录被彻底移除，行从列表消失；环境缺失行同样可删）。
+ * 批量删除 = 对选中行**逐行**执行同一流程（关环境 → 删环境 → 删记录），
+ * 单行失败只记录错误、不中断整批；环境缺失行只删登记记录。
+ * 解绑（`subAccounts.unbind`）只把 `profile_id` 置空并保留记录，因此对
+ * `profile_id` 已为空的行没有意义，按钮置灰。
  * 登录/扫码由 `KuaishouInteractWizard` 承担；行内「重新登录」走
  * `profiles_launch(entry="kuaishou-sub")` 打开可见登录页，不发任何平台写请求。
  *
@@ -81,6 +85,7 @@ export function KuaishouInteractAccounts(): JSX.Element {
   const [roomMap, setRoomMap] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<Record<string, RowOp>>({});
   const [batchBusy, setBatchBusy] = useState(false);
+  const [batchDeleteBusy, setBatchDeleteBusy] = useState(false);
   const [firstLoad, setFirstLoad] = useState(true);
   const [wizardOpen, setWizardOpen] = useState(false);
   const mounted = useRef(false);
@@ -146,7 +151,7 @@ export function KuaishouInteractAccounts(): JSX.Element {
   }, [profiles]);
 
   // Join records with environments. A record whose environment is gone stays
-  // visible (as "环境缺失") so the user can still unbind or delete it.
+  // visible (as "环境缺失") so the user can still delete it.
   const rows = useMemo<InteractRow[]>(
     () =>
       records.map((record) => ({
@@ -287,6 +292,59 @@ export function KuaishouInteractAccounts(): JSX.Element {
     }
   }
 
+  /**
+   * Batch delete = run the single-row delete flow (close → delete environment →
+   * delete record) over every selected row, one row at a time. A failure on one
+   * row is collected and reported but never aborts the rest of the batch.
+   */
+  async function onBatchDelete(): Promise<void> {
+    const ids = [...selected];
+    if (ids.length === 0 || batchDeleteBusy) return;
+    const ok = await confirm({
+      title: t("kuaishou.interact.batchDeleteTitle", { n: String(ids.length) }),
+      body: t("kuaishou.interact.batchDeleteBody", { n: String(ids.length) }),
+      confirmLabel: t("kuaishou.interact.batchDeleteConfirm"),
+      destructive: true,
+    });
+    if (!ok) return;
+    setBatchDeleteBusy(true);
+    setActionError(null);
+    try {
+      // Read the full row list (not the filtered view) so a selected row hidden by
+      // the search filter still resolves its bound environment.
+      const profileByRecord = new Map<string, string | null>();
+      for (const row of rows) profileByRecord.set(row.record.id, row.record.profileId);
+      const failures: string[] = [];
+      let okCount = 0;
+      for (const id of ids) {
+        try {
+          const profileId = profileByRecord.get(id) ?? null;
+          if (profileId) {
+            await profilesApi.close(profileId).catch(() => {});
+            await profilesApi.delete(profileId);
+          }
+          await subAccounts.delete(id);
+          okCount += 1;
+        } catch (cause) {
+          failures.push(`${id}: ${errorText(cause)}`);
+        }
+      }
+      if (!mounted.current) return;
+      setSelected((prev) => {
+        const next = new Set(prev);
+        for (const id of ids) next.delete(id);
+        return next;
+      });
+      setStatus(t("kuaishou.interact.batchDeleteDone", { ok: String(okCount), n: String(ids.length) }));
+      if (failures.length > 0) {
+        setActionError(t("kuaishou.interact.batchDeleteFailed", { error: failures.join("; ") }));
+      }
+      await Promise.all([refresh(), refreshProfiles()]);
+    } finally {
+      if (mounted.current) setBatchDeleteBusy(false);
+    }
+  }
+
   async function onEnterRoom(accountId: string): Promise<void> {
     const url = liveUrl.trim();
     if (!url) return;
@@ -381,9 +439,11 @@ export function KuaishouInteractAccounts(): JSX.Element {
   }
 
   /**
-   * Delete = delete the environment (account-as-profile) and unbind the record:
-   * stop the hidden browser so no process keeps the data dir open, remove the
-   * profile (cookies, login state, disk data), then detach the registration.
+   * Delete = delete the environment (account-as-profile) **and** the interact
+   * record: stop the hidden browser so no process keeps the data dir open,
+   * remove the profile (cookies, login state, disk data), then drop the
+   * registration entirely (`delete_sub_account`) so the row disappears from the
+   * list. A record whose environment is already gone is deleted the same way.
    */
   async function askDelete(row: InteractRow): Promise<void> {
     const ok = await confirm({
@@ -401,9 +461,9 @@ export function KuaishouInteractAccounts(): JSX.Element {
         await profilesApi.close(profileId).catch(() => {});
         await profilesApi.delete(profileId);
       }
-      // The record is retained with profile_id=NULL (business_accounts has
-      // ON DELETE SET NULL), so unbind is best-effort and never blocks the delete.
-      await subAccounts.unbind(row.record.id).catch(() => {});
+      // Remove the registration record itself — otherwise a profile_id=NULL row
+      // would linger as an "environment missing" entry that never goes away.
+      await subAccounts.delete(row.record.id);
       if (!mounted.current) return;
       setSelected((prev) => {
         const next = new Set(prev);
@@ -585,8 +645,8 @@ export function KuaishouInteractAccounts(): JSX.Element {
               <Button
                 size="icon"
                 variant="danger"
-                disabled={pending}
-                title={t("kuaishou.interact.unbind")}
+                disabled={pending || !profileId}
+                title={profileId ? t("kuaishou.interact.unbind") : t("kuaishou.interact.unbindUnavailable")}
                 aria-label={t("kuaishou.interact.unbind")}
                 onClick={() => void askUnbind(row)}
                 leftIcon={op === "unbind" ? <Loader2 size={12} className="animate-spin" /> : <Unlink size={12} />}
@@ -660,11 +720,20 @@ export function KuaishouInteractAccounts(): JSX.Element {
         <Button
           size="sm"
           variant="secondary"
-          disabled={selected.size === 0 || batchBusy}
+          disabled={selected.size === 0 || batchBusy || batchDeleteBusy}
           onClick={() => void onBatchLogin()}
           leftIcon={batchBusy ? <Loader2 size={10} className="animate-spin" /> : undefined}
         >
           {t("kuaishou.interact.batchLogin", { n: String(selected.size) })}
+        </Button>
+        <Button
+          size="sm"
+          variant="danger"
+          disabled={selected.size === 0 || batchBusy || batchDeleteBusy}
+          onClick={() => void onBatchDelete()}
+          leftIcon={batchDeleteBusy ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={12} />}
+        >
+          {t("kuaishou.interact.batchDelete", { n: String(selected.size) })}
         </Button>
       </div>
 
