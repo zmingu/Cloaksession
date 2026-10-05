@@ -1,10 +1,10 @@
 import { useEffect, useState, type JSX } from "react";
-import { Boxes, ChevronRight, MessageCircle, MessagesSquare, Plug, Settings, ShoppingBag, Store, Video } from "lucide-react";
+import { Boxes, ChevronRight, Coins, MessageCircle, MessagesSquare, Plug, Radio, Settings, ShoppingBag, Store, Video } from "lucide-react";
 import { cn } from "../../lib/cn";
 import type { ProfileGroup } from "../../types";
 import { useT } from "../../i18n/LanguageProvider";
 
-export type Section = "profiles" | "kuaishou" | "mcp" | "business" | "settings";
+export type Section = "profiles" | "kuaishou" | "jinniu" | "live" | "mcp" | "business" | "settings";
 
 export type KuaishouTab = "shop" | "interact" | "mate";
 
@@ -29,6 +29,8 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { id: "kuaishou", icon: Store },
+  { id: "jinniu", icon: Coins },
+  { id: "live", icon: Radio },
   { id: "profiles", icon: Boxes },
   { id: "mcp", icon: Plug },
   { id: "business", icon: MessagesSquare },
@@ -62,11 +64,15 @@ export function Sidebar({
       ? t("nav.profiles")
       : id === "kuaishou"
         ? t("nav.kuaishou")
-        : id === "settings"
-          ? t("nav.settings")
-          : id === "business"
-            ? t("nav.business")
-            : "MCP";
+        : id === "jinniu"
+          ? t("nav.jinniu")
+          : id === "live"
+            ? t("nav.live")
+            : id === "settings"
+              ? t("nav.settings")
+              : id === "business"
+                ? t("nav.business")
+                : "MCP";
   const kuaishouLabel = (id: KuaishouTab): string =>
     id === "shop"
       ? t("kuaishou.tab.shop")

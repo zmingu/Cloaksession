@@ -1,21 +1,18 @@
 import { expect, test, type Page } from "@playwright/test";
 import { installTauriMock } from "./tauriMock";
 
-/** The 16 frontend-A commands (kuaishou_auth / mate_login / live_launch / live_room_monitor). */
+/**
+ * Live launch (伴侣开播) and live-room-monitor (直播间监控) contract suite.
+ *
+ * 业务板块归位后：伴侣开播（LiveLaunchPage，本地视频循环推流）在
+ * 「直播 › 开播准备」，与慧播开播并列；伴侣扫码登录（MateLoginPage）在
+ * 「快手账号 › 直播伴侣」；直播间监控在「直播 › 直播互动 › 互动账号脚本互动」。
+ * 小店鉴权页已删除，故本文件保留这些命令的契约。
+ */
 export const ACCOUNTS_LIVE_COMMANDS = [
-  "kuaishou_connect",
-  "kuaishou_login",
-  "ensure_kuaishou_auth",
   "mate_login_start",
   "mate_login_cancel",
   "mate_login_state",
-  "live_launch_status",
-  "live_launch_prerequisites",
-  "live_launch_credentials",
-  "live_launch_heartbeat_start",
-  "live_launch_heartbeat_stop",
-  "live_launch_stream_start",
-  "live_launch_stream_stop",
   "start_live_room_monitor",
   "stop_live_room_monitor",
   "get_live_room_monitor_state",
@@ -27,14 +24,15 @@ interface RecordedCall {
 }
 
 /**
- * Extends the shared Tauri mock with the A-group commands and boots straight
- * into the Business section. Installed via addInitScript, whose callback body
- * is serialized into the page — so it must not reference module scope.
+ * Extends the shared Tauri mock with the mate-login / monitor commands and
+ * boots straight into the Live section. Installed via addInitScript, whose
+ * callback body is serialized into the page — so it must not reference module
+ * scope.
  */
 async function installAccountsLiveMock(page: Page): Promise<void> {
   await installTauriMock(page);
   await page.addInitScript((allowed: string[]) => {
-    localStorage.setItem("multizen.ui.section", JSON.stringify("business"));
+    localStorage.setItem("multizen.ui.section", JSON.stringify("live"));
     const idleMonitor = () => ({
       enabled: false, profileId: null, liveRoomUrl: null,
       sceneId: null, groupId: null, productScriptId: null,
@@ -44,11 +42,6 @@ async function installAccountsLiveMock(page: Page): Promise<void> {
       lastCheckedAt: null, nextCheckAt: null, lastTriggeredAt: null,
       lastEnterAllResult: null, lastExitAllResult: null,
       lastProductScriptResult: null, error: null,
-    });
-    const streaming = (profileId: unknown) => ({
-      profileId: String(profileId), status: "idle", mode: null, target: null, pid: null,
-      stderrTail: [] as string[], exitCode: null, error: null,
-      placeholderCredentials: false, startedAt: null,
     });
     const internals = (window as unknown as {
       __TAURI_INTERNALS__: { invoke: (c: string, a?: Record<string, unknown>) => Promise<unknown> };
@@ -61,9 +54,6 @@ async function installAccountsLiveMock(page: Page): Promise<void> {
         recorded.push({ command, args: JSON.parse(JSON.stringify(args)) });
       }
       switch (command) {
-        case "kuaishou_connect": return true;
-        case "kuaishou_login": return;
-        case "ensure_kuaishou_auth": return { ok: true, scanned: false };
         case "mate_login_start":
         case "mate_login_cancel":
         case "mate_login_state":
@@ -73,20 +63,6 @@ async function installAccountsLiveMock(page: Page): Promise<void> {
             qrLoginToken: null, qrLoginSignature: null, expireAt: null,
             errorMessage: null, user: null, startedAt: null, finishedAt: null,
           };
-        case "live_launch_status":
-          return streaming(args["profileId"]);
-        case "live_launch_prerequisites":
-          return { available: true, ffmpegPath: "/usr/bin/ffmpeg", searched: ["/usr/bin"], error: null };
-        case "live_launch_credentials":
-          return {
-            rtmpServer: "rtmp://fixture.live/room", streamKey: "fixture-key",
-            liveStreamId: "live-1", placeholder: false,
-          };
-        case "live_launch_heartbeat_start":
-        case "live_launch_heartbeat_stop":
-        case "live_launch_stream_start":
-        case "live_launch_stream_stop":
-          return streaming(args["profileId"]);
         case "start_live_room_monitor":
           return {
             ...idleMonitor(), enabled: true,
@@ -121,115 +97,70 @@ test.beforeEach(async ({ page }) => {
   await installAccountsLiveMock(page);
 });
 
-test("business section exposes the four A-group tabs", async ({ page }) => {
-  await expect(page.getByRole("tab", { name: "Shop auth" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Mate login" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Live launch" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Room monitor" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Shop auth" })).toHaveAttribute("aria-selected", "true");
+/** The mate QR login page lives under 快手账号 › 直播伴侣 (Companion). */
+async function openMateTab(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Kuaishou account", exact: true }).click();
+  await page.getByRole("button", { name: "Companion", exact: true }).click();
+}
+
+test("live section exposes the three tabs and prepare hosts both launch pages", async ({ page }) => {
+  await expect(page.getByRole("tab", { name: "Live prep" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Live interact" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Ad delivery" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Live prep" })).toHaveAttribute("aria-selected", "true");
+  // 开播准备 = 慧播开播（跟播 / 回播）+ 伴侣开播（LiveLaunchPage 本地视频推流）。
+  const huibo = page.getByTestId("live-prepare-huibo");
+  await expect(huibo.getByRole("heading", { name: "Huibo live", exact: true })).toBeVisible();
+  await expect(huibo.getByRole("region", { name: "Huibo live (replay)" })).toBeVisible();
+  const mate = page.getByTestId("live-prepare-mate");
+  await expect(mate.getByRole("heading", { name: "Companion live", exact: true })).toBeVisible();
+  await expect(mate.getByRole("region", { name: "Live launch" })).toBeVisible();
+  // 伴侣扫码登录页不再属于开播准备。
+  await expect(page.getByRole("region", { name: "Mate QR login" })).toHaveCount(0);
 });
 
-test("shop auth: ensure-auth renders the reuse outcome", async ({ page }) => {
-  await page.getByPlaceholder("profile-id").fill("fixture-profile");
-  await page.getByPlaceholder("https://login.kwaixiaodian.com/").fill("https://login.kwaixiaodian.com/");
-  await page.getByRole("button", { name: "Ensure auth" }).click();
-  await expect(page.getByText("Authenticated via cookie reuse — no scan was needed.")).toBeVisible();
-  expect(await calls(page, "ensure_kuaishou_auth")).toEqual([
-    { command: "ensure_kuaishou_auth", args: { profileId: "fixture-profile", targetId: "https://login.kwaixiaodian.com/" } },
-  ]);
-});
-
-test("shop auth: connect maps to camelCase args and the already-authed branch", async ({ page }) => {
-  await page.getByPlaceholder("profile-id").fill("fixture-profile");
-  await page.getByPlaceholder("https://login.kwaixiaodian.com/").fill("https://login.kwaixiaodian.com/");
-  await page.getByRole("button", { name: "Check connection" }).click();
-  await expect(page.getByText("Already authenticated — no scan needed.")).toBeVisible();
-  expect(await calls(page, "kuaishou_connect")).toEqual([
-    { command: "kuaishou_connect", args: { profileId: "fixture-profile", targetId: "https://login.kwaixiaodian.com/" } },
-  ]);
+test("Kuaishou › Companion tab hosts the mate QR login page", async ({ page }) => {
+  await openMateTab(page);
+  const login = page.getByRole("region", { name: "Mate QR login" });
+  await expect(login).toBeVisible();
+  await expect(login.getByPlaceholder("account-id")).toBeVisible();
+  await expect(login.getByRole("button", { name: "Start login" })).toBeVisible();
+  await expect(login.getByRole("button", { name: "Cancel" })).toBeVisible();
 });
 
 test("mate login: start renders the QR and sends accountId", async ({ page }) => {
-  await page.getByRole("tab", { name: "Mate login" }).click();
-  await page.getByPlaceholder("account-id").fill("account-1");
-  await page.getByRole("button", { name: "Start login" }).click();
-  await expect(page.getByAltText("Login QR code")).toBeVisible();
-  await expect(page.getByText("awaiting-scan")).toBeVisible();
+  await openMateTab(page);
+  const mate = page.getByRole("region", { name: "Mate QR login" });
+  await mate.getByPlaceholder("account-id").fill("account-1");
+  await mate.getByRole("button", { name: "Start login" }).click();
+  await expect(mate.getByAltText("Login QR code")).toBeVisible();
+  await expect(mate.getByText("awaiting-scan")).toBeVisible();
   expect(await calls(page, "mate_login_start")).toEqual([
     { command: "mate_login_start", args: { accountId: "account-1" } },
   ]);
 });
 
 test("mate login: cancel issues mate_login_cancel", async ({ page }) => {
-  await page.getByRole("tab", { name: "Mate login" }).click();
-  await page.getByPlaceholder("account-id").fill("account-1");
-  await page.getByRole("button", { name: "Cancel" }).click();
+  await openMateTab(page);
+  const mate = page.getByRole("region", { name: "Mate QR login" });
+  await mate.getByPlaceholder("account-id").fill("account-1");
+  await mate.getByRole("button", { name: "Cancel" }).click();
   expect(await commands(page)).toContain("mate_login_cancel");
 });
 
-test("live launch: prerequisites take no args and status takes profileId", async ({ page }) => {
-  await page.getByRole("tab", { name: "Live launch" }).click();
-  await page.getByRole("button", { name: "Check ffmpeg" }).click();
-  await expect(page.getByText("ffmpeg ready: /usr/bin/ffmpeg")).toBeVisible();
-  expect(await calls(page, "live_launch_prerequisites")).toEqual([
-    { command: "live_launch_prerequisites", args: {} },
-  ]);
-
-  await page.getByPlaceholder("profile-id").fill("fixture-profile");
-  await page.getByRole("button", { name: "Refresh status" }).click();
-  await expect(page.getByText("idle", { exact: true })).toBeVisible();
-  expect(await calls(page, "live_launch_status")).toEqual([
-    { command: "live_launch_status", args: { profileId: "fixture-profile" } },
-  ]);
-});
-
-test("live launch: heartbeat start/stop and stream start/stop arg shapes", async ({ page }) => {
-  await page.getByRole("tab", { name: "Live launch" }).click();
-  await page.getByPlaceholder("profile-id").fill("fixture-profile");
-  await page.getByRole("button", { name: "Heartbeat start" }).click();
-  await page.getByRole("button", { name: "Heartbeat stop" }).click();
-  await expect(page.getByRole("button", { name: "Heartbeat stop" })).toBeEnabled();
-
-  await page.getByPlaceholder("D:\\videos\\loop.mp4").fill("D:\\videos\\loop.mp4");
-  await page.getByRole("button", { name: "Stream start" }).click();
-  await page.getByRole("button", { name: "Confirm" }).click();
-  await page.getByRole("button", { name: "Stream stop" }).click();
-  await page.getByRole("button", { name: "Confirm" }).click();
-
-  expect(await calls(page, "live_launch_heartbeat_start")).toEqual([
-    { command: "live_launch_heartbeat_start", args: { profileId: "fixture-profile", controlUrl: null } },
-  ]);
-  expect(await calls(page, "live_launch_heartbeat_stop")).toEqual([
-    { command: "live_launch_heartbeat_stop", args: { profileId: "fixture-profile" } },
-  ]);
-  expect(await calls(page, "live_launch_stream_start")).toEqual([
-    { command: "live_launch_stream_start", args: { profileId: "fixture-profile", videoPath: "D:\\videos\\loop.mp4", controlUrl: null } },
-  ]);
-  expect(await calls(page, "live_launch_stream_stop")).toEqual([
-    { command: "live_launch_stream_stop", args: { profileId: "fixture-profile" } },
-  ]);
-});
-
-test("live launch: stream start is gated behind a confirm dialog", async ({ page }) => {
-  await page.getByRole("tab", { name: "Live launch" }).click();
-  await page.getByPlaceholder("profile-id").fill("fixture-profile");
-  await page.getByPlaceholder("D:\\videos\\loop.mp4").fill("D:\\videos\\loop.mp4");
-  await page.getByRole("button", { name: "Stream start" }).click();
-  await expect(page.getByText("Start pushing the local video to the live room?")).toBeVisible();
-  expect(await commands(page)).not.toContain("live_launch_stream_start");
-});
-
 test("room monitor: start sends profileId + config and stop/state take no args", async ({ page }) => {
-  await page.getByRole("tab", { name: "Room monitor" }).click();
-  await page.getByPlaceholder("profile-id").fill("fixture-profile");
-  await page.getByPlaceholder("https://live.kuaishou.com/…").fill("https://live.kuaishou.com/u/fixture");
-  await page.getByPlaceholder("optional").first().fill("42");
-  await page.getByRole("button", { name: "Start monitor" }).click();
-  await expect(page.getByText("checking")).toBeVisible();
+  await page.getByRole("tab", { name: "Live interact" }).click();
+  const script = page.getByTestId("live-interact-script");
+  const monitor = script.getByRole("region", { name: "Live-room monitor" });
+  await monitor.getByPlaceholder("profile-id").fill("fixture-profile");
+  await monitor.getByPlaceholder("https://live.kuaishou.com/…").fill("https://live.kuaishou.com/u/fixture");
+  await monitor.getByPlaceholder("optional").first().fill("42");
+  await monitor.getByRole("button", { name: "Start monitor" }).click();
+  await expect(monitor.getByText("checking")).toBeVisible();
 
-  await page.getByRole("button", { name: "Stop", exact: true }).click();
-  await expect(page.getByText("disabled")).toBeVisible();
-  await page.getByRole("button", { name: "Refresh" }).click();
+  await monitor.getByRole("button", { name: "Stop", exact: true }).click();
+  await expect(monitor.getByText("disabled")).toBeVisible();
+  await monitor.getByRole("button", { name: "Refresh" }).click();
 
   expect(await calls(page, "start_live_room_monitor")).toEqual([
     {

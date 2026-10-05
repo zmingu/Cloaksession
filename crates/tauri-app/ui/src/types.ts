@@ -470,6 +470,26 @@ export interface UpdateShopProductScriptLineInput {
   content?: string;
 }
 
+/** 播放状态（Rust `ProductScriptPlayStatus`, kebab-case）。 */
+export type ProductScriptPlayStatus = "idle" | "playing" | "finished" | "cancelled";
+
+/** 播放状态快照。Rust `ProductScriptPlayState`. 经 `product-script-state-changed` 广播。 */
+export interface ProductScriptPlayState {
+  scriptId: string;
+  status: ProductScriptPlayStatus;
+  currentLineId: string | null;
+  currentIndex: number;
+  total: number;
+  startedAtMs: number;
+}
+
+/** `shop_product_script_play` 返回的播放句柄。Rust `ShopScriptPlayback`. */
+export interface ShopScriptPlayback {
+  scriptId: string;
+  startedAtMs: number;
+  scheduledCount: number;
+}
+
 /** 商品 Tab：小黄车内商品 / 待上车商品。 */
 export type HelperGoodTab = "inCart" | "toAdd";
 
@@ -825,6 +845,65 @@ export interface StoreCreatePhase1Config {
   promoteType?: string | null;
   roiTargetMode?: string | null;
   creativeMode?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Jinniu multi-master accounts — crates/tauri-app/src/driver/jinniu.rs
+// (serde `camelCase`; `JinniuStatus` is `kebab-case`)
+//
+// 扫码完成 ≠ connected：必须用户在弹窗手动选子户、URL 出现 `__accountId__`
+// 才置 connected；离开登录页但无子户时为 `awaiting-sub-account`。
+// ---------------------------------------------------------------------------
+
+/** `JinniuStatus`, `#[serde(rename_all = "kebab-case")]` — jieger 同值同序. */
+export type JinniuStatus =
+  | "disconnected"
+  | "connecting"
+  | "awaiting-sub-account"
+  | "connected"
+  | "error";
+
+/** 主账号（大户）信息，登录后 best-effort 捕获. */
+export interface JinniuMaster {
+  name: string;
+  id: string;
+  avatarUrl?: string | null;
+}
+
+/** 状态推送 payload（`jinniu-status-changed`）。字段与 jieger 对齐. */
+export interface JinniuStatePayload {
+  accountId: string;
+  status: JinniuStatus;
+  targetAccountId?: string | null;
+  error?: string | null;
+  master?: JinniuMaster | null;
+  currentSubAccountId?: string | null;
+  currentSubAccountName?: string | null;
+  balanceText?: string | null;
+}
+
+/** `jinniu_login` 的选项；`headless` 被接受但忽略（真实登录始终有头）. */
+export interface JinniuLoginOptions {
+  targetSubAccountId?: string | null;
+  headless?: boolean;
+  restoreOnly?: boolean;
+}
+
+/** 列表项：通用业务账号字段 + 运行时状态（`jinniu_accounts_list`）. */
+export interface JinniuAccountWithStatus {
+  id: string;
+  profileId?: string | null;
+  label: string;
+  status: JinniuStatus;
+  isActive: boolean;
+  error?: string | null;
+  targetAccountId?: string | null;
+  masterName?: string | null;
+  masterId?: string | null;
+  masterAvatarUrl?: string | null;
+  currentSubAccountId?: string | null;
+  currentSubAccountName?: string | null;
+  balanceText?: string | null;
 }
 
 // ---------------------------------------------------------------------------

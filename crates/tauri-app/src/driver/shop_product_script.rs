@@ -1,10 +1,14 @@
 //! jieger 商品话术库播放引擎：排期计算 + 动作派发 + 播放状态广播。
 //!
 //! shop-helper（`goods_on_shelf` / `goods_off_shelf`）与 goodsList
-//!（`explain_goods` / `cancel_explain_goods`）不在此实现，只留 trait
-//! 占位（[`ShopActionDispatcher`]），由后续接入或测试 mock 实现。
+//!（`explain_goods` / `cancel_explain_goods`）由 [`DriverShopActionDispatcher`]
+//! 接入真实原语；trait [`ShopActionDispatcher`] 保留为可替换缝，测试用 mock。
 //! 商品知识扫描（供 auto-popup 调用）只留 [`ProductScriptSource`] 接口。
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex as StdMutex, OnceLock};
+
 use super::{LauncherCmd, TauriBrowserDriver};
+use cdp_driver::TaskCancel;
 use multizen_core::{MultizenError, Result};
 use profile_manager::{
     AddShopProductScriptLineInput, CreateShopProductScriptInput, ScriptLineAction,
@@ -12,7 +16,7 @@ use profile_manager::{
     UpdateShopProductScriptInput, UpdateShopProductScriptLineInput,
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::oneshot;
+use tokio::sync::{oneshot, watch};
 
 /// 播放状态广播事件名。
 pub const PRODUCT_SCRIPT_STATE_EVENT: &str = "product-script-state-changed";
@@ -89,6 +93,74 @@ pub async fn dispatch_line_action(
         ScriptLineAction::OffShelf => dispatcher.goods_off_shelf(&line.goods_id).await,
         ScriptLineAction::Explain => dispatcher.explain_goods(&line.goods_id).await,
         ScriptLineAction::CancelExplain => dispatcher.cancel_explain_goods(&line.goods_id).await,
+    }
+}
+
+/// 真实 dispatcher：把排期动作派发到 shop-helper（上车/下车）与 goodsList
+///（讲解/取消讲解）原语。
+///
+/// 持有 driver 引用 + `profile_id` + `TaskCancel`（三者都是播放期间必需），
+/// 不自己取 `TaskPage`：
+/// - 上车/下车直接调 [`TauriBrowserDriver::goods_on_shelf`] /
+///   [`TauriBrowserDriver::goods_off_shelf`]，二者内部自行 `find_helper_target`
+///   + 租约（幂等）。
+/// - 讲解/取消讲解调 [`TauriBrowserDriver::auto_popup_explain_goods`] /
+///   [`TauriBrowserDriver::auto_popup_cancel_explain_goods`]（driver 级封装，
+///   内部走 `console_task_page` 合作式租约）。
+///
+/// `TaskCancel` 同时作为任务取消令牌传给底层原语，`stop` 播放时一并中断。
+///
+/// 持有 `Arc<TauriBrowserDriver>`（而非借用）以便整段播放跑在独立
+/// `tokio::spawn` 上，命令立即返回、不阻塞调用方。
+pub struct DriverShopActionDispatcher {
+    driver: Arc<TauriBrowserDriver>,
+    profile_id: String,
+    cancel: TaskCancel,
+}
+
+impl DriverShopActionDispatcher {
+    pub fn new(
+        driver: Arc<TauriBrowserDriver>,
+        profile_id: impl Into<String>,
+        cancel: TaskCancel,
+    ) -> Self {
+        Self {
+            driver,
+            profile_id: profile_id.into(),
+            cancel,
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl ShopActionDispatcher for DriverShopActionDispatcher {
+    async fn goods_on_shelf(&self, goods_id: &str) -> Result<()> {
+        self.driver
+            .goods_on_shelf(&self.profile_id, goods_id, self.cancel.clone())
+            .await
+            .map(|_| ())
+    }
+
+    async fn goods_off_shelf(&self, goods_id: &str) -> Result<()> {
+        self.driver
+            .goods_off_shelf(&self.profile_id, goods_id, self.cancel.clone())
+            .await
+            .map(|_| ())
+    }
+
+    async fn explain_goods(&self, goods_id: &str) -> Result<()> {
+        self.driver
+            .auto_popup_explain_goods(&self.profile_id, goods_id, self.cancel.clone())
+            .await
+            .map_err(MultizenError::Mcp)
+    }
+
+    async fn cancel_explain_goods(&self, goods_id: &str) -> Result<()> {
+        let _ = goods_id;
+        self.driver
+            .auto_popup_cancel_explain_goods(&self.profile_id, self.cancel.clone())
+            .await
+            .map_err(MultizenError::Mcp)
     }
 }
 
@@ -391,12 +463,162 @@ impl TauriBrowserDriver {
             .map_err(|_| Self::shop_script_closed())?;
         receive.await.map_err(|_| Self::shop_script_dropped())?
     }
+
+    /// 播放话术脚本：读脚本行 → 排期 → 真实 dispatcher 逐条派发，状态经
+    /// `product-script-state-changed` 广播。
+    ///
+    /// - `goods_ids` 为 `Some` 且非空时先经 [`select_lines_for_goods`] 过滤，
+    ///   只播放这些商品的行；`None` 或空表则播放全部。
+    /// - `started_at_ms` 缺省用当前墙钟；`trigger_at <= started_at` 的行立即触发。
+    /// - 播放期间同一脚本不可重复播放（`AlreadyExists`）。
+    /// - 返回的 [`ShopScriptPlayback`] 含脚本 id / 起始时刻 / 排期条数；
+    ///   用 [`TauriBrowserDriver::stop_shop_product_script`] 停止。
+    pub async fn play_shop_product_script(
+        self: &Arc<Self>,
+        profile_id: &str,
+        script_id: &str,
+        goods_ids: Option<Vec<String>>,
+        started_at_ms: Option<i64>,
+    ) -> Result<ShopScriptPlayback> {
+        if play_sessions().lock().unwrap().contains_key(script_id) {
+            return Err(MultizenError::AlreadyExists(format!(
+                "话术脚本 {script_id} 正在播放中"
+            )));
+        }
+        let detail = self
+            .shop_product_script_get(script_id)
+            .await?
+            .ok_or_else(|| MultizenError::NotFound(format!("话术脚本 {script_id} 不存在")))?;
+        if detail.lines.is_empty() {
+            return Err(MultizenError::Config("话术脚本没有话术行".into()));
+        }
+        let started_at_ms = started_at_ms.unwrap_or_else(now_ms);
+        let schedule = build_schedule(&detail.lines, started_at_ms);
+        let schedule = match goods_ids {
+            Some(ids) if !ids.is_empty() => {
+                let known: Vec<ProductGoods> = ids
+                    .into_iter()
+                    .map(|goods_id| ProductGoods {
+                        goods_id,
+                        title: String::new(),
+                    })
+                    .collect();
+                select_lines_for_goods(&schedule, &known)
+            }
+            _ => schedule,
+        };
+        if schedule.is_empty() {
+            return Err(MultizenError::Config("话术排期为空".into()));
+        }
+        let scheduled_count = schedule.len();
+        let cancel = TaskCancel::new();
+        let (stop_tx, stop_rx) = watch::channel(false);
+        play_sessions().lock().unwrap().insert(
+            script_id.to_string(),
+            ShopScriptPlaySession {
+                stop_tx,
+                cancel: cancel.clone(),
+            },
+        );
+        // 启动快照：`current_line_id` 为空表示尚未派发任何行。
+        self.emit_product_script_state(&ProductScriptPlayState {
+            script_id: script_id.to_string(),
+            status: ProductScriptPlayStatus::Playing,
+            current_line_id: None,
+            current_index: 0,
+            total: scheduled_count,
+            started_at_ms,
+        });
+        let player = self.script_player();
+        let script = script_id.to_string();
+        let dispatcher =
+            DriverShopActionDispatcher::new(Arc::clone(self), profile_id, cancel);
+        tokio::spawn(async move {
+            player
+                .play(&script, schedule, &dispatcher, started_at_ms, stop_rx)
+                .await;
+            play_sessions().lock().unwrap().remove(&script);
+        });
+        Ok(ShopScriptPlayback {
+            script_id: script_id.to_string(),
+            started_at_ms,
+            scheduled_count,
+        })
+    }
+
+    /// 停止播放：置位 stop 通道 + 取消底层任务；返回是否确有正在播放的脚本。
+    pub fn stop_shop_product_script(&self, script_id: &str) -> bool {
+        let removed = play_sessions().lock().unwrap().remove(script_id);
+        match removed {
+            Some(session) => {
+                session.cancel.cancel();
+                let _ = session.stop_tx.send(true);
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// 进程级播放器：持有状态广播通道，供前端/测试订阅。
+    pub fn script_player(&self) -> Arc<ProductScriptPlayer> {
+        script_player().clone()
+    }
+}
+
+/// 播放句柄：脚本 id / 起始时刻 / 排期条数。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShopScriptPlayback {
+    pub script_id: String,
+    pub started_at_ms: i64,
+    pub scheduled_count: usize,
+}
+
+/// 播放中的脚本运行态：`stop_tx` 置位停止循环，`cancel` 取消底层动作。
+struct ShopScriptPlaySession {
+    stop_tx: watch::Sender<bool>,
+    cancel: TaskCancel,
+}
+
+fn play_sessions() -> &'static StdMutex<HashMap<String, ShopScriptPlaySession>> {
+    static SESSIONS: OnceLock<StdMutex<HashMap<String, ShopScriptPlaySession>>> = OnceLock::new();
+    SESSIONS.get_or_init(|| StdMutex::new(HashMap::new()))
+}
+
+fn script_player() -> &'static Arc<ProductScriptPlayer> {
+    static PLAYER: OnceLock<Arc<ProductScriptPlayer>> = OnceLock::new();
+    PLAYER.get_or_init(|| Arc::new(ProductScriptPlayer::new()))
+}
+
+fn now_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis().min(i64::MAX as u128) as i64)
+        .unwrap_or(0)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use multizen_core::BrowserEngine;
+    use std::path::PathBuf;
     use std::sync::Mutex;
+    use tempfile::TempDir;
+
+    fn fixture() -> (TempDir, Arc<TauriBrowserDriver>) {
+        let dir = TempDir::new().unwrap();
+        let driver = TauriBrowserDriver::start(
+            dir.path().join("p.db"),
+            dir.path().join("profiles"),
+            dir.path().join("extensions"),
+            Arc::new(crate::registry::ProfileRegistry::new()),
+            BrowserEngine::Chromix,
+            PathBuf::new(),
+            None,
+        )
+        .unwrap();
+        (dir, Arc::new(driver))
+    }
 
     fn line(
         id: &str,
@@ -670,6 +892,8 @@ mod tests {
             "shop_product_script_update_line",
             "shop_product_script_delete_line",
             "shop_product_script_reorder_lines",
+            "shop_product_script_play",
+            "shop_product_script_stop",
         ] {
             assert!(
                 handler
@@ -678,5 +902,105 @@ mod tests {
                 "{command}"
             );
         }
+    }
+
+    // --- 真实 dispatcher 路由（离线：driver 无会话，动作全部失败） ---
+
+    /// 四个动作都要真正委派到底层原语：driver 没有会话/助手页，因此每个方法
+    /// 都必须返回错误（而不是静默成功）。这证明 dispatcher 不再只是占位。
+    #[tokio::test]
+    async fn driver_dispatcher_delegates_every_action_and_surfaces_failure() {
+        let (_dir, driver) = fixture();
+        let cancel = TaskCancel::new();
+        let dispatcher =
+            DriverShopActionDispatcher::new(Arc::clone(&driver), "missing-profile", cancel);
+        for action in [
+            ScriptLineAction::OnShelf,
+            ScriptLineAction::OffShelf,
+            ScriptLineAction::Explain,
+            ScriptLineAction::CancelExplain,
+        ] {
+            let line = scheduled(action, "12345");
+            assert!(
+                dispatch_line_action(&dispatcher, &line).await.is_err(),
+                "{action:?} must reach the real primitive and fail offline"
+            );
+        }
+    }
+
+    /// 取消令牌已置位时，讲解/取消讲解在取页前即被 `console_task_page`/门禁拒绝，
+    /// 不会误判为成功。
+    #[tokio::test]
+    async fn driver_dispatcher_explain_honours_cancelled_token() {
+        let (_dir, driver) = fixture();
+        let cancel = TaskCancel::new();
+        cancel.cancel();
+        let dispatcher =
+            DriverShopActionDispatcher::new(Arc::clone(&driver), "missing-profile", cancel);
+        assert!(dispatcher.explain_goods("12345").await.is_err());
+        assert!(dispatcher.cancel_explain_goods("12345").await.is_err());
+    }
+
+    /// 播放：无会话时排期照常建立、状态经广播发出，动作失败被跳过、最终 Finished。
+    #[tokio::test]
+    async fn play_runs_schedule_and_broadcasts_states_offline() {
+        let (_dir, driver) = fixture();
+        let script = driver
+            .shop_product_script_create(CreateShopProductScriptInput {
+                name: "t".into(),
+                description: None,
+            })
+            .await
+            .unwrap();
+        for (action, goods) in [
+            (ScriptLineAction::OnShelf, "1001"),
+            (ScriptLineAction::Explain, "1002"),
+        ] {
+            driver
+                .shop_product_script_add_line(AddShopProductScriptLineInput {
+                    script_id: script.id.clone(),
+                    action,
+                    goods_id: goods.into(),
+                    goods_name: None,
+                    video_time_sec: 0.0,
+                    lead_sec: 0.0,
+                    content: String::new(),
+                    sort_order: None,
+                })
+                .await
+                .unwrap();
+        }
+        let mut rx = driver.script_player().subscribe();
+        let playback = driver
+            .play_shop_product_script("missing-profile", &script.id, None, Some(0))
+            .await
+            .unwrap();
+        assert_eq!(playback.scheduled_count, 2);
+        // 重复播放被拒绝。
+        assert!(driver
+            .play_shop_product_script("missing-profile", &script.id, None, Some(0))
+            .await
+            .is_err());
+        // 收集广播直到 Finished。
+        let mut saw_finished = false;
+        for _ in 0..8 {
+            match tokio::time::timeout(std::time::Duration::from_secs(5), rx.recv()).await {
+                Ok(Ok(state)) => {
+                    if state.status == ProductScriptPlayStatus::Finished {
+                        saw_finished = true;
+                        break;
+                    }
+                }
+                _ => break,
+            }
+        }
+        assert!(saw_finished, "playback must broadcast Finished");
+    }
+
+    /// 停止：播放中的脚本可被停止并返回 true；未播放的返回 false。
+    #[tokio::test]
+    async fn stop_reports_whether_a_playback_was_running() {
+        let (_dir, driver) = fixture();
+        assert!(!driver.stop_shop_product_script("nope"));
     }
 }

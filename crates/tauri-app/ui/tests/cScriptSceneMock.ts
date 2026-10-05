@@ -29,7 +29,7 @@ interface MockScene {
  */
 export async function installCGroupMock(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    localStorage.setItem("multizen.ui.section", JSON.stringify("business"));
+    localStorage.setItem("multizen.ui.section", JSON.stringify("live"));
     localStorage.setItem("multizen.ui.onboarded", "true");
   });
   await installTauriMock(page);

@@ -30,6 +30,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
     )?;
     crate::auto_reply::migrate(conn)?;
     crate::business_accounts::migrate(conn)?;
+    crate::jinniu_account::migrate(conn)?;
     crate::jinniu_authorize::migrate(conn)?;
     crate::scenes::migrate(conn)?;
     crate::shop_product_script::migrate(conn)?;

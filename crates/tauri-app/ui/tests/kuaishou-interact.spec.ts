@@ -174,7 +174,7 @@ test("interact tab renders environment-joined rows with a new-account action", a
   ).toBeVisible();
 
   // Sidebar uses pure labels (no shortcut suffix) — the only allowed selectors.
-  await expect(page.getByRole("button", { name: "Kuaishou", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Kuaishou account", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Interact", exact: true })).toBeVisible();
 });
 

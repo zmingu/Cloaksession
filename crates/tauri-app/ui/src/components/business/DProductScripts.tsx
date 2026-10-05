@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState, type JSX } from "react";
-import { productScripts } from "../../lib/productScripts";
+import { onProductScriptState, productScripts } from "../../lib/productScripts";
 import type {
   AddShopProductScriptLineInput,
+  ProductScriptPlayState,
   ScriptLineAction,
   ShopProductScript,
   ShopProductScriptDetail,
@@ -17,13 +18,18 @@ function errDetail(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
 }
 
+interface Props {
+  profileId: string;
+}
+
 /**
  * 商品话术库页面（D 组）。
  *
- * 覆盖 9 个 `shop_product_script_*` 命令：脚本 CRUD + 话术行 CRUD + 整组重排。
- * 删除类写操作走内联二次确认（先点删除再点确认），不直接执行。
+ * 覆盖 11 个 `shop_product_script_*` 命令：脚本 CRUD + 话术行 CRUD + 整组重排
+ * + 播放/停止。删除与播放是真实写操作：走内联二次确认（先点删除/播放再点确认）。
+ * 播放状态经 `product-script-state-changed` 订阅。
  */
-export function DProductScripts(): JSX.Element {
+export function DProductScripts({ profileId }: Props): JSX.Element {
   const t = useT();
   const [scripts, setScripts] = useState<ShopProductScript[]>([]);
   const [detail, setDetail] = useState<ShopProductScriptDetail | null>(null);
@@ -31,6 +37,8 @@ export function DProductScripts(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [playState, setPlayState] = useState<ProductScriptPlayState | null>(null);
+  const [confirmPlayId, setConfirmPlayId] = useState<string | null>(null);
 
   // Create form.
   const [name, setName] = useState("");
@@ -73,6 +81,49 @@ export function DProductScripts(): JSX.Element {
     void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    let unlisten = (): void => {};
+    let active = true;
+    void onProductScriptState((state) => {
+      if (active) setPlayState(state);
+    }).then((fn) => {
+      if (active) unlisten = fn;
+    });
+    return () => {
+      active = false;
+      unlisten();
+    };
+  }, []);
+
+  async function play(scriptId: string): Promise<void> {
+    setBusy("saving");
+    setError(null);
+    setMessage(null);
+    try {
+      const playback = await productScripts.play(profileId, scriptId);
+      setConfirmPlayId(null);
+      setMessage(t("biz.pscript.playingToast", { n: playback.scheduledCount }));
+    } catch (cause) {
+      setError(t("biz.pscript.loadFailed", { detail: errDetail(cause) }));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function stop(scriptId: string): Promise<void> {
+    setBusy("saving");
+    setError(null);
+    setMessage(null);
+    try {
+      const stopped = await productScripts.stop(scriptId);
+      setMessage(stopped ? t("biz.pscript.stoppedToast") : t("biz.pscript.notPlayingToast"));
+    } catch (cause) {
+      setError(t("biz.pscript.loadFailed", { detail: errDetail(cause) }));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function open(id: string): Promise<void> {
     setBusy("loading");
@@ -235,6 +286,21 @@ export function DProductScripts(): JSX.Element {
         <Button onClick={() => void reload()} disabled={!!busy}>{t("biz.pscript.refresh")}</Button>
       </div>
 
+      <div className="rounded-lg border border-white/10 p-3 space-y-1.5" data-testid="pscript-play-state">
+        <p className="font-medium text-slate-200">{t("biz.pscript.playStatusTitle")}</p>
+        <p className="text-slate-400">
+          {playState
+            ? `${playState.status} · ${t("biz.pscript.playProgress", {
+                current: playState.currentIndex,
+                total: playState.total,
+              })}`
+            : "—"}
+        </p>
+        {playState?.currentLineId && (
+          <p className="text-slate-500 break-words">{playState.currentLineId}</p>
+        )}
+      </div>
+
       {!detail && (
         <>
           <form
@@ -278,6 +344,21 @@ export function DProductScripts(): JSX.Element {
                   <Button size="sm" onClick={() => void open(s.id)} disabled={!!busy}>
                     {t("biz.pscript.open")}
                   </Button>
+                  {confirmPlayId === s.id ? (
+                    <div role="group" aria-label={t("biz.pscript.confirmPlayTitle")} className="flex flex-wrap gap-2 items-center">
+                      <span className="text-amber-200">{t("biz.pscript.confirmPlayBody")}</span>
+                      <Button size="sm" variant="primary" onClick={() => void play(s.id)} disabled={!!busy}>
+                        {t("common.confirm")}
+                      </Button>
+                      <Button size="sm" onClick={() => setConfirmPlayId(null)} disabled={!!busy}>
+                        {t("common.cancel")}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button size="sm" variant="primary" onClick={() => setConfirmPlayId(s.id)} disabled={!!busy}>
+                      {t("biz.pscript.play")}
+                    </Button>
+                  )}
                   {confirmId === s.id ? (
                     <div role="group" aria-label={t("biz.pscript.confirmDeleteTitle")} className="flex flex-wrap gap-2 items-center">
                       <span className="text-amber-200">{t("biz.pscript.confirmDeleteBody")}</span>
@@ -304,6 +385,14 @@ export function DProductScripts(): JSX.Element {
         <div className="space-y-3" data-testid="pscript-detail">
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => setDetail(null)}>{t("biz.pscript.backToList")}</Button>
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={() => void stop(detail.script.id)}
+              disabled={!!busy || playState?.scriptId !== detail.script.id}
+            >
+              {t("biz.pscript.stop")}
+            </Button>
           </div>
           <p className="font-medium text-slate-200">{t("biz.pscript.detailTitle")}：{detail.script.name}</p>
           <form

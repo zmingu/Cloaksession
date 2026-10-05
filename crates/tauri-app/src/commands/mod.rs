@@ -19,6 +19,7 @@ pub mod fingerprint;
 pub mod groups;
 pub mod huibo_live;
 pub mod kuaishou_auth;
+pub mod jinniu;
 pub mod jinniu_promote;
 pub mod kuaishou_identity;
 pub mod live_launch;

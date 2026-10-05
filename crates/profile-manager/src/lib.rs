@@ -1,4 +1,5 @@
 mod business_accounts;
+mod jinniu_account;
 pub mod fingerprint;
 mod kuaishou_account;
 mod kuaishou_identity;
@@ -13,6 +14,8 @@ pub mod migrate;
 pub mod row;
 
 pub use auto_reply::AutoReplyRecord;
+// Re-export Jinniu account state at the crate root for driver/IPC use.
+pub use jinniu_account::{JinniuAccountRecord, JinniuAccountState};
 // Re-export authorize types at the crate root for driver/IPC use.
 pub use jinniu_authorize::{JinniuAuthorizeItem, JinniuAuthorizeRecord};
 pub use kuaishou_init::KuaishouInitLease;

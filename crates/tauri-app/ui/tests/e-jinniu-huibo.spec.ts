@@ -4,11 +4,12 @@ import { defaultSettings, installTauriMock } from "./tauriMock";
 /**
  * E-group (bind-creator / huibo-live / jinniu-promote) mock-render suite.
  *
+ * 业务板块搬迁后：慧播开播在「直播 › 开播准备」，金牛推广与达人授权在
+ * 「直播 › 投流」。
+ *
  * All IPC is faked browser-locally: no profile launch, no platform request,
  * no real ad-account writes. Write-capable commands record their args and
  * return canned successes so the confirm-gated flows can be exercised.
- * Co-mounted B-group tabs (comments / sub) are stubbed with benign empties
- * so the shared business shell renders cleanly.
  */
 
 const JINNIU_ID = "jinniu-fixture";
@@ -21,13 +22,13 @@ interface Call {
 
 async function installEBusinessMock(page: Page): Promise<void> {
   // NOTE: installBusinessMock is deliberately not reused — it ends with a
-  // click back to the profiles section, which would leave the business
-  // section under test. The E-group pages never touch business_accounts_*,
+  // click back to the profiles section, which would leave the section
+  // under test. The E-group pages never touch business_accounts_*,
   // so the base Tauri mock suffices.
   // Pre-seed before the first navigation: init scripts only fill absent keys,
   // and any later goto would wipe the in-page invoke wrapper installed below.
   await page.addInitScript(() => {
-    localStorage.setItem("multizen.ui.section", JSON.stringify("business"));
+    localStorage.setItem("multizen.ui.section", JSON.stringify("live"));
     localStorage.setItem("multizen.ui.onboarded", "true");
   });
   await installTauriMock(page, { ...defaultSettings, language: "zh-CN" });
@@ -111,9 +112,9 @@ async function eCalls(page: Page): Promise<Call[]> {
   return page.evaluate(() => (window as any).__TEST_EBUSINESS__.calls);
 }
 
-/** The mock already landed on the business section during its first load. */
-async function openBusiness(page: Page): Promise<void> {
-  await expect(page.getByRole("tab", { name: "达人授权" })).toBeVisible();
+/** The mock already landed on the Live section; open the ads tab (金牛推广 / 达人授权). */
+async function openAds(page: Page): Promise<void> {
+  await page.getByRole("tab", { name: "投流", exact: true }).click();
 }
 
 test.beforeEach(async ({ page }) => {
@@ -129,8 +130,7 @@ async function confirmModal(page: Page, label: string): Promise<void> {
 }
 
 test("bind page lists local records and confirm-gates sync + authorize", async ({ page }) => {
-  await openBusiness(page);
-  await page.getByRole("tab", { name: "达人授权" }).click();
+  await openAds(page);
   const section = page.getByRole("region", { name: "达人授权" });
   await section.getByLabel("金牛 ID").fill(JINNIU_ID);
   await section.getByRole("button", { name: "加载记录" }).click();
@@ -155,8 +155,6 @@ test("bind page lists local records and confirm-gates sync + authorize", async (
 });
 
 test("huibo page proves start success by re-reading live state", async ({ page }) => {
-  await openBusiness(page);
-  await page.getByRole("tab", { name: "跟播回播" }).click();
   const section = page.getByRole("region", { name: "跟播 / 回播" });
   await section.getByRole("button", { name: "刷新视频" }).click();
   await expect(page.getByTestId("huibo-video-replay-1")).toContainText("回放样本一");
@@ -173,8 +171,7 @@ test("huibo page proves start success by re-reading live state", async ({ page }
 });
 
 test("jinniu page runs the six-command promote flow with write confirms", async ({ page }) => {
-  await openBusiness(page);
-  await page.getByRole("tab", { name: "金牛推广" }).click();
+  await openAds(page);
   const section = page.getByRole("region", { name: "金牛推广" });
   await section.getByRole("button", { name: "打开推广创编" }).click();
   await expect(page.getByTestId("jinniu-account")).toContainText("acc-9");

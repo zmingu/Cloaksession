@@ -1,0 +1,432 @@
+import { useCallback, useEffect, useRef, useState, type JSX } from "react";
+import { Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
+
+import { useT } from "../../i18n/LanguageProvider";
+import type { TranslationKey } from "../../i18n/en";
+import { onJinniuAccountsChanged, onJinniuStatusChanged, jinniu } from "../../lib/jinniu";
+import type { JinniuAccountWithStatus, JinniuStatePayload, JinniuStatus } from "../../types";
+import { Button } from "../atoms/Button";
+import { confirm, Modal } from "../atoms/Modal";
+import { Pill, type PillKind } from "../atoms/Pill";
+
+/** Status wire value → localized label key. */
+const STATUS_KEY: Record<JinniuStatus, TranslationKey> = {
+  disconnected: "jinniu.accounts.status.disconnected",
+  connecting: "jinniu.accounts.status.connecting",
+  "awaiting-sub-account": "jinniu.accounts.status.awaitingSubAccount",
+  connected: "jinniu.accounts.status.connected",
+  error: "jinniu.accounts.status.error",
+};
+
+/** Status wire value → badge tone. */
+const STATUS_PILL: Record<JinniuStatus, PillKind> = {
+  disconnected: "idle",
+  connecting: "pending",
+  "awaiting-sub-account": "pending",
+  connected: "running",
+  error: "error",
+};
+
+function errorText(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause);
+}
+
+/**
+ * 磁力金牛账号页（多大户管理）。
+ *
+ * 对齐 jieger `src/pages/jinniu/index.tsx`：列表 / 添加 / 连接 / 切换活跃 /
+ * 断开 / 删除，状态徽章 + 活跃标记，并订阅 `jinniu-status-changed` 与
+ * `jinniu-accounts-changed` 实时刷新。
+ *
+ * 关键语义：扫码完成 ≠ 已连接——只有用户在浏览器弹窗中手动选子户、URL 出现
+ * `__accountId__` 才置 `connected`；此前为 `awaiting-sub-account`。
+ * 同时只允许一个大户活跃（单选切换：断开旧会话 + 设新活跃）。
+ *
+ * 写动作（连接 / 切换 / 删除）均二次确认；删除为破坏性操作。
+ */
+export function JinniuAccountsPage(): JSX.Element {
+  const t = useT();
+  const [rows, setRows] = useState<JinniuAccountWithStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [label, setLabel] = useState("");
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  const fail = useCallback((cause: unknown) => {
+    if (!mounted.current) return;
+    setError(errorText(cause));
+    setNotice(null);
+  }, []);
+
+  const refresh = useCallback(async (): Promise<void> => {
+    try {
+      const list = await jinniu.list();
+      if (!mounted.current) return;
+      setRows(list);
+      setListError(null);
+    } catch (cause) {
+      if (mounted.current) setListError(errorText(cause));
+    }
+  }, []);
+
+  // Initial load.
+  useEffect(() => {
+    let active = true;
+    void refresh().finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [refresh]);
+
+  // Backend pushes: a status snapshot patches one row in place; a list change
+  // re-reads the whole list. Both unlisten on unmount.
+  useEffect(() => {
+    let offStatus = (): void => {};
+    let offAccounts = (): void => {};
+    let active = true;
+    void onJinniuStatusChanged((payload) => {
+      if (!active) return;
+      setRows((prev) => prev.map((row) => (row.id === payload.accountId ? mergeStatus(row, payload) : row)));
+    }).then((fn) => {
+      if (active) offStatus = fn;
+      else fn();
+    });
+    void onJinniuAccountsChanged(() => {
+      void refresh();
+    }).then((fn) => {
+      if (active) offAccounts = fn;
+      else fn();
+    });
+    return () => {
+      active = false;
+      offStatus();
+      offAccounts();
+    };
+  }, [refresh]);
+
+  async function onAdd(): Promise<void> {
+    const name = label.trim();
+    if (!name || busyId !== null) return;
+    setBusyId("add");
+    setError(null);
+    try {
+      const created = await jinniu.add(name);
+      if (!mounted.current) return;
+      setAddOpen(false);
+      setLabel("");
+      setNotice(t("jinniu.accounts.addedToast", { label: created.label }));
+      await refresh();
+    } catch (cause) {
+      fail(cause);
+    } finally {
+      if (mounted.current) setBusyId(null);
+    }
+  }
+
+  async function onConnect(row: JinniuAccountWithStatus): Promise<void> {
+    const ok = await confirm({
+      title: t("jinniu.accounts.connectConfirmTitle", { label: row.label }),
+      body: t("jinniu.accounts.connectConfirmBody"),
+      confirmLabel: t("jinniu.accounts.connectConfirmLabel"),
+    });
+    if (!ok) return;
+    setBusyId(row.id);
+    setError(null);
+    setNotice(null);
+    try {
+      const payload = await jinniu.login(row.id);
+      if (!mounted.current) return;
+      setRows((prev) => prev.map((item) => (item.id === row.id ? mergeStatus(item, payload) : item)));
+      setNotice(t("jinniu.accounts.connectedToast"));
+    } catch (cause) {
+      fail(cause);
+    } finally {
+      if (mounted.current) setBusyId(null);
+    }
+  }
+
+  async function onSwitch(row: JinniuAccountWithStatus): Promise<void> {
+    const ok = await confirm({
+      title: t("jinniu.accounts.switchConfirmTitle", { label: row.label }),
+      body: t("jinniu.accounts.switchConfirmBody"),
+      confirmLabel: t("jinniu.accounts.switchConfirmLabel"),
+    });
+    if (!ok) return;
+    setBusyId(row.id);
+    setError(null);
+    setNotice(null);
+    try {
+      await jinniu.setActive(row.id);
+      if (!mounted.current) return;
+      setNotice(t("jinniu.accounts.switchedToast"));
+      await refresh();
+    } catch (cause) {
+      fail(cause);
+    } finally {
+      if (mounted.current) setBusyId(null);
+    }
+  }
+
+  async function onDisconnect(row: JinniuAccountWithStatus): Promise<void> {
+    if (busyId !== null) return;
+    setBusyId(row.id);
+    setError(null);
+    setNotice(null);
+    try {
+      const payload = await jinniu.disconnect(row.id);
+      if (!mounted.current) return;
+      setRows((prev) => prev.map((item) => (item.id === row.id ? mergeStatus(item, payload) : item)));
+      setNotice(t("jinniu.accounts.disconnectedToast"));
+    } catch (cause) {
+      fail(cause);
+    } finally {
+      if (mounted.current) setBusyId(null);
+    }
+  }
+
+  async function onDelete(row: JinniuAccountWithStatus): Promise<void> {
+    const ok = await confirm({
+      title: t("jinniu.accounts.deleteConfirmTitle", { label: row.label }),
+      body: t("jinniu.accounts.deleteConfirmBody"),
+      confirmLabel: t("jinniu.accounts.deleteConfirmLabel"),
+      destructive: true,
+    });
+    if (!ok) return;
+    setBusyId(row.id);
+    setError(null);
+    setNotice(null);
+    try {
+      await jinniu.remove(row.id);
+      if (!mounted.current) return;
+      setRows((prev) => prev.filter((item) => item.id !== row.id));
+      setNotice(t("jinniu.accounts.deletedToast"));
+    } catch (cause) {
+      fail(cause);
+    } finally {
+      if (mounted.current) setBusyId(null);
+    }
+  }
+
+  const busy = busyId !== null;
+
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-6 py-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0">
+          <h2 className="text-[15px] font-semibold">{t("jinniu.accounts.title")}</h2>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">{t("jinniu.accounts.subtitle")}</p>
+        </div>
+        <div className="flex-1" />
+        <span className="mono text-[11px] text-slate-600">{rows.length}</span>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={busy}
+          onClick={() => void refresh()}
+          leftIcon={<RefreshCw size={12} />}
+        >
+          {t("jinniu.accounts.refresh")}
+        </Button>
+        <Button
+          size="sm"
+          variant="primary"
+          disabled={busy}
+          onClick={() => setAddOpen(true)}
+          leftIcon={<Plus size={12} />}
+        >
+          {t("jinniu.accounts.add")}
+        </Button>
+      </div>
+
+      {listError && (
+        <div role="alert" className="mt-3 text-[12px] text-amber-300">
+          {t("jinniu.accounts.loadFailed", { error: listError })}
+        </div>
+      )}
+      {error && (
+        <div role="alert" className="mt-3 text-[12px] text-red-300">
+          {t("jinniu.accounts.opFailed", { detail: error })}
+        </div>
+      )}
+      {notice && (
+        <div role="status" className="mt-3 text-[12px] text-emerald-300">
+          {notice}
+        </div>
+      )}
+
+      <section aria-label={t("jinniu.accounts.title")} className="mt-3">
+        {loading ? (
+          <p className="text-[13px] text-muted-foreground">{t("jinniu.accounts.loading")}</p>
+        ) : rows.length === 0 ? (
+          <p className="text-[13px] text-muted-foreground">{t("jinniu.accounts.empty")}</p>
+        ) : (
+          <ul data-testid="jinniu-list" className="flex flex-col gap-2">
+            {rows.map((row) => (
+              <li
+                key={row.id}
+                data-testid={`jinniu-row-${row.id}`}
+                data-active={row.isActive ? "true" : "false"}
+                className="flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5"
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  boxShadow: row.isActive
+                    ? "inset 0 0 0 1px rgba(168,85,247,0.45)"
+                    : "inset 0 0 0 1px rgba(255,255,255,0.06)",
+                }}
+              >
+                <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-100">
+                  {row.label}
+                </span>
+
+                <span data-testid={`jinniu-status-${row.id}`}>
+                  <Pill kind={STATUS_PILL[row.status]} dot>
+                    {t(STATUS_KEY[row.status])}
+                  </Pill>
+                </span>
+
+                {row.isActive && (
+                  <span data-testid={`jinniu-active-${row.id}`}>
+                    <Pill kind="info">{t("jinniu.accounts.active")}</Pill>
+                  </span>
+                )}
+
+                <span className="min-w-0 max-w-[220px] truncate text-[11px] text-slate-500">
+                  {row.currentSubAccountName ?? row.currentSubAccountId ?? "—"}
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  {row.status === "connected" || row.status === "awaiting-sub-account" ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => void onDisconnect(row)}
+                    >
+                      {t("jinniu.accounts.disconnect")}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="accent"
+                      disabled={busy}
+                      onClick={() => void onConnect(row)}
+                      leftIcon={
+                        busyId === row.id ? <Loader2 size={10} className="animate-spin" /> : undefined
+                      }
+                    >
+                      {busyId === row.id ? t("jinniu.accounts.connecting") : t("jinniu.accounts.connect")}
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={busy || row.isActive}
+                    onClick={() => void onSwitch(row)}
+                  >
+                    {t("jinniu.accounts.switch")}
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="danger"
+                    disabled={busy}
+                    title={t("jinniu.accounts.delete")}
+                    aria-label={t("jinniu.accounts.delete")}
+                    onClick={() => void onDelete(row)}
+                    leftIcon={
+                      busyId === row.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />
+                    }
+                  />
+                </div>
+
+                {row.status === "awaiting-sub-account" && (
+                  <p className="w-full text-[11px] text-amber-300">{t("jinniu.accounts.awaitingHint")}</p>
+                )}
+                {row.error && <p className="w-full text-[11px] text-red-300">{row.error}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <Modal
+        open={addOpen}
+        onClose={() => {
+          if (busyId !== null) return;
+          setAddOpen(false);
+        }}
+        title={t("jinniu.accounts.addTitle")}
+        subtitle={t("jinniu.accounts.addBody")}
+        width={460}
+        footer={
+          <>
+            <Button size="sm" variant="secondary" disabled={busy} onClick={() => setAddOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={!label.trim() || busy}
+              onClick={() => void onAdd()}
+            >
+              {t("jinniu.accounts.addConfirm")}
+            </Button>
+          </>
+        }
+      >
+        <div className="px-5 py-4">
+          <label className="flex flex-col gap-1.5 text-[12px] text-slate-400">
+            {t("jinniu.accounts.labelField")}
+            <input
+              data-autofocus
+              value={label}
+              onChange={(event) => setLabel(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void onAdd();
+              }}
+              placeholder={t("jinniu.accounts.labelPlaceholder")}
+              aria-label={t("jinniu.accounts.labelField")}
+              className="h-8 rounded-md bg-white/[0.04] px-2.5 text-[12px] text-slate-200 outline-none"
+              style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
+            />
+          </label>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+/**
+ * Merge a pushed/returned status snapshot into one list row. The payload is an
+ * authoritative snapshot for the connection state, so absent fields clear the
+ * cached derived values (e.g. a disconnect wipes the captured master/sub).
+ */
+function mergeStatus(
+  row: JinniuAccountWithStatus,
+  payload: JinniuStatePayload,
+): JinniuAccountWithStatus {
+  return {
+    ...row,
+    status: payload.status,
+    error: payload.error ?? null,
+    targetAccountId: payload.targetAccountId ?? null,
+    masterName: payload.master?.name ?? null,
+    masterId: payload.master?.id ?? null,
+    masterAvatarUrl: payload.master?.avatarUrl ?? null,
+    currentSubAccountId: payload.currentSubAccountId ?? null,
+    currentSubAccountName: payload.currentSubAccountName ?? null,
+    balanceText: payload.balanceText ?? null,
+  };
+}

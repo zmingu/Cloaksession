@@ -56,6 +56,7 @@ pub(crate) mod huibo_live;
 pub(crate) mod shop_helper;
 pub use bind_creator::{AuthorizeItem, AuthorizeListResult, BindCreatorResult};
 pub mod jinniu_promote;
+pub mod jinniu;
 pub mod shop_product_script;
 mod sub_account;
 #[cfg(test)]
@@ -267,6 +268,10 @@ enum LauncherCmd {
     BindCreator {
         operation: Box<dyn FnOnce(&profile_manager::ProfileManager) + Send>,
     },
+    /// 金牛大户管理的一次 ProfileManager 操作（SQLite 留在 launcher 线程）。
+    JinniuDb {
+        operation: Box<dyn FnOnce(&profile_manager::ProfileManager) + Send>,
+    },
     Scene(scene_play::SceneCmd),
     // --- Shop product scripts (jieger 商品话术库) ---------------------------
     // Storage primitives live in profile-manager; playback stays in
@@ -321,6 +326,8 @@ pub struct TauriBrowserDriver {
     identity: Arc<identity::IdentityRuntime>,
     account_init: Arc<account_init::InitRuntime>,
     mate_login: Arc<mate_login::MateLoginRuntime>,
+    /// 磁力金牛多大户运行时（状态机 + 单活跃会话槽位）。
+    pub(crate) jinniu: Arc<jinniu::JinniuRuntime>,
     sub_account: Arc<sub_account::SubAccountRuntime>,
     registry: Arc<ProfileRegistry>,
     engine: BrowserEngine,
@@ -387,6 +394,7 @@ impl TauriBrowserDriver {
             identity,
             account_init,
             mate_login: Arc::new(mate_login::MateLoginRuntime::new()),
+            jinniu: Arc::new(jinniu::JinniuRuntime::new()),
             sub_account: Arc::new(sub_account::SubAccountRuntime::new()),
             registry,
             engine,
@@ -438,6 +446,7 @@ impl TauriBrowserDriver {
     /// `StdMutex<Option<_>>` and emits no-op when `None` (e.g. unit tests).
     pub fn set_app(&self, app: tauri::AppHandle) {
         self.mate_login.set_app(app.clone());
+        self.jinniu.set_app(app.clone());
         *self.app.lock().unwrap() = Some(app);
     }
 
@@ -460,6 +469,8 @@ impl TauriBrowserDriver {
         self.identity.stop.cancel();
         self.account_init.stop.cancel();
         self.mate_login.cancel_all();
+        self.jinniu.stop.cancel();
+        self.jinniu.cancel_all();
         self.sub_account.stop.cancel();
         self.running_monitor.stop.cancel();
         self.registry.clear().await;
@@ -730,6 +741,9 @@ async fn launcher_task(
                 let _ = resp.send(pm.delete_group(&name));
             }
             LauncherCmd::BindCreator { operation } => {
+                operation(&pm);
+            }
+            LauncherCmd::JinniuDb { operation } => {
                 operation(&pm);
             }
             LauncherCmd::Scene(cmd) => scene_play::handle(cmd, &pm).await,
@@ -1252,6 +1266,7 @@ impl Drop for TauriBrowserDriver {
     fn drop(&mut self) {
         self.identity.stop.cancel();
         self.account_init.stop.cancel();
+        self.jinniu.stop.cancel();
         self.sub_account.stop.cancel();
         self.running_monitor.stop.cancel();
     }

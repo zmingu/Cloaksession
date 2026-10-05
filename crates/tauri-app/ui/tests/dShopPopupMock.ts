@@ -5,13 +5,13 @@ import { installTauriMock } from "./tauriMock";
  * Browser-local fake for the 23 D-group commands. No profile launch,
  * no platform request — pure in-memory fixtures.
  *
- * - shop_product_script_*: 9 commands over an in-memory script table.
+ * - shop_product_script_*: 11 commands over an in-memory script table.
  * - shop_helper_*: 4 commands returning one fixture good per tab.
  * - auto_popup_*: 10 commands with a minimal running flag.
  */
 export async function installDShopMock(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    localStorage.setItem("multizen.ui.section", JSON.stringify("business"));
+    localStorage.setItem("multizen.ui.section", JSON.stringify("live"));
     localStorage.setItem("multizen.ui.onboarded", "true");
   });
   await installTauriMock(page);
@@ -35,6 +35,7 @@ export async function installDShopMock(page: Page): Promise<void> {
         ],
       } as Record<string, Array<Record<string, any>>>,
       popupRunning: false,
+      playingScriptId: null as string | null,
       bindings: {} as Record<string, string>,
     };
     Object.assign(window, { __TEST_DSHOP__: mock });
@@ -125,6 +126,17 @@ export async function installDShopMock(page: Page): Promise<void> {
         });
         mock.lines[args.scriptId] = reordered;
         return structuredClone(reordered);
+      }
+      if (command === "shop_product_script_play") {
+        const rows = mock.lines[args.scriptId] ?? [];
+        if (rows.length === 0) throw "话术脚本没有话术行";
+        mock.playingScriptId = args.scriptId;
+        return { scriptId: args.scriptId, startedAtMs: 0, scheduledCount: rows.length };
+      }
+      if (command === "shop_product_script_stop") {
+        const wasPlaying = mock.playingScriptId === args.scriptId;
+        mock.playingScriptId = null;
+        return wasPlaying;
       }
       // --- shop helper (4) ---
       const fixtureGood = (tab: string) => ({

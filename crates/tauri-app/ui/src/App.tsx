@@ -10,6 +10,8 @@ import { McpPanel } from "./components/mcp/McpPanel";
 import { Settings } from "./components/screens/Settings";
 import { BusinessSection } from "./components/business/BusinessSection";
 import { KuaishouAccountsPage } from "./components/kuaishou/KuaishouAccountsPage";
+import { JinniuAccountsPage } from "./components/jinniu/JinniuAccountsPage";
+import { LiveSection } from "./components/live/LiveSection";
 import { KuaishouAccountWizard } from "./components/kuaishou/KuaishouAccountWizard";
 import { Confirm, Prompt } from "./components/screens/Confirm";
 import { CommandPalette, type CommandAction } from "./components/palette/CommandPalette";
@@ -473,7 +475,11 @@ export function App(): JSX.Element {
             <KuaishouAccountsPage tab={kuaishouTab} onAddAccount={() => setWizardOpen(true)} />
           )}
 
-          {section === "business" && <BusinessSection profiles={profiles} />}
+          {section === "jinniu" && <JinniuAccountsPage />}
+
+          {section === "live" && <LiveSection profiles={profiles} />}
+
+          {section === "business" && <BusinessSection />}
         </div>
 
       </div>

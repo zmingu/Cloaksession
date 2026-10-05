@@ -32,7 +32,7 @@ export function subFixture(patch: Partial<BusinessAccount> = {}): BusinessAccoun
 
 export async function installListenSubMock(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    localStorage.setItem("multizen.ui.section", JSON.stringify("business"));
+    localStorage.setItem("multizen.ui.section", JSON.stringify("live"));
     localStorage.setItem("multizen.ui.onboarded", "true");
   });
   await installTauriMock(page);
@@ -148,8 +148,14 @@ export async function installListenSubMock(page: Page): Promise<void> {
       throw new Error(`Unhandled listen-sub fixture IPC: ${command}`);
     };
   });
-  // Mock UI runs in English; enter the business section via the sidebar.
-  await page.getByRole("button", { name: "Business", exact: true }).click();
+  // NOTE: this deliberately does NOT enter the interact tab — the sub-account /
+  // comment-listener panels mount eagerly now, so callers must seed the fixture
+  // first and then call `enterInteract` to mount them against the fixture.
+}
+
+/** Mount the interact tab (互动账号脚本互动 hosts the listener + sub-account panels). */
+export async function enterInteract(page: Page): Promise<void> {
+  await page.getByRole("tab", { name: /直播互动|Live interact/ }).click();
 }
 
 export async function setListenSubFixture(

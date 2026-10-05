@@ -77,6 +77,11 @@ use crate::commands::{
         kuaishou_subject_detail, kuaishou_subject_list, kuaishou_subject_reocr,
     },
     mate_login::{mate_login_cancel, mate_login_start, mate_login_state},
+    jinniu::{
+        jinniu_account_add, jinniu_account_get_active, jinniu_account_remove,
+        jinniu_account_set_active, jinniu_accounts_list, jinniu_disconnect, jinniu_login,
+        jinniu_status,
+    },
     jinniu_promote::{
         jinniu_promote_apply_phase1, jinniu_promote_apply_phase2, jinniu_promote_live_users,
         jinniu_promote_open_store_create, jinniu_promote_select_live_user, jinniu_promote_submit,
@@ -105,7 +110,8 @@ use crate::commands::{
     },
     shop_product_script::{
         shop_product_script_add_line, shop_product_script_create, shop_product_script_delete,
-        shop_product_script_delete_line, shop_product_script_get, shop_product_script_reorder_lines,
+        shop_product_script_delete_line, shop_product_script_get, shop_product_script_play,
+        shop_product_script_reorder_lines, shop_product_script_stop,
         shop_product_script_update, shop_product_script_update_line, shop_product_scripts_list,
     },
     sub_account::{
@@ -596,6 +602,15 @@ pub fn run() {
             kuaishou_init_steps,
             kuaishou_init_retry,
             kuaishou_ocr_availability,
+            // jinniu accounts (多大户管理: 状态机 + 单选切换 + 登录/断开)
+            jinniu_accounts_list,
+            jinniu_account_add,
+            jinniu_account_remove,
+            jinniu_account_set_active,
+            jinniu_account_get_active,
+            jinniu_login,
+            jinniu_disconnect,
+            jinniu_status,
             // jinniu promote (F1 live-user switch + plan-build F5/F6/F7)
             jinniu_promote_open_store_create,
             jinniu_promote_live_users,
@@ -623,6 +638,8 @@ pub fn run() {
             shop_product_script_update_line,
             shop_product_script_delete_line,
             shop_product_script_reorder_lines,
+            shop_product_script_play,
+            shop_product_script_stop,
             // scene play
             scene_create,
             scene_get,
@@ -730,6 +747,7 @@ pub fn run() {
                 state.driver.stop_kuaishou_identity_monitor();
                 state.driver.stop_kuaishou_init_monitor();
                 state.driver.stop_sub_account_login_monitor();
+                state.driver.stop_jinniu();
                 state.driver.stop_running_monitor();
             }
         });

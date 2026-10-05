@@ -1226,6 +1226,39 @@ impl TauriBrowserDriver {
         }
     }
 
+    /// 脚本化讲解（供商品话术库播放调用）：主播身份门禁 + 中控页 + 单次讲解（不重试）。
+    ///
+    /// 与 [`Self::auto_popup_explain_once`] 同一套门禁/取页路径，差别是取消令牌
+    /// 由调用方传入：话术播放停止时可以中断本次点击，而不是每次都新建
+    /// `TaskCancel`。取页走 [`Self::console_task_page`]（合作式租约，见
+    /// `auto_popup.rs` 内部用法），不改变既有 `auto_popup_*` 行为。
+    pub async fn auto_popup_explain_goods(
+        &self,
+        profile_id: &str,
+        goods_id: &str,
+        cancel: TaskCancel,
+    ) -> Result<(), String> {
+        self.require_console_scope(profile_id).await?;
+        let session = self.popup_session(profile_id).await?;
+        let mut task_page = Self::console_task_page(&session, &cancel).await?;
+        explain_goods(&mut task_page, goods_id, &cancel).await
+    }
+
+    /// 脚本化取消讲解（供商品话术库播放调用）：门禁 + 中控页 + 点击取消讲解。
+    ///
+    /// `cancel_explain_goods` 是页面级按钮，不按商品序号定位，因此不接收
+    /// `goods_id`。
+    pub async fn auto_popup_cancel_explain_goods(
+        &self,
+        profile_id: &str,
+        cancel: TaskCancel,
+    ) -> Result<(), String> {
+        self.require_console_scope(profile_id).await?;
+        let session = self.popup_session(profile_id).await?;
+        let mut task_page = Self::console_task_page(&session, &cancel).await?;
+        cancel_explain_goods(&mut task_page).await
+    }
+
     /// 快捷键触发：查表得商品序号并立即讲解一次。
     pub async fn auto_popup_trigger_shortcut(
         &self,

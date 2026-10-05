@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
+  enterInteract,
   installListenSubMock,
   listenSubRequests,
   setListenSubFixture,
@@ -7,19 +8,20 @@ import {
 } from "./listenSubMock";
 
 // IPC is mocked: these tests never launch a profile or contact a platform.
+//
+// 业务板块搬迁后：弹幕监听 / 小号都在「直播 › 直播互动 › 互动账号脚本互动」，
+// 随子区一起渲染（无独立页签）。面板在 interact 页签挂载时才加载数据，
+// 因此每个用例先把 fixture 种好，再 `enterInteract` 让面板带数据挂载。
 test.beforeEach(async ({ page }) => {
   await page.route(/https?:\/\/(?!127\.0\.0\.1(?::|\/))/, (route) => route.abort());
   await installListenSubMock(page);
 });
 
-const commentsTab = (page: Page) => page.getByRole("tab", { name: "Comment listener" });
-const subTab = (page: Page) => page.getByRole("tab", { name: "Sub-accounts" });
 const commentsPage = (page: Page) => page.getByTestId("comments-page");
 const subPage = (page: Page) => page.getByTestId("sub-page");
 const profileInput = (page: Page) => commentsPage(page).getByLabel("Profile ID", { exact: true });
 
 test("listener start/stop drives status pill and streams snake_case events", async ({ page }) => {
-  await commentsTab(page).click();
   await setListenSubFixture(page, {
     events: [
       {
@@ -34,6 +36,7 @@ test("listener start/stop drives status pill and streams snake_case events", asy
       },
     ],
   });
+  await enterInteract(page);
   await expect(commentsPage(page)).toBeVisible();
   await expect(commentsPage(page).getByText("Stopped").first()).toBeVisible();
   await profileInput(page).fill("p1");
@@ -52,7 +55,7 @@ test("listener start/stop drives status pill and streams snake_case events", asy
 });
 
 test("listener backend errors render the raw message under a Chinese template", async ({ page }) => {
-  await commentsTab(page).click();
+  await enterInteract(page);
   await profileInput(page).fill("p1");
   await page.evaluate(() => {
     const internals = (window as any).__TAURI_INTERNALS__;
@@ -77,7 +80,7 @@ test("sub-account list, batch login, and interaction history render from IPC", a
       },
     ],
   });
-  await subTab(page).click();
+  await enterInteract(page);
   await expect(subPage(page)).toBeVisible();
   await expect(subPage(page).getByTestId("sub-list")).toContainText("小号甲");
   await subPage(page).getByRole("checkbox", { name: "Select 小号甲" }).check();
@@ -91,7 +94,7 @@ test("sub-account list, batch login, and interaction history render from IPC", a
 
 test("unbind and danmaku send both require confirmation then invoke", async ({ page }) => {
   await setListenSubFixture(page, { accounts: [subFixture()] });
-  await subTab(page).click();
+  await enterInteract(page);
   await subPage(page).getByRole("button", { name: "Unbind", exact: true }).click();
   await expect(page.getByText("Unbind this sub-account?")).toBeVisible();
   await expect.poll(async () => (await listenSubRequests(page)).filter((r) => r.command === "unbind_sub_account")).toEqual([]);
