@@ -95,6 +95,47 @@ impl ProfileManager {
         get(&self.conn, id)
     }
 
+    /// 仅改别名与平台 ID（不触碰 profile 绑定与 cookie scope）。运行中的
+    /// Profile 也允许：金牛登录识别后的自动命名发生在会话存活时——同
+    /// `mate_account_rename` 的语义，运行守卫由调用方按需前置。
+    pub fn business_account_rename(
+        &self,
+        id: &str,
+        display_name: &str,
+        platform_user_id: Option<&str>,
+    ) -> Result<BusinessAccount> {
+        let existing =
+            get(&self.conn, id)?.ok_or_else(|| MultizenError::NotFound(format!("业务账号 {id} 不存在")))?;
+        let name = display_name.trim();
+        if name.is_empty() || name.chars().count() > 100 || name.chars().any(char::is_control) {
+            return Err(config("账号别名不能为空，最多100个字符，且不能含控制字符"));
+        }
+        let platform_id = platform_user_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|v| !v.is_empty());
+        if platform_id.is_some_and(|v| v.chars().count() > 128 || v.chars().any(char::is_control)) {
+            return Err(config("平台ID最多128个字符，且不能含控制字符"));
+        }
+        if let Some(pid) = platform_id {
+            let duplicate: bool = self.conn.query_row(
+                "SELECT EXISTS(SELECT 1 FROM business_accounts WHERE kind=? AND platform_user_id=? AND id<>?)",
+                params![existing.kind.as_str(), pid, id],
+                |r| r.get(0),
+            )?;
+            if duplicate {
+                return Err(config(
+                    "该业务类型的平台ID已登记，请选择原记录编辑或重新绑定；不会覆盖已有档案",
+                ));
+            }
+        }
+        self.conn.execute(
+            "UPDATE business_accounts SET display_name=?, platform_user_id=?, updated_at=? WHERE id=?",
+            params![name, platform_id, chrono::Utc::now().to_rfc3339(), id],
+        )?;
+        Ok(existing)
+    }
+
     pub fn business_profile_scope(&self, profile_id: &str) -> Result<Option<BusinessProfileScope>> {
         scope(&self.conn, profile_id)
     }

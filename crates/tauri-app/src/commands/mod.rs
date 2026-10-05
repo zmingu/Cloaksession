@@ -23,7 +23,6 @@ pub mod jinniu;
 pub mod jinniu_promote;
 pub mod kuaishou_identity;
 pub mod live_launch;
-pub mod live_room_monitor;
 pub mod mate_login;
 pub mod kuaishou_init;
 pub mod native_text;

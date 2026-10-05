@@ -4,16 +4,17 @@ import { defaultSettings, installTauriMock } from "./tauriMock";
 /**
  * E-group (bind-creator / huibo-live / jinniu-promote) mock-render suite.
  *
- * 业务板块搬迁后：慧播开播在「直播 › 开播准备」，金牛推广与达人授权在
- * 「直播 › 投流」。
+ * 业务板块搬迁后：慧播开播在「直播 › 正式开播」，金牛推广在「直播 › 投流」，
+ * 达人授权在「磁力金牛账号 › 达人授权」（自「直播 › 投流」迁出）。
  *
  * All IPC is faked browser-locally: no profile launch, no platform request,
  * no real ad-account writes. Write-capable commands record their args and
  * return canned successes so the confirm-gated flows can be exercised.
  */
 
-const JINNIU_ID = "jinniu-fixture";
 const PROFILE = "fixture-profile";
+/** 已识别的主账号快手 ID（金牛 ID 业务键），来自金牛账户选择框。 */
+const JINNIU_MASTER_ID = "10086";
 
 interface Call {
   command: string;
@@ -56,8 +57,29 @@ async function installEBusinessMock(page: Page): Promise<void> {
       { uid: "l-1", displayName: "推广用户甲", fullText: "推广用户甲 l-1", isSelected: true },
       { uid: "l-2", displayName: "推广用户乙", fullText: "推广用户乙 l-2", isSelected: false },
     ];
+    // 达人授权页的两个选择框数据源：金牛账户（profileId + 主账号快手 ID +
+    // 当前子户）与小店用户的身份快照（达人快手号）。
+    const jinniuAccounts = [
+      {
+        id: "jinniu-fixture", label: "金牛样本", status: "connected", isActive: true,
+        profileId: "fixture-profile", masterId: "10086", masterName: "金牛主",
+        currentSubAccountId: "sub-77", currentSubAccountName: "子户七", balanceText: null,
+      },
+    ];
+    const identitySnapshots = [
+      {
+        profileId: "fixture-profile", status: "detected", platformUserId: "ks-8899",
+        nickname: null, avatarKey: null, checkedAt: "2026-10-01T00:00:00Z",
+        lastSeenAt: null, message: null,
+      },
+    ];
     Object.assign(window, { __TEST_EBUSINESS__: { calls, failNext: null as string | null } });
     internals.invoke = async (command: string, args: Record<string, any> = {}) => {
+      // Select-box data reads are not write-capable; keep them out of `calls`
+      // so the bind test can assert exact write sequences.
+      if (command === "jinniu_accounts_list") return structuredClone(jinniuAccounts);
+      if (command === "business_accounts_list") return [];
+      if (command === "kuaishou_identity_list") return structuredClone(identitySnapshots);
       if (
         command.startsWith("bind_creator_") ||
         command.startsWith("jinniu_promote_") ||
@@ -112,9 +134,20 @@ async function eCalls(page: Page): Promise<Call[]> {
   return page.evaluate(() => (window as any).__TEST_EBUSINESS__.calls);
 }
 
-/** The mock already landed on the Live section; open the ads tab (金牛推广 / 达人授权). */
+/** The mock already landed on the Live section; open the go-live tab (慧播开播). */
+async function openLive(page: Page): Promise<void> {
+  await page.getByRole("tab", { name: "正式开播", exact: true }).click();
+}
+
+/** The mock already landed on the Live section; open the ads tab (金牛推广). */
 async function openAds(page: Page): Promise<void> {
   await page.getByRole("tab", { name: "投流", exact: true }).click();
+}
+
+/** 达人授权在「磁力金牛账号」下的二级菜单（自「直播 › 投流」迁出）。 */
+async function openJinniuAuthorize(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "磁力金牛账号", exact: true }).click();
+  await page.getByRole("button", { name: "达人授权", exact: true }).click();
 }
 
 test.beforeEach(async ({ page }) => {
@@ -129,32 +162,36 @@ async function confirmModal(page: Page, label: string): Promise<void> {
   await expect(dialog).toHaveCount(0);
 }
 
-test("bind page lists local records and confirm-gates sync + authorize", async ({ page }) => {
-  await openAds(page);
+test("bind page pairs a jinniu account with a shop user via two selects", async ({ page }) => {
+  await openJinniuAuthorize(page);
   const section = page.getByRole("region", { name: "达人授权" });
-  await section.getByLabel("金牛 ID").fill(JINNIU_ID);
+  // 金牛账户选择框：供应 profileId + 金牛 ID（已识别主账号）+ 当前子户。
+  await section.getByLabel("金牛账户").selectOption("jinniu-fixture");
+  // 小店用户选择框：达人快手号来自身份检测，不再手填。
+  await section.getByLabel("小店用户").selectOption(PROFILE);
+
   await section.getByRole("button", { name: "加载记录" }).click();
   await expect(page.getByTestId("bind-row-u-1001")).toContainText("达人样本");
   expect(await eCalls(page)).toEqual([
-    { command: "bind_creator_get_authorize_list", args: { jinniuId: JINNIU_ID } },
+    { command: "bind_creator_get_authorize_list", args: { jinniuId: JINNIU_MASTER_ID } },
   ]);
 
   await section.getByRole("button", { name: "从后台同步" }).click();
   await confirmModal(page, "从后台同步");
   await expect(page.getByRole("status")).toContainText("已同步 1 条记录");
 
-  await section.getByLabel("达人快手号").fill("ks-8899");
   await section.getByRole("button", { name: "发起授权" }).click();
   await confirmModal(page, "发起授权");
   await expect(page.getByRole("status")).toContainText("授权请求已提交");
   const calls = await eCalls(page);
   expect(calls[calls.length - 1]).toEqual({
     command: "bind_creator_start_authorize",
-    args: { profileId: PROFILE, jinniuId: JINNIU_ID, kuaishouId: "ks-8899", skipConfirm: null, accountId: null },
+    args: { profileId: PROFILE, jinniuId: JINNIU_MASTER_ID, kuaishouId: "ks-8899", skipConfirm: null, accountId: "sub-77" },
   });
 });
 
 test("huibo page proves start success by re-reading live state", async ({ page }) => {
+  await openLive(page);
   const section = page.getByRole("region", { name: "跟播 / 回播" });
   await section.getByRole("button", { name: "刷新视频" }).click();
   await expect(page.getByTestId("huibo-video-replay-1")).toContainText("回放样本一");

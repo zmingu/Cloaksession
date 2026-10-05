@@ -39,6 +39,9 @@ pub const SEARCH_TIMEOUT_MS: u64 = 10_000;
 pub const ACTION_TIMEOUT_MS: u64 = 5_000;
 /// Navigation wait for authorize pages.
 pub const NAV_TIMEOUT: Duration = Duration::from_secs(15);
+/// Poll rounds for the add-button click (the list may render after
+/// DOMContentLoaded; each round waits ACTION_TIMEOUT_MS + 500ms).
+pub const ADD_BUTTON_ATTEMPTS: u32 = 10;
 /// Ant table appearance wait.
 pub const TABLE_TIMEOUT: Duration = Duration::from_secs(10);
 /// Feedback-modal selector (jieger `FEEDBACK_MODAL_SEL`).
@@ -499,18 +502,13 @@ impl TauriBrowserDriver {
         task.navigate(&url, NAV_TIMEOUT)
             .await
             .map_err(|e| error(format!("达人授权页导航失败：{e}")))?;
-        task.wait_for_selector(
-            AUTHORIZE_SELECTORS.user_select_trigger,
-            SelectorState::Attached,
-            action,
-            Duration::from_millis(200),
-        )
-        .await
-        .map_err(|e| error(format!("授权页未就绪（新增授权入口缺失）：{e}")))?;
 
-        // Dismiss the feedback modal before each interaction (jieger does it
-        // before add-button, after add-button, and before selection).
-        for step in ["打开授权弹窗", "选择达人"] {
+        // 打开「新增授权申请」弹窗。按钮要等列表数据渲染完才挂载，可能晚于
+        // DOMContentLoaded，所以轮询点击（jieger waitForSelector(addButton) +
+        // click 的等价物）。该按钮是弹窗打开前页面上的唯一入口。
+        let mut clicked = false;
+        let mut click_err: Option<MultizenError> = None;
+        for _ in 0..ADD_BUTTON_ATTEMPTS {
             let _ = evaluate(
                 &mut task,
                 dismiss_feedback_js(),
@@ -518,22 +516,30 @@ impl TauriBrowserDriver {
                 "反馈弹窗隐藏",
             )
             .await;
-            let _ = step;
+            match evaluate(
+                &mut task,
+                click_button_by_text_js(AUTHORIZE_SELECTORS.add_button_text),
+                action,
+                "新增授权申请点击",
+            )
+            .await
+            {
+                Ok(v) if v.as_bool().unwrap_or(false) => {
+                    clicked = true;
+                    break;
+                }
+                Ok(_) => {}
+                Err(e) => click_err = Some(e),
+            }
+            tokio::time::sleep(Duration::from_millis(500)).await;
         }
-
-        let clicked = evaluate(
-            &mut task,
-            click_button_by_text_js(AUTHORIZE_SELECTORS.add_button_text),
-            action,
-            "新增授权申请点击",
-        )
-        .await?
-        .as_bool()
-        .unwrap_or(false);
         if !clicked {
-            return Ok(BindCreatorResult::err(
-                "未找到“新增授权申请”按钮，页面结构可能已变化".to_string(),
-            ));
+            return match click_err {
+                Some(e) => Err(error(format!("新增授权申请按钮点击失败：{e}"))),
+                None => Ok(BindCreatorResult::err(
+                    "未找到“新增授权申请”按钮，页面结构可能已变化".to_string(),
+                )),
+            };
         }
         tokio::time::sleep(Duration::from_millis(500)).await;
         let _ = evaluate(
@@ -544,6 +550,15 @@ impl TauriBrowserDriver {
         )
         .await;
 
+        // 达人选择器只存在于弹窗内部：等弹窗挂载完成再点击，消除竞态。
+        task.wait_for_selector(
+            AUTHORIZE_SELECTORS.user_select_trigger,
+            SelectorState::Attached,
+            action,
+            Duration::from_millis(200),
+        )
+        .await
+        .map_err(|e| error(format!("授权弹窗未就绪（达人选择器缺失）：{e}")))?;
         task.click(AUTHORIZE_SELECTORS.user_select_trigger, action)
             .await
             .map_err(|e| error(format!("达人选择器打开失败：{e}")))?;

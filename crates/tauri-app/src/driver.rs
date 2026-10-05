@@ -48,7 +48,6 @@ pub(crate) mod auto_message;
 pub mod auto_reply;
 mod business;
 pub(crate) mod live_launch;
-pub(crate) mod live_room_monitor;
 pub use sub_account::SubAccountLoginResult;
 pub(crate) mod scene_play;
 pub mod bind_creator;

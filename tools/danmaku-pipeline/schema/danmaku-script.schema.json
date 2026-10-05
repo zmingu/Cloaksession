@@ -9,7 +9,7 @@
   "properties": {
     "version": {
       "type": "string",
-      "const": "1.0",
+      "const": "1.1",
       "description": "契约版本，破坏性变更时递增主版本。"
     },
     "meta": { "$ref": "#/$defs/meta" },
@@ -84,8 +84,8 @@
         },
         "type": {
           "type": "string",
-          "enum": ["read", "filler"],
-          "description": "read=主播真念/回应过的弹幕（已还原原文）；filler=管线补充的氛围弹幕。"
+          "enum": ["read", "filler", "cta", "cue"],
+          "description": "read=主播真念/回应过的弹幕（已还原原文）；filler=管线补充的氛围弹幕；cta=主播喊跟发刷屏（如扣1），需多号同发；cue=上车/卖点时间锚点，下游不发送只消费cue_kind+data。"
         },
         "send_at": {
           "type": "number",
@@ -131,6 +131,25 @@
         "note": {
           "type": "string",
           "description": "人工校对备注，发送端可忽略。"
+        },
+        "delay_sec": {
+          "type": "number",
+          "minimum": 0,
+          "description": "cta 专用：主播喊跟发后延迟多少秒开始刷屏。满足首条 send_at ≈ spoken_at + delay_sec。"
+        },
+        "burst_group": {
+          "type": "string",
+          "description": "cta 专用：同一次刷屏的分组 ID（如 cta-0001），同组多条应由不同账号同发。"
+        },
+        "cue_kind": {
+          "type": "string",
+          "enum": ["onboard_call", "pitch", "other"],
+          "description": "cue 专用：onboard_call=上车点（可挂链上车）；pitch=卖点/保障话术锚点；other=其他 AI 分析锚点。"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "cue 专用：AI 分析载荷（如试用/退款/运费险/价格/产品），下游消费，结构开放。"
         }
       },
       "allOf": [
@@ -139,6 +158,23 @@
           "then": {
             "required": ["spoken_at"],
             "properties": { "spoken_at": { "type": "number" } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "cta" } } },
+          "then": {
+            "required": ["spoken_at"],
+            "properties": { "spoken_at": { "type": "number" } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "cue" } } },
+          "then": {
+            "required": ["spoken_at", "cue_kind"],
+            "properties": {
+              "spoken_at": { "type": "number" },
+              "cue_kind": { "type": "string", "enum": ["onboard_call", "pitch", "other"] }
+            }
           }
         }
       ]

@@ -1,5 +1,6 @@
 use crate::{
-    check_deadline, extract_candidates, picture, OcrError, OcrOutput, Result, OCR_LANGUAGE,
+    check_deadline, extract_candidates, picture, OcrCandidates, OcrError, OcrOutput, Result,
+    OCR_LANGUAGE,
 };
 use std::{
     thread,
@@ -56,33 +57,19 @@ pub(crate) fn check_availability() -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn recognize(bytes: &[u8], deadline: Instant) -> Result<OcrOutput> {
-    check_deadline(deadline)?;
-    let decoded = picture::decode(bytes)?;
-    check_deadline(deadline)?;
-    ensure_apartment()?;
-    let engine = create_engine(OCR_LANGUAGE)?;
-    let max = OcrEngine::MaxImageDimension().map_err(|_| OcrError::RuntimeUnavailable)?;
-    if decoded.info.width > max || decoded.info.height > max {
-        return Err(OcrError::DimensionsExceeded);
-    }
-
-    // Flatten transparency onto white before BGRA conversion. The raw buffer is
-    // entirely memory-local and SoftwareBitmap makes an owned copy of it.
-    let mut rgba = decoded.pixels.into_rgba8();
-    for pixel in rgba.pixels_mut() {
-        let a = u16::from(pixel[3]);
-        for channel in &mut pixel.0[..3] {
-            *channel = ((u16::from(*channel) * a + 255 * (255 - a) + 127) / 255) as u8;
-        }
-        pixel.0.swap(0, 2);
-        pixel[3] = 255;
-    }
-    check_deadline(deadline)?;
+/// One OCR pass over a BGRA8 buffer. Empty text stays an explicit error so the
+/// caller can distinguish "nothing recognized" from "text without candidates".
+fn recognize_lines(
+    engine: &OcrEngine,
+    bgra: &[u8],
+    width: u32,
+    height: u32,
+    deadline: Instant,
+) -> Result<Vec<String>> {
     let bitmap = {
         let writer = DataWriter::new().map_err(|_| OcrError::RecognitionFailed)?;
         writer
-            .WriteBytes(rgba.as_raw())
+            .WriteBytes(bgra)
             .map_err(|_| OcrError::RecognitionFailed)?;
         let buffer = writer
             .DetachBuffer()
@@ -90,14 +77,12 @@ pub(crate) fn recognize(bytes: &[u8], deadline: Instant) -> Result<OcrOutput> {
         SoftwareBitmap::CreateCopyWithAlphaFromBuffer(
             &buffer,
             BitmapPixelFormat::Bgra8,
-            decoded.info.width as i32,
-            decoded.info.height as i32,
+            width as i32,
+            height as i32,
             BitmapAlphaMode::Ignore,
         )
         .map_err(|_| OcrError::RecognitionFailed)?
     };
-    drop(rgba);
-    check_deadline(deadline)?;
     let operation = engine
         .RecognizeAsync(&bitmap)
         .map_err(|_| OcrError::RecognitionFailed)?;
@@ -142,13 +127,122 @@ pub(crate) fn recognize(bytes: &[u8], deadline: Instant) -> Result<OcrOutput> {
     if lines.is_empty() {
         return Err(OcrError::EmptyRecognition);
     }
+    Ok(lines)
+}
+
+/// A sideways certificate photo arrives portrait-oriented while the engine reads
+/// horizontal lines, so both quarter turns are attempted; the orientation with
+/// complete, unambiguous candidates wins, and the as-is pass always runs first.
+fn candidate_rank(candidates: &OcrCandidates) -> (bool, usize) {
+    (
+        candidates.names.len() == 1 && candidates.id_numbers.len() == 1,
+        candidates.names.len() + candidates.id_numbers.len(),
+    )
+}
+
+fn pass(
+    engine: &OcrEngine,
+    bitmap: &image::RgbaImage,
+    info: &crate::picture::ImageInfo,
+    deadline: Instant,
+) -> Result<(bool, usize, OcrOutput)> {
+    check_deadline(deadline)?;
+    let lines = recognize_lines(
+        engine,
+        bitmap.as_raw(),
+        bitmap.width(),
+        bitmap.height(),
+        deadline,
+    )?;
     let candidates = extract_candidates(&lines);
-    Ok(OcrOutput {
-        image: decoded.info,
-        language: OCR_LANGUAGE,
-        lines,
-        candidates,
-    })
+    let (complete, score) = candidate_rank(&candidates);
+    Ok((
+        complete,
+        score,
+        OcrOutput {
+            image: info.clone(),
+            language: OCR_LANGUAGE,
+            lines,
+            candidates,
+        },
+    ))
+}
+
+fn record(
+    best: &mut Option<(bool, usize, OcrOutput)>,
+    first_error: &mut Option<OcrError>,
+    result: Result<(bool, usize, OcrOutput)>,
+) {
+    match result {
+        Ok((complete, score, output)) => {
+            if best.as_ref().map_or(true, |(won_complete, won_score, _)| {
+                complete > *won_complete || (complete == *won_complete && score > *won_score)
+            }) {
+                *best = Some((complete, score, output));
+            }
+        }
+        Err(error) => {
+            first_error.get_or_insert(error);
+        }
+    }
+}
+
+fn complete_pass(best: &Option<(bool, usize, OcrOutput)>) -> bool {
+    best.as_ref().is_some_and(|(complete, _, _)| *complete)
+}
+
+pub(crate) fn recognize(bytes: &[u8], deadline: Instant) -> Result<OcrOutput> {
+    check_deadline(deadline)?;
+    let decoded = picture::decode(bytes)?;
+    check_deadline(deadline)?;
+    ensure_apartment()?;
+    let engine = create_engine(OCR_LANGUAGE)?;
+    let max = OcrEngine::MaxImageDimension().map_err(|_| OcrError::RuntimeUnavailable)?;
+    if decoded.info.width > max || decoded.info.height > max {
+        return Err(OcrError::DimensionsExceeded);
+    }
+
+    // Flatten transparency onto white before BGRA conversion. The raw buffer is
+    // entirely memory-local and SoftwareBitmap makes an owned copy of it.
+    let mut rgba = decoded.pixels.into_rgba8();
+    for pixel in rgba.pixels_mut() {
+        let a = u16::from(pixel[3]);
+        for channel in &mut pixel.0[..3] {
+            *channel = ((u16::from(*channel) * a + 255 * (255 - a) + 127) / 255) as u8;
+        }
+        pixel.0.swap(0, 2);
+        pixel[3] = 255;
+    }
+    check_deadline(deadline)?;
+
+    let portrait = decoded.info.height > decoded.info.width;
+    let mut best: Option<(bool, usize, OcrOutput)> = None;
+    let mut first_error: Option<OcrError> = None;
+    record(
+        &mut best,
+        &mut first_error,
+        pass(&engine, &rgba, &decoded.info, deadline),
+    );
+    if portrait && !complete_pass(&best) {
+        let clockwise = image::imageops::rotate90(&rgba);
+        record(
+            &mut best,
+            &mut first_error,
+            pass(&engine, &clockwise, &decoded.info, deadline),
+        );
+        if !complete_pass(&best) {
+            let counter_clockwise = image::imageops::rotate270(&rgba);
+            record(
+                &mut best,
+                &mut first_error,
+                pass(&engine, &counter_clockwise, &decoded.info, deadline),
+            );
+        }
+    }
+    match best {
+        Some((_, _, output)) => Ok(output),
+        None => Err(first_error.unwrap_or(OcrError::EmptyRecognition)),
+    }
 }
 
 #[cfg(test)]

@@ -97,10 +97,15 @@ export async function installJinniuMock(
           case "jinniu_accounts_list":
             return structuredClone(mock.accounts);
           case "jinniu_account_add": {
+            // 后端语义：无手输名称 → 「未命名金牛」占位行，登录识别后自动命名。
+            const label =
+              typeof args.label === "string" && args.label.trim() !== ""
+                ? String(args.label)
+                : "未命名金牛";
             const next: JinniuAccountWithStatus = {
               id: `jinniu-${mock.accounts.length + 1}`,
               profileId: `profile-jinniu-${mock.accounts.length + 1}`,
-              label: String(args.label),
+              label,
               status: "disconnected",
               isActive: mock.accounts.length === 0,
               error: null,

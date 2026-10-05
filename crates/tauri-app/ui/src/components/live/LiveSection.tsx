@@ -1,32 +1,37 @@
-import { useState, type JSX } from "react";
+import { type JSX } from "react";
 
 import { useT } from "../../i18n/LanguageProvider";
 import { cn } from "../../lib/cn";
+import { usePersistedState } from "../../lib/persisted";
 import type { ProfileSummary } from "../../types";
-import { BindAuthorizePage } from "../business/BindAuthorizePage";
 import { HuiboLivePage } from "../business/HuiboLivePage";
 import { JinniuPromotePage } from "../business/JinniuPromotePage";
 import { LiveLaunchPage } from "../business/LiveLaunchPage";
 import { LiveAccountRail } from "./LiveAccountRail";
 import { LiveInteractPage } from "./LiveInteractPage";
+import { LiveScriptPage } from "./LiveScriptPage";
 import { useLiveAccounts } from "./useLiveAccounts";
 
+export type LiveTab = "prepare" | "live" | "interact" | "ads";
+
+const LIVE_TABS: LiveTab[] = ["prepare", "live", "interact", "ads"];
+
 /**
- * 直播 section 壳。
+ * 直播板块壳（已**归档**到「其它」板块下，待重新设计）。
  *
- * 三个页签（开播准备 / 直播互动 / 投流），统一按**账号维度**组织：
- *   开播准备 → 左账号侧栏（LiveAccountRail）+ 右「该账号的开播控制」：
+ * 四个页面（开播准备 / 正式开播 / 直播互动 / 投流）由本组件顶部的页签切换，
+ * 选中态持久化在 localStorage（`multizen.ui.liveTab`）。
+ * 统一按**账号维度**组织：
+ *   开播准备 → 左账号侧栏（LiveAccountRail）+ 右脚本处理
+ *              （LiveScriptPage，多视频多脚本：每个卖货视频一份弹幕脚本）；
+ *   正式开播 → 左账号侧栏 + 右「该账号的开播控制」：
  *              慧播开播（该 profile 的录播开播）+ 伴侣开播（独立子区块）；
  *   直播互动 → LiveInteractPage（账号工作台：左账号侧栏 + 右互动模块三组）；
- *   投流     → 金牛推广 + 达人授权。
+ *   投流     → 金牛推广（达人授权已移至「磁力金牛账号」的二级菜单）。
  *
- * 账号状态（列表 + 在播标记）由 `useLiveAccounts` 单次订阅后下传，prepare 与
- * interact 两页共用同一份，保证 `live-launch-state-changed` 只有一处订阅。
- * 选中态是本地 state（不需要持久化）。
+ * 账号状态（列表 + 在播标记）由 `useLiveAccounts` 单次订阅后下传，prepare /
+ * live / interact 三页共用同一份，保证 `live-launch-state-changed` 只有一处订阅。
  */
-export type LiveTabId = "prepare" | "interact" | "ads";
-
-const LIVE_TABS: LiveTabId[] = ["prepare", "interact", "ads"];
 
 interface Props {
   profiles: ProfileSummary[];
@@ -34,14 +39,16 @@ interface Props {
 
 export function LiveSection({ profiles }: Props): JSX.Element {
   const t = useT();
-  const [tab, setTab] = useState<LiveTabId>("prepare");
-  // 账号状态：列表 + 在播标记；prepare / interact 两页共用（唯一订阅处）。
+  const [tab, setTab] = usePersistedState<LiveTab>("liveTab", "prepare");
+  // 账号状态：列表 + 在播标记；prepare / live / interact 三页共用（唯一订阅处）。
   const accounts = useLiveAccounts(profiles);
 
-  const label = (id: LiveTabId): string => {
+  const label = (id: LiveTab): string => {
     switch (id) {
       case "prepare":
         return t("live.tab.prepare");
+      case "live":
+        return t("live.tab.live");
       case "interact":
         return t("live.tab.interact");
       case "ads":
@@ -72,7 +79,7 @@ export function LiveSection({ profiles }: Props): JSX.Element {
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto">
         {tab === "prepare" && (
-          // 开播准备：账号维度 —— 左账号侧栏 + 右「该账号的开播控制」。
+          // 开播准备：账号维度 —— 左账号侧栏 + 右脚本处理（多视频多脚本）。
           <div data-testid="live-prepare-page" className="h-full flex min-w-0 min-h-0">
             <LiveAccountRail
               items={accounts.items}
@@ -83,7 +90,23 @@ export function LiveSection({ profiles }: Props): JSX.Element {
             />
 
             <div className="flex-1 min-w-0 min-h-0 overflow-y-auto" key={accounts.selectedId}>
-              <section data-testid="live-prepare-huibo" className="flex flex-col min-w-0">
+              <LiveScriptPage />
+            </div>
+          </div>
+        )}
+        {tab === "live" && (
+          // 正式开播：账号维度 —— 左账号侧栏 + 右「该账号的开播控制」。
+          <div data-testid="live-live-page" className="h-full flex min-w-0 min-h-0">
+            <LiveAccountRail
+              items={accounts.items}
+              selectedId={accounts.selectedId}
+              onSelect={accounts.setSelectedId}
+              emptyText={t("live.accounts.empty")}
+              title={t("live.accounts.title")}
+            />
+
+            <div className="flex-1 min-w-0 min-h-0 overflow-y-auto" key={accounts.selectedId}>
+              <section data-testid="live-live-huibo" className="flex flex-col min-w-0">
                 <h2 className="px-6 pt-5 text-[13px] font-semibold text-slate-400">
                   {t("live.prepare.huibo")}
                 </h2>
@@ -91,7 +114,7 @@ export function LiveSection({ profiles }: Props): JSX.Element {
               </section>
 
               <section
-                data-testid="live-prepare-mate"
+                data-testid="live-live-mate"
                 className="flex flex-col min-w-0 border-t border-white/5"
               >
                 <h2 className="px-6 pt-5 text-[13px] font-semibold text-slate-400">
@@ -104,12 +127,7 @@ export function LiveSection({ profiles }: Props): JSX.Element {
           </div>
         )}
         {tab === "interact" && <LiveInteractPage accounts={accounts} />}
-        {tab === "ads" && (
-          <div className="flex flex-col min-w-0">
-            <JinniuPromotePage profiles={profiles} />
-            <BindAuthorizePage profiles={profiles} />
-          </div>
-        )}
+        {tab === "ads" && <JinniuPromotePage profiles={profiles} />}
       </div>
     </div>
   );

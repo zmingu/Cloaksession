@@ -1,8 +1,10 @@
 /**
- * 磁力金牛大户管理 IPC (commands/jinniu.rs — 8 commands + 2 events).
+ * 磁力金牛账户管理 IPC (commands/jinniu.rs — 8 commands + 2 events).
  *
- * 多大户但单选切换：同时只允许一个大户会话存活。扫码完成 ≠ connected——
- * 只有用户在浏览器弹窗中手动选子户、URL 出现 `__accountId__` 才置 connected。
+ * 账户模型：启动 / 停止。启动打开金牛浏览器（复用登录态或扫码），并自动停止
+ * 其它账户会话（启动即单选）。wire 状态机保留 jieger 五态，但 UI 只呈现
+ * 未启动/启动中/已启动/错误——connected 与 awaiting-sub-account 都是「已启动」，
+ * 选子户不是可见阶段。
  *
  * Invoke channel = snake_case Rust function name; argument keys are camelCase
  * (repo-wide Tauri convention, see `lib/ipc.ts`).
@@ -34,9 +36,12 @@ export const jinniu = {
   list: (): Promise<JinniuAccountWithStatus[]> =>
     invoke<JinniuAccountWithStatus[]>("jinniu_accounts_list"),
 
-  /** `jinniu_account_add` → 新建大户（首个大户自动置为活跃）。 */
-  add: (label: string): Promise<JinniuAccountWithStatus> =>
-    invoke<JinniuAccountWithStatus>("jinniu_account_add", { label }),
+  /**
+   * `jinniu_account_add` → 新建账户（无需手输名称：先落「未命名金牛」占位行，
+   * 登录识别到右上角主账号后自动命名；首个账户自动置为活跃）。
+   */
+  add: (): Promise<JinniuAccountWithStatus> =>
+    invoke<JinniuAccountWithStatus>("jinniu_account_add", { label: null }),
 
   /** `jinniu_account_remove` → 删除大户（断开 + 清环境 + 删记录 + 活跃补位）。 */
   remove: (id: string): Promise<void> =>
@@ -51,13 +56,14 @@ export const jinniu = {
     invoke<string | null>("jinniu_account_get_active"),
 
   /**
-   * `jinniu_login` → 打开/驱动金牛登录流程。扫码后仍需用户手动选子户；
-   * 返回即时快照，后续状态由 `jinniu-status-changed` 推送。
+   * `jinniu_login` → 启动账户会话：打开金牛浏览器（复用登录态或扫码），
+   * 同时停止其它账户会话并把本账户置为当前。返回即时快照，后续状态由
+   * `jinniu-status-changed` 推送。
    */
   login: (id: string, options?: JinniuLoginOptions): Promise<JinniuStatePayload> =>
     invoke<JinniuStatePayload>("jinniu_login", { id, options: options ?? null }),
 
-  /** `jinniu_disconnect` → 断开指定大户会话。 */
+  /** `jinniu_disconnect` → 停止指定账户会话。 */
   disconnect: (id: string): Promise<JinniuStatePayload> =>
     invoke<JinniuStatePayload>("jinniu_disconnect", { id }),
 

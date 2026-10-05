@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from "react";
-import { Boxes, Coins, Command, Download, MessageCircle, MessagesSquare, Play, Plug, Plus, Radio, Settings as SettingsIcon, ShoppingBag, Store, Video } from "lucide-react";
+import { Boxes, Coins, Command, Download, MessageCircle, MessagesSquare, Play, Plug, Plus, Settings as SettingsIcon, ShoppingBag, Store, Video } from "lucide-react";
 import type { ProfileSummary } from "../../types";
 import { Kbd } from "../atoms";
 import { useT } from "../../i18n/LanguageProvider";
@@ -112,13 +112,6 @@ export function CommandPalette({ open, profiles, onClose, onAction }: Props): JS
         title: t("nav.jinniu"),
         group: t("palette.navigate"),
         action: { kind: "section", id: "jinniu" },
-      },
-      {
-        id: "section:live",
-        icon: <Radio size={14} strokeWidth={1.5} />,
-        title: t("nav.live"),
-        group: t("palette.navigate"),
-        action: { kind: "section", id: "live" },
       },
       {
         id: "section:profiles",

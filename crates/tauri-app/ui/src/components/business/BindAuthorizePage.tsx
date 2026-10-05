@@ -1,7 +1,11 @@
-import { useState, type JSX } from "react";
+import { useEffect, useState, type JSX } from "react";
 
 import { useT } from "../../i18n/LanguageProvider";
+import { businessAccounts } from "../../lib/businessAccounts";
 import { bindCreator } from "../../lib/ipc";
+import { jinniu } from "../../lib/jinniu";
+import { useKuaishouIdentities } from "../../lib/KuaishouIdentityProvider";
+import type { JinniuAccountWithStatus } from "../../lib/jinniu";
 import { confirm } from "../atoms";
 import { Button } from "../atoms/Button";
 import type { AuthorizeItem, ProfileSummary } from "../../types";
@@ -14,8 +18,20 @@ function errText(e: unknown): string {
   return typeof e === "string" ? e : (e as Error).message ?? String(e);
 }
 
+/** 小店用户下拉选项：profile + 身份检测到的快手 ID。 */
+interface ShopOption {
+  id: string;
+  name: string;
+  kuaishouId: string;
+}
+
 /**
  * 达人授权页 (jieger `bindCreator`).
+ *
+ * 确认「金牛用户 ↔ 小店用户」的对应关系只需要两个选择框：
+ * - 金牛账户：提供运行中的浏览器环境（profileId）、金牛 ID = 已识别的主账号
+ *   快手 ID（jieger 业务键）、当前子户 ID（随授权 URL 附加）。
+ * - 小店用户：提供达人快手号 = 身份检测到的快手 ID。
  *
  * - `list` reads persisted records only (no browser, no confirm).
  * - `sync` scrapes the Jinniu backend in the browser → confirm-gated.
@@ -23,17 +39,56 @@ function errText(e: unknown): string {
  */
 export function BindAuthorizePage({ profiles }: Props): JSX.Element {
   const t = useT();
-  const [profileId, setProfileId] = useState(profiles[0]?.id ?? "");
-  const [jinniuId, setJinniuId] = useState("");
-  const [accountId, setAccountId] = useState("");
-  const [kuaishouId, setKuaishouId] = useState("");
+  const { entries } = useKuaishouIdentities();
+  const [jinniuRows, setJinniuRows] = useState<JinniuAccountWithStatus[] | null>(null);
+  // 已被其它账号视角（互动 / 金牛）占用的环境，不出现在小店用户下拉里。
+  const [takenProfileIds, setTakenProfileIds] = useState<Set<string>>(() => new Set());
+  const [jinniuAccountId, setJinniuAccountId] = useState("");
+  const [shopProfileId, setShopProfileId] = useState("");
   const [skipConfirm, setSkipConfirm] = useState(false);
   const [items, setItems] = useState<AuthorizeItem[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const currentProfile = profileId || profiles[0]?.id || "";
-  const accountArg = accountId.trim() === "" ? undefined : accountId.trim();
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const [accounts, records] = await Promise.all([
+        jinniu.list().catch(() => null),
+        businessAccounts.list().catch(() => null),
+      ]);
+      if (!active) return;
+      setJinniuRows(accounts);
+      setTakenProfileIds(
+        new Set(
+          (records ?? [])
+            .filter(
+              (record) =>
+                (record.kind === "kuaishou-sub" || record.kind === "jinniu") &&
+                record.profileId,
+            )
+            .map((record) => record.profileId as string),
+        ),
+      );
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const selectedJinniu = jinniuRows?.find((row) => row.id === jinniuAccountId) ?? null;
+  const jinniuId = selectedJinniu?.masterId?.trim() ?? "";
+  const currentProfile = selectedJinniu?.profileId ?? "";
+  const accountArg = selectedJinniu?.currentSubAccountId?.trim() || undefined;
+
+  const shopOptions: ShopOption[] = profiles
+    .filter((profile) => !takenProfileIds.has(profile.id))
+    .map((profile) => ({
+      id: profile.id,
+      name: profile.name,
+      kuaishouId: entries.get(profile.id)?.snapshot?.platformUserId ?? "",
+    }));
+  const kuaishouId = shopOptions.find((option) => option.id === shopProfileId)?.kuaishouId ?? "";
 
   async function run(key: string, fn: () => Promise<void>): Promise<void> {
     setBusy(key);
@@ -49,7 +104,7 @@ export function BindAuthorizePage({ profiles }: Props): JSX.Element {
 
   const onList = (): Promise<void> =>
     run("list", async () => {
-      const res = await bindCreator.list(jinniuId.trim());
+      const res = await bindCreator.list(jinniuId);
       if (!res.ok) throw new Error(res.error ?? "unknown");
       setItems(res.data);
     });
@@ -62,7 +117,7 @@ export function BindAuthorizePage({ profiles }: Props): JSX.Element {
         confirmLabel: t("biz.bind.sync"),
       });
       if (!ok) return;
-      const res = await bindCreator.sync(currentProfile, jinniuId.trim(), accountArg);
+      const res = await bindCreator.sync(currentProfile, jinniuId, accountArg);
       if (!res.ok) throw new Error(res.error ?? "unknown");
       setItems(res.data);
       setNotice(t("biz.bind.syncedToast", { n: String(res.data.length) }));
@@ -72,21 +127,26 @@ export function BindAuthorizePage({ profiles }: Props): JSX.Element {
     run("authorize", async () => {
       const ok = await confirm({
         title: t("biz.bind.authorize"),
-        body: t("biz.bind.confirmAuthorize", { id: kuaishouId.trim() }),
+        body: t("biz.bind.confirmAuthorize", { id: kuaishouId }),
         confirmLabel: t("biz.bind.authorize"),
         destructive: !skipConfirm,
       });
       if (!ok) return;
       const res = await bindCreator.authorize(
         currentProfile,
-        jinniuId.trim(),
-        kuaishouId.trim(),
+        jinniuId,
+        kuaishouId,
         skipConfirm || undefined,
         accountArg,
       );
       if (!res.ok) throw new Error(res.error ?? "unknown");
       setNotice(skipConfirm ? t("biz.bind.dryRunToast") : t("biz.bind.authorizedToast"));
     });
+
+  const ready = jinniuId !== "" && currentProfile !== "";
+  // 主账号识别发生在账户启动之后；未启动过的账户拿不到金牛 ID。
+  const needMaster = selectedJinniu !== null && jinniuId === "";
+  const needShopId = shopProfileId !== "" && kuaishouId === "";
 
   return (
     <section aria-label={t("biz.bind.title")} className="flex flex-col gap-4 p-6 max-w-3xl">
@@ -97,49 +157,41 @@ export function BindAuthorizePage({ profiles }: Props): JSX.Element {
 
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm">
-          {t("biz.profile")}
+          {t("biz.bind.jinniuAccount")}
           <select
-            aria-label={t("biz.profile")}
+            aria-label={t("biz.bind.jinniuAccount")}
             className="h-8 rounded-md px-2 bg-transparent border border-[var(--border)]"
-            value={currentProfile}
-            onChange={(e) => setProfileId(e.target.value)}
+            value={jinniuAccountId}
+            onChange={(e) => setJinniuAccountId(e.target.value)}
           >
-            {profiles.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
+            <option value="">{t("biz.bind.pickJinniu")}</option>
+            {(jinniuRows ?? []).map((row) => (
+              <option key={row.id} value={row.id}>
+                {row.label}
               </option>
             ))}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          {t("biz.jinniuId")}
-          <input
-            aria-label={t("biz.jinniuId")}
+          {t("biz.bind.shopUser")}
+          <select
+            aria-label={t("biz.bind.shopUser")}
             className="h-8 rounded-md px-2 bg-transparent border border-[var(--border)]"
-            value={jinniuId}
-            onChange={(e) => setJinniuId(e.target.value)}
-            placeholder="jinniu-…"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {t("biz.accountId")}
-          <input
-            aria-label={t("biz.accountId")}
-            className="h-8 rounded-md px-2 bg-transparent border border-[var(--border)]"
-            value={accountId}
-            onChange={(e) => setAccountId(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {t("biz.bind.kuaishouId")}
-          <input
-            aria-label={t("biz.bind.kuaishouId")}
-            className="h-8 rounded-md px-2 bg-transparent border border-[var(--border)]"
-            value={kuaishouId}
-            onChange={(e) => setKuaishouId(e.target.value)}
-          />
+            value={shopProfileId}
+            onChange={(e) => setShopProfileId(e.target.value)}
+          >
+            <option value="">{t("biz.bind.pickShop")}</option>
+            {shopOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.kuaishouId ? `${option.name}（${option.kuaishouId}）` : option.name}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
+
+      {needMaster && <p className="text-sm text-amber-300">{t("biz.bind.needMaster")}</p>}
+      {needShopId && <p className="text-sm text-amber-300">{t("biz.bind.needShopId")}</p>}
 
       <label className="flex items-center gap-2 text-sm">
         <input
@@ -151,13 +203,13 @@ export function BindAuthorizePage({ profiles }: Props): JSX.Element {
       </label>
 
       <div className="flex gap-2">
-        <Button size="sm" disabled={busy !== null || jinniuId.trim() === ""} onClick={() => void onList()}>
+        <Button size="sm" disabled={busy !== null || !ready} onClick={() => void onList()}>
           {t("biz.bind.list")}
         </Button>
         <Button
           size="sm"
           variant="accent"
-          disabled={busy !== null || jinniuId.trim() === "" || currentProfile === ""}
+          disabled={busy !== null || !ready}
           onClick={() => void onSync()}
         >
           {busy === "sync" ? t("common.loading") : t("biz.bind.sync")}
@@ -165,7 +217,7 @@ export function BindAuthorizePage({ profiles }: Props): JSX.Element {
         <Button
           size="sm"
           variant={skipConfirm ? "secondary" : "primary"}
-          disabled={busy !== null || jinniuId.trim() === "" || kuaishouId.trim() === "" || currentProfile === ""}
+          disabled={busy !== null || !ready || kuaishouId === ""}
           onClick={() => void onAuthorize()}
         >
           {busy === "authorize" ? t("common.loading") : t("biz.bind.authorize")}

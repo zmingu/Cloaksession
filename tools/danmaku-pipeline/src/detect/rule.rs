@@ -4,8 +4,8 @@
 //! 本识别器按这些提示语切出弹幕正文，剥离口语前缀和尾部语气词，给出可信度。
 //! 这是离线可用的基线；语义更强的还原由 `llm` 版负责（预留）。
 
-use super::{DanmakuDetector, DetectedRead};
-use crate::model::Persona;
+use super::{DanmakuDetector, DetectedCta, DetectedCue, DetectedItem, DetectedRead};
+use crate::model::{CueKind, Persona};
 use crate::transcript::Transcript;
 
 /// 强提示语：命中即高置信（主播明确在转述观众）。
@@ -33,6 +33,19 @@ const BUYER_KEYWORDS: &[&str] = &[
     "多少钱", "价格", "链接", "优惠", "便宜", "尺码", "尺寸", "包邮", "颜色", "现货", "库存", "怎么买",
 ];
 
+/// CTA 跟发关键词：主播喊观众一起刷屏。命中即产出一条 cta（burst 默认 5，delay 默认 2.5）。
+const CTA_CUES: &[&str] = &[
+    "扣1", "扣一", "扣个1", "扣一波1", "扣波1", "打1", "打一", "刷1", "刷一", "刷波1", "评论区扣1",
+];
+
+/// 上车点关键词：主播喊上车/挂链。命中即产出 onboard_call cue。
+const ONBOARD_CUES: &[&str] = &["上车", "发车", "小黄车", "1号链接", "一号链接", "号链接", "挂链", "拍链接"];
+
+/// 卖点/保障话术关键词。命中即产出 pitch cue，keyword 写入 data。
+const PITCH_CUES: &[&str] = &[
+    "免费试用", "试用", "退款", "退货", "运费险", "包邮", "假一赔", "假一赔十", "正品", "保真",
+];
+
 /// 断句标点。
 const PUNCTS: &[char] = &['，', '。', '！', '？', '、', '；', ',', '.', '!', '?', ';', ' '];
 
@@ -41,9 +54,45 @@ const PUNCTS: &[char] = &['，', '。', '！', '？', '、', '；', ',', '.', '!
 pub struct RuleDetector;
 
 impl DanmakuDetector for RuleDetector {
-    fn detect(&self, transcript: &Transcript) -> Vec<DetectedRead> {
+    fn detect(&self, transcript: &Transcript) -> Vec<DetectedItem> {
         let mut out = Vec::new();
         for seg in &transcript.segments {
+            // 1) CTA：主播喊跟发刷屏，优先识别（一条段最多一条 cta）。
+            if let Some(keyword) = CTA_CUES.iter().find(|k| seg.text.contains(*k)) {
+                let follow = follow_text(&seg.text).unwrap_or_else(|| "1".to_string());
+                out.push(DetectedItem::Cta(DetectedCta {
+                    spoken_at: seg.start,
+                    text: follow,
+                    source_text: seg.text.trim().to_string(),
+                    confidence: 0.85,
+                    burst: 5,
+                    delay_sec: 2.5,
+                    persona: Some(Persona::Fan),
+                }));
+                let _ = keyword;
+            }
+            // 2) CUE：上车点优先，其次卖点/保障话术。
+            if let Some(keyword) = ONBOARD_CUES.iter().find(|k| seg.text.contains(*k)) {
+                out.push(DetectedItem::Cue(DetectedCue {
+                    spoken_at: seg.start,
+                    cue_kind: CueKind::OnboardCall,
+                    label: "【上车】".to_string(),
+                    source_text: seg.text.trim().to_string(),
+                    confidence: 0.8,
+                    data: Some(serde_json::json!({ "keyword": keyword })),
+                }));
+            } else if let Some(keyword) = PITCH_CUES.iter().find(|k| seg.text.contains(*k)) {
+                let label = label_from_segment(&seg.text);
+                out.push(DetectedItem::Cue(DetectedCue {
+                    spoken_at: seg.start,
+                    cue_kind: CueKind::Pitch,
+                    label,
+                    source_text: seg.text.trim().to_string(),
+                    confidence: 0.8,
+                    data: Some(serde_json::json!({ "keyword": keyword })),
+                }));
+            }
+            // 3) READ：保留现有 read 逻辑，包成 Read。
             if let Some((text, conf)) = extract_from_segment(&seg.text) {
                 if text.chars().count() < 2 {
                     continue; // 太短，噪声
@@ -53,17 +102,48 @@ impl DanmakuDetector for RuleDetector {
                 } else {
                     None
                 };
-                out.push(DetectedRead {
+                out.push(DetectedItem::Read(DetectedRead {
                     spoken_at: seg.start,
                     text,
                     source_text: seg.text.trim().to_string(),
                     confidence: conf,
                     persona,
-                });
+                }));
             }
         }
         out
     }
+}
+
+/// 从 CTA 段抽取跟进文本：优先取 "扣/打/刷" 后的数字/短词，兜底 "1"。
+fn follow_text(segment: &str) -> Option<String> {
+    for cue in ["扣", "打", "刷"] {
+        if let Some(pos) = segment.find(cue) {
+            let after = segment[pos + cue.len()..].trim_start();
+            // 取到第一个断句标点前的短串。
+            let raw = match after.find(PUNCTS) {
+                Some(idx) => &after[..idx],
+                None => after,
+            };
+            let cleaned: String = raw
+                .trim()
+                .chars()
+                .filter(|c| !matches!(c, '个' | '波' | '一' | ' ' | '，' | '。' | '！' | '？'))
+                .collect();
+            if !cleaned.is_empty() && cleaned.chars().count() <= 4 {
+                // 保留数字为主的跟发词（如 "1"）。
+                return Some(cleaned);
+            }
+        }
+    }
+    Some("1".to_string())
+}
+
+/// cue label：截原文前 40 字，加【卖点】前缀，保证下游可读。
+fn label_from_segment(segment: &str) -> String {
+    let trimmed = segment.trim();
+    let short: String = trimmed.chars().take(40).collect();
+    format!("【卖点】{short}")
 }
 
 /// 从一段文本尝试抽取弹幕正文，返回（正文, 置信度）。

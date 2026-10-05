@@ -1,11 +1,14 @@
-好的，以下是我识别到的主播在念/回应弹幕的时刻：
+好的，以下是我识别到的三类时刻：
 
 ```json
 [
-  {"seg": 1, "text": "这个多少钱", "confidence": 0.95, "persona": "buyer"},
-  {"seg": 4, "text": "想看颜色", "confidence": 0.9, "persona": "buyer"},
-  {"seg": 5, "text": "这个是纯棉的吗", "confidence": 0.78, "persona": "newcomer"}
+  {"kind": "read", "seg": 1, "text": "这个多少钱", "confidence": 0.95, "persona": "buyer"},
+  {"kind": "read", "seg": 4, "text": "想看颜色", "confidence": 0.9, "persona": "buyer"},
+  {"kind": "read", "seg": 5, "text": "这个是纯棉的吗", "confidence": 0.78, "persona": "newcomer"},
+  {"kind": "cta", "seg": 2, "text": "1", "confidence": 0.88, "persona": "fan", "burst": 5, "delay_sec": 2.5},
+  {"kind": "cue", "seg": 2, "text": "【上车】", "confidence": 0.82, "cue_kind": "onboard_call", "data": {"keyword": "1号链接"}},
+  {"kind": "cue", "seg": 5, "text": "【卖点】支持免费试用，不满意可退款", "confidence": 0.81, "cue_kind": "pitch", "data": {"keyword": "免费试用", "trial": true, "refund": true, "shipping": "运费险"}}
 ]
 ```
 
-其中 seg 5 是隐式回应反推（主播说“对，这个面料是纯棉的”，反推观众问“是纯棉的吗”），规则版无法识别。
+其中 seg 5 的 read 是隐式回应反推（主播说“对，这个面料是纯棉的”，反推观众问“是纯棉的吗”），规则版无法识别；cta/cue 由语义判定给出。

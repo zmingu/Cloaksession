@@ -47,8 +47,12 @@ test("list renders every account with a stage badge and the logged-in identity",
   // Persisted loginAt → 已登录; the untouched account stays 未登录.
   await expect(status(page, "mate-1")).toHaveText("Logged in");
   await expect(status(page, "mate-2")).toHaveText("Not logged in");
-  await expect(row(page, "mate-1")).toContainText("甲主播 · UID 1001");
-  await expect(row(page, "mate-2")).toContainText("Not logged in");
+  // Table columns: the nickname shows next to the alias when it differs, and
+  // the Kuaishou ID gets its own column.
+  await expect(row(page, "mate-1")).toContainText("甲主播");
+  await expect(row(page, "mate-1")).toContainText("1001");
+  // A logged-out row shows a dash in the ID column (the badge carries the state).
+  await expect(row(page, "mate-2")).toContainText("—");
 
   // The button flips label for a logged-in account.
   await expect(rowButton(page, "mate-1", "Log in again")).toBeVisible();
@@ -98,23 +102,6 @@ test("adding an account creates it without a label and goes straight to the QR d
   await expect(dialog(page).getByAltText("Login QR code")).toBeVisible();
 });
 
-test("renaming an account updates the row through IPC", async ({ page }) => {
-  await installMateMock(page, [IDLE]);
-
-  await rowButton(page, "mate-2", "Rename").click();
-  await expect(dialog(page)).toBeVisible();
-  const field = dialog(page).getByLabel("Label");
-  await expect(field).toHaveValue("测试号");
-  await field.fill("测试号-改");
-  await dialog(page).getByRole("button", { name: "Save", exact: true }).click();
-
-  await expect(dialog(page)).toHaveCount(0);
-  expect(await mateRequests(page, "mate_account_rename")).toEqual([
-    { command: "mate_account_rename", args: { id: "mate-2", label: "测试号-改" } },
-  ]);
-  await expect(row(page, "mate-2")).toContainText("测试号-改");
-});
-
 test("delete requires a second confirmation before removing the account", async ({ page }) => {
   await installMateMock(page, [LOGGED_IN, IDLE]);
 
@@ -143,22 +130,24 @@ test("scan → QR → stage progression → success names the row from the nickn
   expect(await mateRequests(page, "mate_login_start")).toEqual([
     { command: "mate_login_start", args: { accountId: "mate-2" } },
   ]);
-  // `starting` is pushed back as the immediate snapshot.
-  await expect(status(page, "mate-2")).toHaveText("Fetching QR code");
+  // `starting` is pushed back as the immediate snapshot; the row badge stays
+  // collapsed to "Logging in" for every in-flow stage (detail lives in the dialog).
+  await expect(status(page, "mate-2")).toHaveText("Logging in");
 
   // Driver pushes `awaiting-scan` with the QR payload.
   await emitMateState(page, "mate-2", "awaiting-scan", {
     qrImageDataUrl: "data:image/png;base64,fixture",
   });
   await expect(dialog(page).getByAltText("Login QR code")).toBeVisible();
-  await expect(status(page, "mate-2")).toHaveText("Waiting for scan");
+  await expect(dialog(page)).toContainText("Waiting for scan");
+  await expect(status(page, "mate-2")).toHaveText("Logging in");
 
   // `awaiting-confirm` carries the scanned user.
   await emitMateState(page, "mate-2", "awaiting-confirm", {
     qrImageDataUrl: "data:image/png;base64,fixture",
     user: { userId: "1001", userName: "乙主播", avatarUrl: null },
   });
-  await expect(status(page, "mate-2")).toHaveText("Confirm on your phone");
+  await expect(status(page, "mate-2")).toHaveText("Logging in");
   await expect(dialog(page)).toContainText("Scanned: 乙主播 · UID 1001");
 
   // The backend stamps the platform nickname over the alias on the first
@@ -181,7 +170,8 @@ test("scan → QR → stage progression → success names the row from the nickn
   await expect(status(page, "mate-2")).toHaveText("Logged in");
   await expect(dialog(page)).toContainText("Logged in. Credentials saved.");
   await expect(row(page, "mate-2")).toContainText("乙主播");
-  await expect(row(page, "mate-2")).toContainText("乙主播 · UID 1001");
+  await expect(row(page, "mate-2")).toContainText("乙主播");
+  await expect(row(page, "mate-2")).toContainText("1001");
   // Logged in now → the dialog switches off the "new account" title.
   await expect(dialog(page)).toContainText("Scan to log in 乙主播");
   expect((await mateRequests(page, "mate_accounts_list")).length).toBeGreaterThan(listsBefore);
@@ -217,7 +207,8 @@ test("adding an account then scanning names the row from the scanned nickname", 
   });
 
   await expect(row(page, "mate-3")).toContainText("乙主播");
-  await expect(row(page, "mate-3")).toContainText("乙主播 · UID 1001");
+  await expect(row(page, "mate-3")).toContainText("乙主播");
+  await expect(row(page, "mate-3")).toContainText("1001");
   await expect(status(page, "mate-3")).toHaveText("Logged in");
 });
 
@@ -227,7 +218,10 @@ test("an expired QR offers a refresh button", async ({ page }) => {
   await rowButton(page, "mate-2", "Scan to log in").click();
   await emitMateState(page, "mate-2", "expired", { errorMessage: "二维码已过期" });
 
-  await expect(status(page, "mate-2")).toHaveText("QR code expired");
+  // Expired is not a failure: the row falls back to "Not logged in" while the
+  // dialog keeps the detailed stage and the refresh entry.
+  await expect(status(page, "mate-2")).toHaveText("Not logged in");
+  await expect(dialog(page)).toContainText("QR code expired");
   const refresh = dialog(page).getByRole("button", { name: "Refresh QR code", exact: true });
   await expect(refresh).toBeVisible();
 

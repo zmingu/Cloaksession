@@ -25,7 +25,7 @@ async fn next(receiver: &mut mpsc::Receiver<LauncherCmd>) -> InitCmd {
 async fn lost_claim_reply_before_and_after_delivery_releases_original_token() {
     for delivered in [false, true] {
         let (_dir, pm, context) = fixture();
-        let lease = pm.kuaishou_init_claim(&context, KuaishouInitStep::Subject).unwrap().unwrap();
+        let lease = pm.kuaishou_init_claim(&context, KuaishouInitStep::Subject, true).unwrap().unwrap();
         let (launcher, mut receiver) = mpsc::channel(2);
         let (reply, receive) = oneshot::channel();
         let owned = RunningLease::new(lease, launcher);
@@ -48,28 +48,28 @@ async fn lost_claim_reply_before_and_after_delivery_releases_original_token() {
 #[tokio::test]
 async fn dropped_release_waiter_does_not_cancel_token_cleanup_or_revoke_successor() {
     let (_dir, pm, context) = fixture();
-    let lease = pm.kuaishou_init_claim(&context, KuaishouInitStep::Slice).unwrap().unwrap();
+    let lease = pm.kuaishou_init_claim(&context, KuaishouInitStep::Slice, true).unwrap().unwrap();
     let (launcher, mut receiver) = mpsc::channel(2);
     let old = lease.clone();
-    let task = tokio::spawn(async move { release(&launcher, &old, KuaishouInitErrorCode::TimedOut, 0).await });
+    let task = tokio::spawn(async move { release(&launcher, &old, KuaishouInitErrorCode::TimedOut).await });
     let command = next(&mut receiver).await;
     task.abort();
     let _ = task.await;
     (command.operation)(&pm, false);
-    let successor = pm.kuaishou_init_claim(&context, KuaishouInitStep::Slice).unwrap().unwrap();
-    assert!(!pm.kuaishou_init_fail(&lease, KuaishouInitErrorCode::InterruptedNeedsVerification, 0).unwrap());
+    let successor = pm.kuaishou_init_claim(&context, KuaishouInitStep::Slice, true).unwrap().unwrap();
+    assert!(!pm.kuaishou_init_fail(&lease, KuaishouInitErrorCode::InterruptedNeedsVerification).unwrap());
     pm.kuaishou_init_complete_slice(&successor, &SliceVerification {
         platform_user_id: "12345".into(), all_four_disabled: [true; 4], persisted_readback: true,
     }).unwrap();
-    assert!(!pm.kuaishou_init_fail(&successor, KuaishouInitErrorCode::TimedOut, 0).unwrap());
+    assert!(!pm.kuaishou_init_fail(&successor, KuaishouInitErrorCode::TimedOut).unwrap());
 }
 
 #[tokio::test]
 async fn release_retries_a_lost_command_without_opening_another_database() {
     let (_dir, pm, context) = fixture();
-    let lease = pm.kuaishou_init_claim(&context, KuaishouInitStep::Subject).unwrap().unwrap();
+    let lease = pm.kuaishou_init_claim(&context, KuaishouInitStep::Subject, true).unwrap().unwrap();
     let (launcher, mut receiver) = mpsc::channel(2);
-    let task = tokio::spawn(async move { release(&launcher, &lease, KuaishouInitErrorCode::OcrFailed, 40).await });
+    let task = tokio::spawn(async move { release(&launcher, &lease, KuaishouInitErrorCode::OcrFailed).await });
     drop(next(&mut receiver).await); // Lost operation/reply; retry must retain the same token.
     let retry = next(&mut receiver).await;
     (retry.operation)(&pm, true);

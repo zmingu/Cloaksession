@@ -11,7 +11,7 @@ import {
   type KuaishouInitErrorCode,
   type KuaishouInitStepRecord,
 } from "../../lib/kuaishouSubject";
-import { subAccounts } from "../../lib/subAccounts";
+import { businessAccounts } from "../../lib/businessAccounts";
 import type { ProfileSummary } from "../../types";
 import { Avatar, Pill, confirm } from "../atoms";
 import { Button } from "../atoms/Button";
@@ -61,24 +61,31 @@ export function KuaishouShopAccounts({ onAddAccount }: { onAddAccount?: () => vo
     try {
       const list = await profilesApi.list();
       if (!mounted.current) return;
-      // 小店列表排除已绑定互动登记（kind=kuaishou-sub）的环境——它们属于互动
-      // 账号列表。过滤失败时降级为不过滤，绝不阻塞主列表。
-      let subProfileIds = new Set<string>();
+      // 小店列表排除已被其它账号视角登记的环境：互动账号（kind=kuaishou-sub）
+      // 和金牛账户（kind=jinniu）各有专属列表。读共享的 business_accounts 表
+      // （list_sub_accounts 只返回互动 kind，金牛会漏进小店列表）。过滤失败时
+      // 降级为不过滤，绝不阻塞主列表。
+      let takenProfileIds = new Set<string>();
       try {
-        const subs = await subAccounts.list();
-        subProfileIds = new Set(
-          subs
-            .filter((record) => record.kind === "kuaishou-sub" && record.profileId)
+        const records = await businessAccounts.list();
+        if (!mounted.current) return;
+        takenProfileIds = new Set(
+          records
+            .filter(
+              (record) =>
+                (record.kind === "kuaishou-sub" || record.kind === "jinniu") &&
+                record.profileId,
+            )
             .map((record) => record.profileId as string),
         );
       } catch {
-        subProfileIds = new Set();
+        takenProfileIds = new Set();
       }
       if (!mounted.current) return;
       setRows(
-        subProfileIds.size === 0
+        takenProfileIds.size === 0
           ? list
-          : list.filter((profile) => !subProfileIds.has(profile.id)),
+          : list.filter((profile) => !takenProfileIds.has(profile.id)),
       );
       setRowsError(null);
     } catch (cause) {

@@ -1,10 +1,10 @@
 import { useEffect, useState, type JSX } from "react";
-import { Boxes, ChevronRight, Coins, MessageCircle, MessagesSquare, Plug, Radio, Settings, ShoppingBag, Store, Video } from "lucide-react";
+import { UserCheck, Users, Boxes, ChevronRight, Coins, MessageCircle, MessagesSquare, Plug, Settings, ShoppingBag, Store, Video } from "lucide-react";
 import { cn } from "../../lib/cn";
 import type { ProfileGroup } from "../../types";
 import { useT } from "../../i18n/LanguageProvider";
 
-export type Section = "profiles" | "kuaishou" | "jinniu" | "live" | "mcp" | "business" | "settings";
+export type Section = "profiles" | "kuaishou" | "jinniu" | "mcp" | "business" | "settings";
 
 export type KuaishouTab = "shop" | "interact" | "mate";
 
@@ -19,6 +19,18 @@ export const KUAISHOU_TABS: KuaishouNavItem[] = [
   { id: "interact", icon: MessageCircle },
 ];
 
+export type JinniuTab = "accounts" | "authorize";
+
+interface JinniuNavItem {
+  id: JinniuTab;
+  icon: typeof Boxes;
+}
+
+export const JINNIU_TABS: JinniuNavItem[] = [
+  { id: "accounts", icon: Users },
+  { id: "authorize", icon: UserCheck },
+];
+
 /** Sidebar group filter — mirrors `Constellation.GroupFilter` structurally. */
 export type GroupFilter = "all" | "ungrouped" | (string & {});
 
@@ -30,7 +42,6 @@ interface NavItem {
 const NAV: NavItem[] = [
   { id: "kuaishou", icon: Store },
   { id: "jinniu", icon: Coins },
-  { id: "live", icon: Radio },
   { id: "profiles", icon: Boxes },
   { id: "mcp", icon: Plug },
   { id: "business", icon: MessagesSquare },
@@ -46,6 +57,8 @@ interface Props {
   onDeleteGroup?: (name: string) => void;
   kuaishouTab: KuaishouTab;
   onKuaishouTabChange: (tab: KuaishouTab) => void;
+  jinniuTab: JinniuTab;
+  onJinniuTabChange: (tab: JinniuTab) => void;
 }
 
 export function Sidebar({
@@ -57,6 +70,8 @@ export function Sidebar({
   onDeleteGroup,
   kuaishouTab,
   onKuaishouTabChange,
+  jinniuTab,
+  onJinniuTabChange,
 }: Props): JSX.Element {
   const t = useT();
   const navLabel = (id: Section): string =>
@@ -66,27 +81,31 @@ export function Sidebar({
         ? t("nav.kuaishou")
         : id === "jinniu"
           ? t("nav.jinniu")
-          : id === "live"
-            ? t("nav.live")
-            : id === "settings"
-              ? t("nav.settings")
-              : id === "business"
-                ? t("nav.business")
-                : "MCP";
+          : id === "settings"
+            ? t("nav.settings")
+            : id === "business"
+              ? t("nav.business")
+              : "MCP";
   const kuaishouLabel = (id: KuaishouTab): string =>
     id === "shop"
       ? t("kuaishou.tab.shop")
       : id === "interact"
         ? t("kuaishou.tab.interact")
         : t("kuaishou.tab.mate");
+  const jinniuLabel = (id: JinniuTab): string =>
+    id === "accounts"
+      ? t("jinniu.tab.accounts")
+      : t("jinniu.tab.authorize");
   const namedGroups = groups.filter((g) => g.name != null);
   const ungrouped = groups.find((g) => g.name == null);
   const ungroupedCount = ungrouped?.count ?? 0;
   const totalCount = groups.reduce((n, g) => n + g.count, 0);
-  // 快手子菜单的展开/折叠状态：进入快手板块时自动展开，也可手动收起。
+  // 子菜单的展开/折叠状态：进入对应板块时自动展开，也可手动收起（快手账号 / 磁力金牛账号）。
   const [kuaishouOpen, setKuaishouOpen] = useState(true);
+  const [jinniuOpen, setJinniuOpen] = useState(true);
   useEffect(() => {
     if (active === "kuaishou") setKuaishouOpen(true);
+    if (active === "jinniu") setJinniuOpen(true);
   }, [active]);
 
   return (
@@ -103,33 +122,15 @@ export function Sidebar({
         {NAV.map((it) => {
           const Icon = it.icon;
           const isActive = active === it.id;
-          if (it.id !== "kuaishou") {
+          if (it.id === "kuaishou") {
             return (
-              <button
+              <NavGroup
                 key={it.id}
-                type="button"
-                title={navLabel(it.id)}
-                onClick={() => onChange(it.id)}
-                className={cn(
-                  "flex items-center gap-2.5 px-2.5 h-8 rounded-[9px] text-[13px] font-medium transition-colors",
-                  isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                )}
-              >
-                <Icon size={15} strokeWidth={1.5} />
-                {navLabel(it.id)}
-              </button>
-            );
-          }
-          // 快手：父项可点击展开/折叠 + 缩进子菜单
-          return (
-            <div key={it.id} className="flex flex-col gap-0.5">
-              <button
-                type="button"
-                title={navLabel(it.id)}
-                aria-expanded={kuaishouOpen}
-                onClick={() => {
+                icon={Icon}
+                label={navLabel(it.id)}
+                active={isActive}
+                open={kuaishouOpen}
+                onParentClick={() => {
                   if (active === "kuaishou") {
                     setKuaishouOpen((v) => !v);
                   } else {
@@ -137,50 +138,64 @@ export function Sidebar({
                     setKuaishouOpen(true);
                   }
                 }}
-                className={cn(
-                  "flex items-center gap-2.5 px-2.5 h-8 rounded-[9px] text-[13px] font-medium transition-colors",
-                  isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                )}
-              >
-                <Icon size={15} strokeWidth={1.5} />
-                {navLabel(it.id)}
-                <ChevronRight
-                  size={14}
-                  strokeWidth={2}
-                  className={cn("ml-auto transition-transform", kuaishouOpen && "rotate-90")}
-                />
-              </button>
-              {kuaishouOpen && (
-                <div className="flex flex-col gap-0.5 ml-4 pl-2 border-l border-white/10">
-                  {KUAISHOU_TABS.map((tab) => {
-                    const TabIcon = tab.icon;
-                    const tabActive = isActive && kuaishouTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        title={kuaishouLabel(tab.id)}
-                        onClick={() => {
-                          onChange("kuaishou");
-                          onKuaishouTabChange(tab.id);
-                        }}
-                        className={cn(
-                          "flex items-center gap-2 px-2.5 h-7 rounded-[8px] text-[12px] font-medium transition-colors text-left",
-                          tabActive
-                            ? "bg-accent text-accent-foreground"
-                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                        )}
-                      >
-                        <TabIcon size={13} strokeWidth={1.5} />
-                        {kuaishouLabel(tab.id)}
-                      </button>
-                    );
-                  })}
-                </div>
+                items={KUAISHOU_TABS.map((tab) => ({
+                  id: tab.id,
+                  icon: tab.icon,
+                  label: kuaishouLabel(tab.id),
+                }))}
+                activeChildId={kuaishouTab}
+                onChildClick={(id) => {
+                  onChange("kuaishou");
+                  onKuaishouTabChange(id as KuaishouTab);
+                }}
+              />
+            );
+          }
+          if (it.id === "jinniu") {
+            return (
+              <NavGroup
+                key={it.id}
+                icon={Icon}
+                label={navLabel(it.id)}
+                active={isActive}
+                open={jinniuOpen}
+                onParentClick={() => {
+                  if (active === "jinniu") {
+                    setJinniuOpen((v) => !v);
+                  } else {
+                    onChange(it.id);
+                    setJinniuOpen(true);
+                  }
+                }}
+                items={JINNIU_TABS.map((tab) => ({
+                  id: tab.id,
+                  icon: tab.icon,
+                  label: jinniuLabel(tab.id),
+                }))}
+                activeChildId={jinniuTab}
+                onChildClick={(id) => {
+                  onChange("jinniu");
+                  onJinniuTabChange(id as JinniuTab);
+                }}
+              />
+            );
+          }
+          return (
+            <button
+              key={it.id}
+              type="button"
+              title={navLabel(it.id)}
+              onClick={() => onChange(it.id)}
+              className={cn(
+                "flex items-center gap-2.5 px-2.5 h-8 rounded-[9px] text-[13px] font-medium transition-colors",
+                isActive
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
               )}
-            </div>
+            >
+              <Icon size={15} strokeWidth={1.5} />
+              {navLabel(it.id)}
+            </button>
           );
         })}
       </div>
@@ -218,6 +233,86 @@ export function Sidebar({
       )}
 
     </nav>
+  );
+}
+
+interface NavChildItem {
+  id: string;
+  icon: typeof Boxes;
+  label: string;
+}
+
+/**
+ * 可展开的板块父项：父项可点击展开/折叠 + 缩进二级子菜单。
+ * 快手账号 / 磁力金牛账号 两个带子页的板块共用。
+ */
+function NavGroup({
+  icon: Icon,
+  label,
+  active,
+  open,
+  onParentClick,
+  items,
+  activeChildId,
+  onChildClick,
+}: {
+  icon: typeof Boxes;
+  label: string;
+  active: boolean;
+  open: boolean;
+  onParentClick: () => void;
+  items: NavChildItem[];
+  activeChildId: string;
+  onChildClick: (id: string) => void;
+}): JSX.Element {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <button
+        type="button"
+        title={label}
+        aria-expanded={open}
+        onClick={onParentClick}
+        className={cn(
+          "flex items-center gap-2.5 px-2.5 h-8 rounded-[9px] text-[13px] font-medium transition-colors",
+          active
+            ? "bg-accent text-accent-foreground"
+            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+        )}
+      >
+        <Icon size={15} strokeWidth={1.5} />
+        {label}
+        <ChevronRight
+          size={14}
+          strokeWidth={2}
+          className={cn("ml-auto transition-transform", open && "rotate-90")}
+        />
+      </button>
+      {open && (
+        <div className="flex flex-col gap-0.5 ml-4 pl-2 border-l border-white/10">
+          {items.map((item) => {
+            const ChildIcon = item.icon;
+            const childActive = active && item.id === activeChildId;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                title={item.label}
+                onClick={() => onChildClick(item.id)}
+                className={cn(
+                  "flex items-center gap-2 px-2.5 h-7 rounded-[8px] text-[12px] font-medium transition-colors text-left",
+                  childActive
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                )}
+              >
+                <ChildIcon size={13} strokeWidth={1.5} />
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

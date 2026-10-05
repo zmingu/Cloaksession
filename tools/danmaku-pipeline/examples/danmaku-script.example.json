@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "meta": {
     "platform": "kuaishou",
     "source_video": "2026-09-28-live-record.mp4",
@@ -36,6 +36,67 @@
     },
     {
       "id": "evt-0003",
+      "type": "cta",
+      "send_at": 142.5,
+      "spoken_at": 140.0,
+      "delay_sec": 2.5,
+      "burst_group": "cta-0001",
+      "text": "1",
+      "source_text": "想要的宝宝评论区给我扣波1",
+      "confidence": 0.85,
+      "account_hint": "viewer-1",
+      "persona": "fan"
+    },
+    {
+      "id": "evt-0004",
+      "type": "cta",
+      "send_at": 143.0,
+      "spoken_at": 140.0,
+      "delay_sec": 2.5,
+      "burst_group": "cta-0001",
+      "text": "1",
+      "source_text": "想要的宝宝评论区给我扣波1",
+      "confidence": 0.85,
+      "account_hint": "viewer-2",
+      "persona": "fan"
+    },
+    {
+      "id": "evt-0005",
+      "type": "cta",
+      "send_at": 143.5,
+      "spoken_at": 140.0,
+      "delay_sec": 2.5,
+      "burst_group": "cta-0001",
+      "text": "1",
+      "source_text": "想要的宝宝评论区给我扣波1",
+      "confidence": 0.85,
+      "account_hint": "viewer-3",
+      "persona": "fan"
+    },
+    {
+      "id": "evt-0006",
+      "type": "cue",
+      "send_at": 150.0,
+      "spoken_at": 150.0,
+      "cue_kind": "onboard_call",
+      "text": "【上车】",
+      "source_text": "来，1号链接给大家上车了，直接拍",
+      "confidence": 0.8,
+      "data": { "keyword": "1号链接" }
+    },
+    {
+      "id": "evt-0007",
+      "type": "cue",
+      "send_at": 160.0,
+      "spoken_at": 160.0,
+      "cue_kind": "pitch",
+      "text": "【卖点】支持免费试用，不满意可退款，还有运费险",
+      "source_text": "支持免费试用，不满意可退款，还有运费险，大家放心",
+      "confidence": 0.8,
+      "data": { "keyword": "免费试用", "trial": true, "refund": true, "shipping": "运费险" }
+    },
+    {
+      "id": "evt-0008",
       "type": "read",
       "send_at": 210.8,
       "spoken_at": 214.8,
@@ -48,7 +109,7 @@
       "note": "隐式回应还原，置信度中等，可人工确认"
     },
     {
-      "id": "evt-0004",
+      "id": "evt-0009",
       "type": "filler",
       "send_at": 236.5,
       "text": "主播讲得好细",

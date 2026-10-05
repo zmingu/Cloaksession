@@ -40,7 +40,7 @@ export const MATE_LIVE_COMMANDS = [
   "live_launch_mate_stream_stop",
 ] as const;
 
-/** Boot straight into 直播 › 开播准备 with a seeded companion-account list. */
+/** Boot straight into 直播 › 正式开播 with a seeded companion-account list. */
 export async function installMateLiveMock(
   page: Page,
   accounts: MateAccount[] = [],
@@ -50,6 +50,7 @@ export async function installMateLiveMock(
   await page.addInitScript(
     ({ seed, commands }) => {
       localStorage.setItem("multizen.ui.section", JSON.stringify("live"));
+      localStorage.setItem("multizen.ui.liveTab", JSON.stringify("live"));
       const internals = (window as any).__TAURI_INTERNALS__;
       const original = internals.invoke;
       const mock = {

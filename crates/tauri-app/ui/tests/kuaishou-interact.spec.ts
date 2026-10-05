@@ -9,7 +9,8 @@ import type { BusinessAccount } from "../src/lib/businessAccounts";
  * 运行态/身份 join `profiles_list` 与后端身份检测。建号走独立向导
  * （`KuaishouInteractWizard`），列表不再内嵌创建表单。
  *
- * 本页只做小号管理：搜索 + 批量登录/删除 + 行内启动/停止/重新登录/登录/解绑/删除，
+ * 本页只做小号管理：搜索 + 批量删除 + 行内启动/停止/重新登录/删除
+ * （批量登录/解绑已随组件简化移除），
  * 不含直播间互动（进房 / 发弹幕 / 互动记录）——那些属于「直播 › 直播互动」板块。
  *
  * 桌面布局专用：actions 列在窄视口会被 DataTable 丢弃，
@@ -240,7 +241,7 @@ test("new account opens the wizard without firing any IPC write", async ({ page 
   ).toEqual([]);
 });
 
-test("the page keeps only the small-account toolbar (search + batch login/delete)", async ({ page }, testInfo) => {
+test("the page keeps only the small-account toolbar (search + batch delete)", async ({ page }, testInfo) => {
   desktopOnly(testInfo);
   await gotoInteract(page, [ALPHA()]);
 
@@ -249,7 +250,8 @@ test("the page keeps only the small-account toolbar (search + batch login/delete
   const row = t.getByRole("row").filter({ hasText: "Alpha One" });
   await expect(row).toBeVisible();
 
-  await expect(s.getByRole("button", { name: "Batch login (0)", exact: true })).toBeDisabled();
+  // 批量登录已随组件简化移除，工具栏只剩批量删除。
+  await expect(s.getByRole("button", { name: /Batch login/ })).toHaveCount(0);
   await expect(s.getByRole("button", { name: "Batch delete (0)", exact: true })).toBeDisabled();
   // Buttons that need no toolbar input stay available.
   await expect(row.getByRole("button", { name: "Launch", exact: true })).toBeEnabled();
@@ -267,7 +269,7 @@ test("the page keeps only the small-account toolbar (search + batch login/delete
   expect(writes).toEqual([]);
 });
 
-test("selecting a row enables batch login; the login outcome is reported as status text", async ({ page }, testInfo) => {
+test("selecting a row enables batch delete; nothing is written before the confirm", async ({ page }, testInfo) => {
   desktopOnly(testInfo);
   await gotoInteract(page, [ALPHA(), BETA()]);
 
@@ -276,18 +278,15 @@ test("selecting a row enables batch login; the login outcome is reported as stat
   await expect(t.getByRole("row").filter({ hasText: "Alpha One" })).toBeVisible();
 
   await t.getByRole("checkbox", { name: "Select Alpha One" }).check();
-  const batch = s.getByRole("button", { name: "Batch login (1)", exact: true });
+  const batch = s.getByRole("button", { name: "Batch delete (1)", exact: true });
   await expect(batch).toBeEnabled();
   await batch.click();
 
-  await expect(s.getByRole("status")).toContainText("1 / 1 logged in.");
-
+  // The destructive write is armed only by the confirm dialog (batch login is gone).
+  await expect(page.getByRole("dialog")).toBeVisible();
   const calls = await interactRequests(page);
-  expect(calls.filter((call) => call.command === "batch_login_sub_accounts")).toEqual([
-    { command: "batch_login_sub_accounts", args: { accountIds: ["interact-1"] } },
-  ]);
-  // Mock login only: no danmaku write may fire on this path.
-  expect(calls.some((call) => call.command === "sub_account_send_danmaku")).toBe(false);
+  expect(calls.some((call) => call.command === "batch_login_sub_accounts")).toBe(false);
+  expect(calls.some((call) => call.command === "profiles_delete")).toBe(false);
 });
 
 test("a running environment offers Stop instead of Launch, driven only by the profile fixture", async ({ page }, testInfo) => {
@@ -322,8 +321,8 @@ test("a record with no environment shows the missing pill and disables launch/st
   await expect(row.getByText("Environment missing")).toBeVisible();
   await expect(row.getByRole("button", { name: "Launch", exact: true })).toBeDisabled();
   await expect(row.getByRole("button", { name: "Sign in again", exact: true })).toBeDisabled();
-  // ...unbind is a no-op without a bound environment (nothing to detach)...
-  await expect(row.getByRole("button", { name: "Unbind", exact: true })).toBeDisabled();
+  // ...unbind has been removed from the page entirely...
+  await expect(row.getByRole("button", { name: "Unbind", exact: true })).toHaveCount(0);
   // ...but the record can still be removed outright.
   await expect(row.getByRole("button", { name: "Delete", exact: true })).toBeEnabled();
 });
@@ -424,8 +423,8 @@ test("batch delete confirms with the count, then removes every environment and r
   // Both rows leave the table once the records are really removed.
   await expect(t.getByRole("row").filter({ hasText: "Alpha One" })).toHaveCount(0);
   await expect(t.getByRole("row").filter({ hasText: "Beta Two" })).toHaveCount(0);
-  // Selection is cleared → batch login returns to the disabled (0) state.
-  await expect(s.getByRole("button", { name: "Batch login (0)", exact: true })).toBeDisabled();
+  // Selection is cleared → batch delete returns to the disabled (0) state.
+  await expect(s.getByRole("button", { name: "Batch delete (0)", exact: true })).toBeDisabled();
   await expect(s.getByRole("status")).toContainText("2 / 2 deleted.");
 
   const calls = await interactRequests(page);

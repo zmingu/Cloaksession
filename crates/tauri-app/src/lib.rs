@@ -95,10 +95,6 @@ use crate::commands::{
         live_launch_mate_stream_stop, live_launch_prerequisites, live_launch_status,
         live_launch_stream_start, live_launch_stream_stop,
     },
-    live_room_monitor::{
-        get_live_room_monitor_state, list_live_room_monitor_states, start_live_room_monitor,
-        stop_live_room_monitor,
-    },
     profiles::{
         profiles_close, profiles_create, profiles_delete, profiles_get, profiles_launch,
         profiles_list, profiles_update,
@@ -678,11 +674,6 @@ pub fn run() {
             live_launch_mate_stream_start,
             live_launch_mate_stream_stop,
             live_launch_mate_heartbeat,
-            // live room monitor (jieger 调度中枢)
-            start_live_room_monitor,
-            stop_live_room_monitor,
-            get_live_room_monitor_state,
-            list_live_room_monitor_states,
             // profiles
             profiles_list,
             profiles_get,

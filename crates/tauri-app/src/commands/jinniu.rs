@@ -24,11 +24,11 @@ pub async fn jinniu_accounts_list(
 #[tauri::command]
 pub async fn jinniu_account_add(
     state: State<'_, AppState>,
-    label: String,
+    label: Option<String>,
 ) -> Result<JinniuAccountWithStatus, String> {
     state
         .driver
-        .jinniu_add_account(&label)
+        .jinniu_add_account(label.as_deref())
         .await
         .map_err(|e| e.to_string())
 }

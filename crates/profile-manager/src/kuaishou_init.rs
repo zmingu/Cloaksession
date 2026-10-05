@@ -101,12 +101,15 @@ impl ProfileManager {
         self.require_init_context(&lease.context)
     }
 
-    /// Returns None for account busy, step done, or backoff not due. Same-account
-    /// subject and slice cannot run concurrently, even through different Profiles/connections.
+    /// Returns None for account busy, step done, or — for monitor scans — a failed
+    /// step: the monitor claims only pending steps, while the manual retry path may
+    /// re-claim failed ones after clearing persisted backoff. Same-account subject
+    /// and slice cannot run concurrently, even through different Profiles/connections.
     pub fn kuaishou_init_claim(
         &self,
         context: &KuaishouInitContext,
         step: KuaishouInitStep,
+        allow_failed: bool,
     ) -> Result<Option<KuaishouInitLease>> {
         let tx = self.conn.unchecked_transaction()?;
         self.require_init_context(context)?;
@@ -119,12 +122,16 @@ impl ProfileManager {
             )?;
         }
         let token = Uuid::new_v4().to_string();
+        let state_filter =
+            if allow_failed { "state IN ('pending','failed')" } else { "state='pending'" };
         let changed = tx.execute(
-            "UPDATE kuaishou_init_steps SET state='running',attempts=attempts+1,next_retry_at=NULL,
-                completed_at=NULL,lease_token=?3,updated_at=?4
-             WHERE platform_user_id=?1 AND step=?2 AND state IN ('pending','failed')
-                AND attempts<4294967295 AND (next_retry_at IS NULL OR next_retry_at<=?4)
-                AND NOT EXISTS(SELECT 1 FROM kuaishou_init_steps WHERE platform_user_id=?1 AND state='running')",
+            &format!(
+                "UPDATE kuaishou_init_steps SET state='running',attempts=attempts+1,next_retry_at=NULL,
+                    completed_at=NULL,lease_token=?3,updated_at=?4
+                 WHERE platform_user_id=?1 AND step=?2 AND {state_filter}
+                    AND attempts<4294967295 AND (next_retry_at IS NULL OR next_retry_at<=?4)
+                    AND NOT EXISTS(SELECT 1 FROM kuaishou_init_steps WHERE platform_user_id=?1 AND state='running')"
+            ),
             params![context.platform_user_id, step_name(step), token, timestamp],
         )?;
         if changed == 0 {
@@ -233,28 +240,22 @@ impl ProfileManager {
 
     /// Failure release checks only token ownership: must work even after session/profile
     /// deletion. Runtime must first cancel/finish its in-flight task before releasing.
-    /// Retry delay is bounded to one day; automatic retry budget belongs to the scheduler.
+    /// A failure is terminal for the automatic monitor; only the explicit manual retry
+    /// path re-claims the step, so no retry time is scheduled here.
     pub fn kuaishou_init_fail(
         &self,
         lease: &KuaishouInitLease,
         code: KuaishouInitErrorCode,
-        retry_after_seconds: u32,
     ) -> Result<bool> {
-        if retry_after_seconds > 86_400 {
-            return Err(invalid("重试等待时间超出范围"));
-        }
         let timestamp = chrono::Utc::now();
-        let retry = (timestamp + chrono::Duration::seconds(i64::from(retry_after_seconds)))
-            .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
         Ok(self.conn.execute(
-            "UPDATE kuaishou_init_steps SET state='failed',lease_token=NULL,next_retry_at=?4,
-                last_error_code=?5,completed_at=NULL,updated_at=?6
+            "UPDATE kuaishou_init_steps SET state='failed',lease_token=NULL,next_retry_at=NULL,
+                last_error_code=?4,completed_at=NULL,updated_at=?5
              WHERE platform_user_id=?1 AND step=?2 AND state='running' AND lease_token=?3",
             params![
                 lease.context.platform_user_id,
                 step_name(lease.step),
                 lease.token,
-                retry,
                 serde_json::to_string(&code)?,
                 timestamp.to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
             ],
@@ -275,7 +276,8 @@ impl ProfileManager {
         )?)
     }
 
-    /// Explicit manual retry only removes failed-step backoff; never resets done/running.
+    /// Manual re-arm: clears any persisted backoff so the manual claim can take the
+    /// failed step; never resets done/running or schedules automatic retries.
     pub fn kuaishou_init_retry_failed(&self, platform_user_id: &str) -> Result<usize> {
         Ok(self.conn.execute(
             "UPDATE kuaishou_init_steps SET next_retry_at=NULL,updated_at=?2

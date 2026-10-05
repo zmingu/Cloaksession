@@ -89,7 +89,10 @@ const QR_PNG =
  * `__TEST_SHOP__.running` array lets a test flip it before delivering a
  * synthetic `profiles:running-changed` event.
  *
- * `subs` seeds `list_sub_accounts` (kind=kuaishou-sub). `detect` decides what
+ * `subs` seeds `list_sub_accounts` and `business_accounts_list` — the shop
+ * list exclusion reads the shared business-account table (kuaishou-sub +
+ * jinniu kinds), and the conversion dialog writes through save_sub_account,
+ * so both commands serve the same store. `detect` decides what
  * `kuaishou_identity_detect` reports while the conversion dialog polls:
  * "never" keeps it waiting, "detected" reports a signed-in main-site identity.
  */
@@ -131,6 +134,10 @@ async function installShopMock(
         return structuredClone(payload.stepsByUser[args.platformUserId] ?? []);
       }
       // --- interact sub-account registration (conversion target) ---------
+      if (command === "business_accounts_list") {
+        mock.calls.push({ command, args: structuredClone(args) });
+        return structuredClone(mock.subs);
+      }
       if (command === "list_sub_accounts") {
         mock.calls.push({ command, args: structuredClone(args) });
         return structuredClone(mock.subs);

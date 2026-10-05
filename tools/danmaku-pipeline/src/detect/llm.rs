@@ -13,9 +13,9 @@
 
 use serde::Deserialize;
 
-use super::{DanmakuDetector, DetectedRead};
+use super::{DanmakuDetector, DetectedCta, DetectedCue, DetectedItem, DetectedRead};
 use crate::error::PipelineError;
-use crate::model::Persona;
+use crate::model::{CueKind, Persona};
 use crate::transcript::Transcript;
 
 /// LLM 连接与生成配置。
@@ -107,7 +107,7 @@ impl<C: ChatClient> LlmDetector<C> {
 }
 
 impl<C: ChatClient> DanmakuDetector for LlmDetector<C> {
-    fn detect(&self, transcript: &Transcript) -> Vec<DetectedRead> {
+    fn detect(&self, transcript: &Transcript) -> Vec<DetectedItem> {
         let mut out = Vec::new();
         // 长视频分块调用，块内分段索引是全局索引，便于映射回原段。
         for (chunk_start, chunk) in chunks_with_offset(&transcript.segments, self.chunk_size) {
@@ -132,16 +132,16 @@ impl<C: ChatClient> DanmakuDetector for LlmDetector<C> {
     }
 }
 
-/// LLM 期望输出的单条结构。
+/// LLM 期望输出的单条结构。kind 三选一：read（念/回应弹幕）、cta（跟发刷屏）、cue（上车/卖点锚点）。
 #[derive(Debug, Clone, Deserialize)]
 pub struct LlmItem {
-    /// 该弹幕被念到的转写分段全局索引（优先用于定位 spoken_at 与 source_text）。
+    /// 该条对应的转写分段全局索引（优先用于定位 spoken_at 与 source_text）。
     #[serde(default)]
     pub seg: Option<usize>,
-    /// 备用：模型直接给的念出时刻（秒）。
+    /// 备用：模型直接给的时刻（秒）。
     #[serde(default)]
     pub spoken_at: Option<f64>,
-    /// 还原出的弹幕文本。
+    /// read：还原的弹幕原文；cta：跟进文本（如 "1"）；cue：短标签（如【上车】/【卖点】）。
     pub text: String,
     /// 置信度 0~1。
     #[serde(default)]
@@ -149,16 +149,41 @@ pub struct LlmItem {
     /// 人设：buyer/fan/newcomer/neutral/other。
     #[serde(default)]
     pub persona: Option<String>,
+    /// 条目种类：read/cta/cue，缺省 read（兼容旧回放）。
+    #[serde(default)]
+    pub kind: Option<String>,
+    /// cta：本次刷屏条数。
+    #[serde(default)]
+    pub burst: Option<usize>,
+    /// cta：喊出后延迟多少秒开始刷屏。
+    #[serde(default)]
+    pub delay_sec: Option<f64>,
+    /// cue：onboard_call/pitch/other，缺省 other。
+    #[serde(default)]
+    pub cue_kind: Option<String>,
+    /// cue：AI 分析载荷（如试用/退款/运费险/价格/产品），结构开放。
+    #[serde(default)]
+    pub data: Option<serde_json::Value>,
 }
 
 /// 构造 system 与 user 消息。`offset` 为本块首段的全局索引。
 pub fn build_messages(segments: &[crate::transcript::Segment], offset: usize) -> (String, String) {
-    let system = "你是直播运营助手。下面是一段直播录像的语音转写（主播说话），\
-        每行是【全局分段序号】【起始秒】文本。你的任务：找出主播在‘念弹幕/回应观众提问’的时刻，\
-        并还原观众当时最可能发出的弹幕原文（含隐式回应的反推，如主播说‘对，这个是纯棉的’可反推弹幕‘是纯棉的吗’）。\
-        只输出 JSON 数组，禁止多余文字。每个元素形如：\
-        {\"seg\":分段序号(整数),\"text\":\"还原的弹幕原文\",\"confidence\":0~1,\"persona\":\"buyer|fan|newcomer|neutral|other\"}。\
-        规则：只挑确实在念/回应弹幕的分段；text 是观众口吻的弹幕，不是主播原话；不确定就降低 confidence 或不输出该条。"
+    let system = "你是直播运营助手。下面是一段直播录像的语音转写（主播说话），\\
+        每行是【全局分段序号】【起始秒】文本。你的任务：找出三类时刻并只输出 JSON 数组。\\
+        输出只能是 JSON 数组本身（可带```json围栏），数组外禁止任何文字，禁止总结、禁止换字段名。\\
+        字段名只能用 kind/seg/text/confidence/persona/burst/delay_sec/cue_kind/data，\\
+        禁止输出 type/start_time/end_time/summary 等任何其他字段。无命中必须输出 []。\\
+        ①read：主播在‘念弹幕/回应观众提问’的时刻，text 还原观众当时最可能发出的弹幕原文\\
+        （如主播说‘对，这个是纯棉的’可反推弹幕‘是纯棉的吗’，text 是观众口吻不是主播原话）。\\
+        ②cta：主播喊观众一起跟发刷屏（如扣1/打1/刷1），text 必须原样照抄主播喊的跟发词\\
+        （字幕说打什么弹幕就打什么，如“打一个有”就输出“有”，禁止纠错成“1”），并给 burst（条数）与 delay_sec（秒）。\\
+        ③cue：主播讲到上车点/卖点保障话术的锚点，text 为短标签如【上车】/【卖点】，\\
+        并给 cue_kind（onboard_call=上车/挂链，pitch=卖点/保障，other=其他）与 data（AI 分析载荷如试用/退款/运费险/价格/产品）。\\
+        每个元素形如：\\
+        {\\\"kind\\\":\\\"read|cta|cue\\\",\\\"seg\\\":分段序号(整数),\\\"text\\\":\\\"弹幕原文/跟进文本/短标签\\\",\\
+        \\\"confidence\\\":0~1,\\\"persona\\\":\\\"buyer|fan|newcomer|neutral|other\\\",\\
+        \\\"burst\\\":条数(cta用),\\\"delay_sec\\\":秒(cta用),\\\"cue_kind\\\":\\\"onboard_call|pitch|other\\\"(cue用),\\\"data\\\":{}}(cue用)。\\
+        规则：只挑确实命中的分段；不确定就降低 confidence 或不输出该条；相亲/闲聊段无命中直接输出 []。"
         .to_string();
 
     let mut user = String::new();
@@ -211,27 +236,67 @@ fn extract_json_array(raw: &str) -> Option<&str> {
     None
 }
 
-/// 把 LLM 条目映射为 DetectedRead。优先用 seg 索引定位 spoken_at 与 source_text。
-pub fn map_to_detected(items: &[LlmItem], transcript: &Transcript) -> Vec<DetectedRead> {
+/// 把 LLM 条目映射为 DetectedItem。优先用 seg 索引定位 spoken_at 与 source_text。
+/// text 按字符截断 100 字，confidence 钳到 0~1。
+pub fn map_to_detected(items: &[LlmItem], transcript: &Transcript) -> Vec<DetectedItem> {
     let mut out = Vec::new();
     for it in items {
-        let text = it.text.trim().to_string();
-        if text.chars().count() < 2 {
+        let text: String = it.text.trim().chars().take(100).collect();
+        if text.chars().count() < 1 {
             continue;
         }
         let (spoken_at, source_text) = match it.seg.and_then(|s| transcript.segments.get(s)) {
             Some(seg) => (seg.start, seg.text.trim().to_string()),
             None => (it.spoken_at.unwrap_or(0.0), String::new()),
         };
-        out.push(DetectedRead {
-            spoken_at,
-            text,
-            source_text,
-            confidence: it.confidence.unwrap_or(0.8).clamp(0.0, 1.0),
-            persona: parse_persona(it.persona.as_deref()),
-        });
+        let confidence = it.confidence.unwrap_or(0.8).clamp(0.0, 1.0);
+        let kind = it.kind.as_deref().unwrap_or("read").trim().to_ascii_lowercase();
+        match kind.as_str() {
+            "cta" => {
+                out.push(DetectedItem::Cta(DetectedCta {
+                    spoken_at,
+                    text,
+                    source_text,
+                    confidence,
+                    burst: it.burst.unwrap_or(5).max(1),
+                    delay_sec: it.delay_sec.unwrap_or(2.5).max(0.0),
+                    persona: parse_persona(it.persona.as_deref()),
+                }));
+            }
+            "cue" => {
+                out.push(DetectedItem::Cue(DetectedCue {
+                    spoken_at,
+                    cue_kind: parse_cue_kind(it.cue_kind.as_deref()),
+                    label: text,
+                    source_text,
+                    confidence,
+                    data: it.data.clone(),
+                }));
+            }
+            _ => {
+                // read 兜底：兼容旧回放（无 kind 字段）。
+                if text.chars().count() < 2 {
+                    continue;
+                }
+                out.push(DetectedItem::Read(DetectedRead {
+                    spoken_at,
+                    text,
+                    source_text,
+                    confidence,
+                    persona: parse_persona(it.persona.as_deref()),
+                }));
+            }
+        }
     }
     out
+}
+
+fn parse_cue_kind(s: Option<&str>) -> CueKind {
+    match s.map(|x| x.trim().to_ascii_lowercase()).as_deref() {
+        Some("onboard_call") | Some("onboard") | Some("onboarding") => CueKind::OnboardCall,
+        Some("pitch") => CueKind::Pitch,
+        _ => CueKind::Other,
+    }
 }
 
 fn parse_persona(s: Option<&str>) -> Option<Persona> {
@@ -278,7 +343,7 @@ mod http_client {
     impl HttpChatClient {
         pub fn new(config: LlmConfig) -> Result<Self, PipelineError> {
             let http = reqwest::blocking::Client::builder()
-                .timeout(std::time::Duration::from_secs(120))
+                .timeout(std::time::Duration::from_secs(600))
                 .build()
                 .map_err(|e| PipelineError::Config(format!("构建 HTTP 客户端失败: {e}")))?;
             Ok(Self { config, http })

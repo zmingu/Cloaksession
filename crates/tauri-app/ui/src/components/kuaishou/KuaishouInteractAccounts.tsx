@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
 import {
   Loader2,
-  LogIn,
   Play,
   Plus,
   RefreshCw,
   Search,
   Square,
   Trash2,
-  Unlink,
 } from "lucide-react";
 
 import { useT } from "../../i18n/LanguageProvider";
@@ -28,7 +26,7 @@ import { KuaishouInteractWizard } from "./KuaishouInteractWizard";
 const CONTROL =
   "h-8 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 text-[12px] text-slate-200 outline-none focus:border-purple-400/60 disabled:opacity-50";
 
-type RowOp = "launch" | "stop" | "relogin" | "login" | "unbind" | "delete";
+type RowOp = "launch" | "stop" | "relogin" | "delete";
 
 /** One list row: the interact record joined with its browser environment. */
 interface InteractRow {
@@ -52,14 +50,13 @@ function errorText(cause: unknown): string {
  * `subAccounts.delete`（记录被彻底移除，行从列表消失；环境缺失行同样可删）。
  * 批量删除 = 对选中行**逐行**执行同一流程（关环境 → 删环境 → 删记录），
  * 单行失败只记录错误、不中断整批；环境缺失行只删登记记录。
- * 解绑（`subAccounts.unbind`）只把 `profile_id` 置空并保留记录，因此对
- * `profile_id` 已为空的行没有意义，按钮置灰。
- * 登录/扫码由 `KuaishouInteractWizard` 承担；行内「重新登录」走
- * `profiles_launch(entry="kuaishou-sub")` 打开可见登录页，不发任何平台写请求。
+ * 登录/扫码由 `KuaishouInteractWizard` 承担（行内与工具栏均不设登录/解绑
+ * 按钮）；行内「重新登录」走 `profiles_launch(entry="kuaishou-sub")` 打开
+ * 可见登录页，不发任何平台写请求。
  *
- * 本页只做小号管理（环境化列表 + 登录 + 解绑 + 删除），不含任何直播间互动
+ * 本页只做小号管理（环境化列表 + 启动/停止 + 重新登录 + 删除），不含任何直播间互动
  * （进房 / 发弹幕 / 互动记录）能力——那些属于「直播 › 直播互动」板块。
- * 危险操作（解绑、删除）保留二次确认。
+ * 危险操作（删除）保留二次确认。
  */
 export function KuaishouInteractAccounts(): JSX.Element {
   const t = useT();
@@ -73,7 +70,6 @@ export function KuaishouInteractAccounts(): JSX.Element {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<Record<string, RowOp>>({});
-  const [batchBusy, setBatchBusy] = useState(false);
   const [batchDeleteBusy, setBatchDeleteBusy] = useState(false);
   const [firstLoad, setFirstLoad] = useState(true);
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -248,37 +244,6 @@ export function KuaishouInteractAccounts(): JSX.Element {
     }
   }
 
-  async function onLogin(accountId: string): Promise<void> {
-    setRowBusy(accountId, "login");
-    setActionError(null);
-    try {
-      const r = await subAccounts.login(accountId);
-      if (!mounted.current) return;
-      setStatus(r.ok ? t("kuaishou.interact.loginOk", { id: r.accountId }) : (r.error ?? t("kuaishou.interact.loginFail", { id: r.accountId })));
-    } catch (cause) {
-      if (mounted.current) setActionError(t("kuaishou.interact.failedToast", { detail: errorText(cause) }));
-    } finally {
-      clearRowBusy(accountId);
-    }
-  }
-
-  async function onBatchLogin(): Promise<void> {
-    const ids = [...selected];
-    if (ids.length === 0 || batchBusy) return;
-    setBatchBusy(true);
-    setActionError(null);
-    try {
-      const list = await subAccounts.batchLogin(ids);
-      if (!mounted.current) return;
-      const ok = list.filter((r) => r.ok).length;
-      setStatus(t("kuaishou.interact.batchDone", { ok: String(ok), n: String(list.length) }));
-    } catch (cause) {
-      if (mounted.current) setActionError(t("kuaishou.interact.failedToast", { detail: errorText(cause) }));
-    } finally {
-      if (mounted.current) setBatchBusy(false);
-    }
-  }
-
   /**
    * Batch delete = run the single-row delete flow (close → delete environment →
    * delete record) over every selected row, one row at a time. A failure on one
@@ -329,33 +294,6 @@ export function KuaishouInteractAccounts(): JSX.Element {
       await Promise.all([refresh(), refreshProfiles()]);
     } finally {
       if (mounted.current) setBatchDeleteBusy(false);
-    }
-  }
-
-  async function askUnbind(row: InteractRow): Promise<void> {
-    const ok = await confirm({
-      title: t("kuaishou.interact.unbindConfirmTitle"),
-      body: t("kuaishou.interact.unbindConfirmBody"),
-      confirmLabel: t("kuaishou.interact.unbindConfirm"),
-      destructive: true,
-    });
-    if (!ok) return;
-    setRowBusy(row.record.id, "unbind");
-    setActionError(null);
-    try {
-      await subAccounts.unbind(row.record.id);
-      if (!mounted.current) return;
-      setSelected((prev) => {
-        const next = new Set(prev);
-        next.delete(row.record.id);
-        return next;
-      });
-      setStatus(t("kuaishou.interact.unboundToast"));
-      await refresh();
-    } catch (cause) {
-      if (mounted.current) setActionError(t("kuaishou.interact.failedToast", { detail: errorText(cause) }));
-    } finally {
-      clearRowBusy(row.record.id);
     }
   }
 
@@ -448,8 +386,8 @@ export function KuaishouInteractAccounts(): JSX.Element {
         id: "actions",
         header: t("kuaishou.interact.col.actions"),
         // Fits the whole row action set on one 36px line: launch/stop, then the
-        // five icon buttons (with slack for locale metrics).
-        width: 460,
+        // two icon buttons (with slack for locale metrics).
+        width: 180,
         align: "right",
         cell: (row) => {
           const op = busy[row.record.id];
@@ -506,24 +444,6 @@ export function KuaishouInteractAccounts(): JSX.Element {
               />
               <Button
                 size="icon"
-                variant="ghost"
-                disabled={pending}
-                title={t("kuaishou.interact.login")}
-                aria-label={t("kuaishou.interact.login")}
-                onClick={() => void onLogin(row.record.id)}
-                leftIcon={op === "login" ? <Loader2 size={12} className="animate-spin" /> : <LogIn size={12} />}
-              />
-              <Button
-                size="icon"
-                variant="danger"
-                disabled={pending || !profileId}
-                title={profileId ? t("kuaishou.interact.unbind") : t("kuaishou.interact.unbindUnavailable")}
-                aria-label={t("kuaishou.interact.unbind")}
-                onClick={() => void askUnbind(row)}
-                leftIcon={op === "unbind" ? <Loader2 size={12} className="animate-spin" /> : <Unlink size={12} />}
-              />
-              <Button
-                size="icon"
                 variant="danger"
                 disabled={pending}
                 title={t("kuaishou.interact.delete")}
@@ -576,17 +496,8 @@ export function KuaishouInteractAccounts(): JSX.Element {
         </div>
         <Button
           size="sm"
-          variant="secondary"
-          disabled={selected.size === 0 || batchBusy || batchDeleteBusy}
-          onClick={() => void onBatchLogin()}
-          leftIcon={batchBusy ? <Loader2 size={10} className="animate-spin" /> : undefined}
-        >
-          {t("kuaishou.interact.batchLogin", { n: String(selected.size) })}
-        </Button>
-        <Button
-          size="sm"
           variant="danger"
-          disabled={selected.size === 0 || batchBusy || batchDeleteBusy}
+          disabled={selected.size === 0 || batchDeleteBusy}
           onClick={() => void onBatchDelete()}
           leftIcon={batchDeleteBusy ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={12} />}
         >

@@ -18,32 +18,9 @@ use tokio::sync::Notify;
 #[path = "runtime_tests.rs"]
 mod tests;
 
-/// The database owns eligibility. Never erase its backoff to implement automatic retries.
-/// A running lease (including one with a lost reply) is not safe to take over.
-fn retry_delay(
-    steps: &[KuaishouInitStepRecord],
-    now: chrono::DateTime<chrono::Utc>,
-) -> Option<Duration> {
-    if steps.iter().any(|s| {
-        s.state == KuaishouInitState::Running
-            || (s.state == KuaishouInitState::Failed
-                && s.last_error_code == Some(Code::ContextChanged))
-    }) {
-        return None;
-    }
-    steps
-        .iter()
-        .filter(|s| s.state == KuaishouInitState::Failed)
-        .filter_map(|s| {
-            let due = chrono::DateTime::parse_from_rfc3339(s.next_retry_at.as_deref()?).ok()?;
-            let delay = due.signed_duration_since(now).to_std().unwrap_or_default();
-            // Runtime-produced backoff is at most 320 seconds. Unexpected persisted dates
-            // need explicit recovery, not an indefinitely retained driver and profile gate.
-            (delay <= Duration::from_secs(320)).then_some(delay.max(Duration::from_millis(1)))
-        })
-        .min()
-}
-
+/// The database owns eligibility. A failed step is terminal for the monitor; only
+/// the explicit manual retry path re-arms it. A running lease (including one with
+/// a lost reply) is not safe to take over.
 fn initial_page_url(step: KuaishouInitStep) -> &'static str {
     match step {
         KuaishouInitStep::Subject => page::SUBJECT_URL,
@@ -289,30 +266,11 @@ impl TauriBrowserDriver {
         ));
         let driver = self.clone();
         tauri::async_runtime::spawn(async move {
-            // Keep the per-profile gate for the whole bounded campaign, including backoff.
-            // This does not start the automatic monitor or reset a completed step.
+            // One attempt per manual trigger keeps the per-profile admission gate
+            // for its whole run. This does not start the automatic monitor or reset
+            // a completed step.
             let _active = active;
-            for attempt in 0..3 {
-                driver.init_run(&guard).await;
-                if attempt == 2 || driver.validate_init(&guard).await.is_err() {
-                    break;
-                }
-                let Ok(steps) = driver
-                    .kuaishou_init_steps(guard.context.platform_user_id.clone())
-                    .await
-                else {
-                    break;
-                };
-                let Some(delay) = retry_delay(&steps, chrono::Utc::now()) else {
-                    break;
-                };
-                tokio::select! {
-                    biased;
-                    _ = driver.account_init.stop.cancelled() => break,
-                    _ = guard.slot.cancel.cancelled() => break,
-                    _ = tokio::time::sleep(delay) => {},
-                }
-            }
+            driver.init_run(&guard, true).await;
         });
         Ok(())
     }
@@ -356,7 +314,7 @@ impl TauriBrowserDriver {
                             return;
                         };
                         if let Ok(guard) = driver.init_context(&id).await {
-                            driver.init_run(&guard).await;
+                            driver.init_run(&guard, false).await;
                         }
                     });
                 }
@@ -366,7 +324,7 @@ impl TauriBrowserDriver {
     pub fn stop_kuaishou_init_monitor(&self) {
         self.account_init.stop.cancel();
     }
-    async fn init_run(&self, guard: &Guard) {
+    async fn init_run(&self, guard: &Guard, allow_failed: bool) {
         let budget_key = (
             guard.slot.id.clone(),
             guard.context.platform_user_id.clone(),
@@ -393,7 +351,7 @@ impl TauriBrowserDriver {
             let mut lease = match self
                 .init_db(Some(guard.clone()), move |pm| {
                     Ok(pm
-                        .kuaishou_init_claim(&ctx, step)?
+                        .kuaishou_init_claim(&ctx, step, allow_failed)?
                         .map(|lease| super::lease::RunningLease::new(lease, launcher)))
                 })
                 .await
@@ -423,10 +381,9 @@ impl TauriBrowserDriver {
                     .unwrap_or("none"),
             );
             if let Err(code) = result {
-                let seconds = 20u32.saturating_mul(1u32 << lease.attempts().min(4));
                 // Releasing only the original token is allowed after session invalidation.
                 // The operation future and TaskPage are dropped before releasing its DB lease.
-                lease.fail(code, seconds).await;
+                lease.fail(code).await;
                 if matches!(
                     code,
                     Code::InterruptedNeedsVerification | Code::TimedOut | Code::ContextChanged

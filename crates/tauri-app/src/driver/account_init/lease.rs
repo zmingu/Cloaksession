@@ -13,17 +13,15 @@ pub(super) struct RunningLease {
     lease: KuaishouInitLease,
     launcher: mpsc::Sender<LauncherCmd>,
     failure: KuaishouInitErrorCode,
-    retry_seconds: u32,
     released: bool,
 }
 impl RunningLease {
     pub(super) fn new(lease: KuaishouInitLease, launcher: mpsc::Sender<LauncherCmd>) -> Self {
-        Self { lease, launcher, failure: KuaishouInitErrorCode::InterruptedNeedsVerification, retry_seconds: 40, released: false }
+        Self { lease, launcher, failure: KuaishouInitErrorCode::InterruptedNeedsVerification, released: false }
     }
-    pub(super) async fn fail(&mut self, code: KuaishouInitErrorCode, retry_seconds: u32) {
+    pub(super) async fn fail(&mut self, code: KuaishouInitErrorCode) {
         self.failure = code;
-        self.retry_seconds = retry_seconds;
-        self.released = release(&self.launcher, &self.lease, code, retry_seconds).await;
+        self.released = release(&self.launcher, &self.lease, code).await;
     }
 }
 impl Deref for RunningLease {
@@ -36,9 +34,8 @@ impl Drop for RunningLease {
         let launcher = self.launcher.clone();
         let lease = self.lease.clone();
         let code = self.failure;
-        let retry_seconds = self.retry_seconds;
         tauri::async_runtime::spawn(async move {
-            if !release(&launcher, &lease, code, retry_seconds).await {
+            if !release(&launcher, &lease, code).await {
                 // Closed/unavailable storage is handled by startup recovery, never takeover.
                 tracing::warn!("account-init lease cleanup unavailable; startup recovery required");
             }
@@ -46,7 +43,7 @@ impl Drop for RunningLease {
     }
 }
 
-async fn release(launcher: &mpsc::Sender<LauncherCmd>, lease: &KuaishouInitLease, code: KuaishouInitErrorCode, retry_seconds: u32) -> bool {
+async fn release(launcher: &mpsc::Sender<LauncherCmd>, lease: &KuaishouInitLease, code: KuaishouInitErrorCode) -> bool {
     for attempt in 0..3 {
         let deadline = Instant::now() + Duration::from_secs(3);
         let (reply, receive) = oneshot::channel();
@@ -54,7 +51,7 @@ async fn release(launcher: &mpsc::Sender<LauncherCmd>, lease: &KuaishouInitLease
         let command = InitCmd { guard: None, deadline, operation: Box::new(move |pm, _within_deadline| {
             // Unlike a new claim/write, token-only release must still run if its caller's
             // deadline/reply was lost. CAS makes a repeated or late release harmless.
-            let result = pm.kuaishou_init_fail(&lease, code, retry_seconds);
+            let result = pm.kuaishou_init_fail(&lease, code);
             let _ = reply.send(result);
         }) };
         let result = tokio::time::timeout_at(deadline.into(), async {

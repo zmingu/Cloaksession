@@ -52,7 +52,7 @@ async fn committed_reference_survives_lost_reply_and_profile_deletion() {
     let (launcher, mut receiver) = mpsc::channel(4);
     let batch = BatchState::begin(&cache, launcher, deadline()).await.unwrap();
     let meta = batch.store(IMAGE.to_vec(), deadline()).await.unwrap();
-    let lease = pm.kuaishou_init_claim(&context, KuaishouInitStep::Subject).unwrap().unwrap();
+    let lease = pm.kuaishou_init_claim(&context, KuaishouInitStep::Subject, false).unwrap().unwrap();
     // Commit without delivering a success response to the attachment owner.
     pm.kuaishou_subject_save_candidate(&lease, 0, SubjectCandidate {
         real_name: "合成样本".into(), id_card: "incomplete".into(), source: SubjectSource::Ocr,

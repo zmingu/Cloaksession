@@ -4,7 +4,7 @@
 //! 防止与"主播正在念的弹幕"撞车显假。
 
 use crate::config::PipelineConfig;
-use crate::detect::DetectedRead;
+use crate::detect::DetectedItem;
 
 /// 一条待生成的氛围弹幕（时刻 + 文本）。
 #[derive(Debug, Clone)]
@@ -13,31 +13,31 @@ pub struct FillerItem {
     pub text: String,
 }
 
-/// 根据 read 数量与 filler_ratio 计算要补多少条，并在时间轴上均匀铺点。
+/// 根据识别条数与 filler_ratio 计算要补多少条，并在时间轴上均匀铺点。
 ///
-/// - `reads`：已识别的 read（用其 spoken_at 作为避让点）。
+/// - `items`：已识别的 read+cta+cue（用其 spoken_at 作为避让点）。
 /// - `duration`：录像总时长，用于确定铺点范围。
 pub fn generate_fillers(
-    reads: &[DetectedRead],
+    items: &[DetectedItem],
     duration: f64,
     config: &PipelineConfig,
 ) -> Vec<FillerItem> {
     if config.filler_ratio <= 0.0 || config.filler_pool.is_empty() || duration <= 0.0 {
         return Vec::new();
     }
-    // 目标条数：以 read 数为基准；若无 read，则按时长兜底（每 30s 一条）。
-    let base = if reads.is_empty() {
+    // 目标条数：以 read+cta 数为基准；若无，则按时长兜底（每 30s 一条）。
+    let base = if items.is_empty() {
         (duration / 30.0).floor() as usize
     } else {
-        reads.len()
+        items.len()
     };
     let target = ((base as f64) * config.filler_ratio).round() as usize;
     if target == 0 {
         return Vec::new();
     }
 
-    // 避让点：每个 read 的 spoken_at ± 3s 内不铺 filler。
-    let avoid: Vec<f64> = reads.iter().map(|r| r.spoken_at).collect();
+    // 避让点：全部 read+cta+cue 的 spoken_at ± 3s 内不铺 filler。
+    let avoid: Vec<f64> = items.iter().map(|r| r.spoken_at()).collect();
     const AVOID_RADIUS: f64 = 3.0;
 
     // 在 (0, duration) 内均匀取 target 个候选点，逐个避让后落点。

@@ -168,6 +168,47 @@ impl BrowserSession {
         Ok(BoundPage::new(self, page))
     }
 
+    /// 新建任务标签页，随后关掉浏览器里残留的空白起始页（about:blank /
+    /// chrome 新标签页）：新启动的浏览器总带着一个空白标签，业务页另开后
+    /// 它就永远挂在第一个位置。仅关闭确认为空白 URL 的其它标签；查询用
+    /// `Target.getTargetInfo`（chrome:// 页没有可用的 JS 执行环境）。
+    pub async fn new_bound_page_drop_blank(&self, url: &str) -> Result<BoundPage<'_>> {
+        let bound = self.new_bound_page(url).await?;
+        const BLANK_URLS: [&str; 3] = ["about:blank", "chrome://newtab/", "chrome://new-tab-page/"];
+        let pages = self
+            .browser
+            .pages()
+            .await
+            .map_err(|e| MultizenError::Cdp(format!("pages: {e}")))?;
+        for page in pages {
+            let target_id = page.target_id().as_ref().to_string();
+            if target_id == bound.target_id() {
+                continue;
+            }
+            let Some(page_url) = Self::target_url(&self.browser, &target_id).await else {
+                continue;
+            };
+            if BLANK_URLS.contains(&page_url.as_str()) {
+                let _ = self.close_page(&target_id).await;
+            }
+        }
+        Ok(bound)
+    }
+
+    /// 通过 `Target.getTargetInfo` 读取目标 URL（best-effort）。
+    async fn target_url(browser: &chromiumoxide::Browser, target_id: &str) -> Option<String> {
+        let cmd = RawCdpCommand {
+            method: "Target.getTargetInfo".into(),
+            params: serde_json::json!({ "targetId": target_id }),
+        };
+        let resp = browser.execute(cmd).await.ok()?;
+        resp.result
+            .get("targetInfo")?
+            .get("url")?
+            .as_str()
+            .map(str::to_string)
+    }
+
     /// Select an attached page by target id for subsequent page operations.
     pub async fn activate_page(&self, target_id: &str) -> Result<()> {
         let activate = RawCdpCommand {

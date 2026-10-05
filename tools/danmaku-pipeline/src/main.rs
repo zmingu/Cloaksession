@@ -77,6 +77,15 @@ fn cmd_build(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(v) = opts.get("viewers") {
         config.viewer_count = v.parse().map_err(|_| "非法 --viewers")?;
     }
+    if let Some(v) = opts.get("cta-delay") {
+        config.cta_delay_sec = v.parse().map_err(|_| "非法 --cta-delay")?;
+    }
+    if let Some(v) = opts.get("cta-burst") {
+        config.cta_burst = v.parse().map_err(|_| "非法 --cta-burst")?;
+    }
+    if let Some(v) = opts.get("cta-stagger") {
+        config.cta_stagger_sec = v.parse().map_err(|_| "非法 --cta-stagger")?;
+    }
     if let Some(v) = opts.get("asr-model") {
         config.asr_model = Some(v.clone());
     }
@@ -204,6 +213,9 @@ fn print_usage() {
          \x20 --filler-ratio <比例> 氛围弹幕:保真弹幕，默认 0.5\n\
          \x20 --confidence <阈值>   read 置信度阈值，默认 0.6\n\
          \x20 --viewers <数量>      虚拟观众数（轮换 account_hint），默认 8\n\
+         \x20 --cta-delay <秒>       cta 刷屏延迟，默认 2.5\n\
+         \x20 --cta-burst <条数>     cta 刷屏条数，默认 5\n\
+         \x20 --cta-stagger <秒>     cta 刷屏条间 stagger，默认 0.5\n\
          \x20 --config <路径>       先从 JSON 载入配置，再被上述单项覆盖\n\
          \x20 --detector <种类>     rule(默认,离线) | llm | auto(LLM为主,规则兜底)\n\
          \x20 --llm-response <路径> 离线回放：用文件里的 LLM 响应替代真实调用\n\

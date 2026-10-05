@@ -6,15 +6,19 @@ import type { TranslationKey } from "../../i18n/en";
 import { onJinniuAccountsChanged, onJinniuStatusChanged, jinniu } from "../../lib/jinniu";
 import type { JinniuAccountWithStatus, JinniuStatePayload, JinniuStatus } from "../../types";
 import { Button } from "../atoms/Button";
-import { confirm, Modal } from "../atoms/Modal";
+import { confirm } from "../atoms/Modal";
 import { Pill, type PillKind } from "../atoms/Pill";
 
-/** Status wire value → localized label key. */
+/**
+ * Status wire value → localized label key. The backend keeps the jieger
+ * five-state machine, but awaiting / connected both present as 已启动：
+ * 选子户不再是可见阶段（后端仍在后台捕获子户信息）。
+ */
 const STATUS_KEY: Record<JinniuStatus, TranslationKey> = {
-  disconnected: "jinniu.accounts.status.disconnected",
-  connecting: "jinniu.accounts.status.connecting",
-  "awaiting-sub-account": "jinniu.accounts.status.awaitingSubAccount",
-  connected: "jinniu.accounts.status.connected",
+  disconnected: "jinniu.accounts.status.stopped",
+  connecting: "jinniu.accounts.status.starting",
+  "awaiting-sub-account": "jinniu.accounts.status.started",
+  connected: "jinniu.accounts.status.started",
   error: "jinniu.accounts.status.error",
 };
 
@@ -22,7 +26,7 @@ const STATUS_KEY: Record<JinniuStatus, TranslationKey> = {
 const STATUS_PILL: Record<JinniuStatus, PillKind> = {
   disconnected: "idle",
   connecting: "pending",
-  "awaiting-sub-account": "pending",
+  "awaiting-sub-account": "running",
   connected: "running",
   error: "error",
 };
@@ -32,17 +36,17 @@ function errorText(cause: unknown): string {
 }
 
 /**
- * 磁力金牛账号页（多大户管理）。
+ * 磁力金牛账号页（账户管理）。
  *
- * 对齐 jieger `src/pages/jinniu/index.tsx`：列表 / 添加 / 连接 / 切换活跃 /
- * 断开 / 删除，状态徽章 + 活跃标记，并订阅 `jinniu-status-changed` 与
- * `jinniu-accounts-changed` 实时刷新。
+ * 订阅 `jinniu-status-changed` 与 `jinniu-accounts-changed` 实时刷新。
  *
- * 关键语义：扫码完成 ≠ 已连接——只有用户在浏览器弹窗中手动选子户、URL 出现
- * `__accountId__` 才置 `connected`；此前为 `awaiting-sub-account`。
- * 同时只允许一个大户活跃（单选切换：断开旧会话 + 设新活跃）。
+ * 账户模型：一个账户只有 启动 / 停止 两个动作，无确认弹窗。启动打开金牛
+ * 浏览器（复用已保存登录态或扫码），同时自动停止其它账户的会话并把本账户
+ * 置为当前；扫码完成即识别右上角主账号（用户名 + 快手ID）并自动命名，
+ * 选子户不是可见阶段（后端仍在后台捕获子户信息）。状态对外只有
+ * 未启动 / 启动中 / 已启动 / 错误。
  *
- * 写动作（连接 / 切换 / 删除）均二次确认；删除为破坏性操作。
+ * 删除为破坏性操作，保留二次确认。
  */
 export function JinniuAccountsPage(): JSX.Element {
   const t = useT();
@@ -52,8 +56,6 @@ export function JinniuAccountsPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
-  const [label, setLabel] = useState("");
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -117,18 +119,23 @@ export function JinniuAccountsPage(): JSX.Element {
     };
   }, [refresh]);
 
+  /**
+   * 添加账户：不手输名称，先落占位行并直接进入识别登录——扫码完成后由后端
+   * 识别右上角主账号并自动命名，无需先选子户。
+   */
   async function onAdd(): Promise<void> {
-    const name = label.trim();
-    if (!name || busyId !== null) return;
+    if (busyId !== null) return;
     setBusyId("add");
     setError(null);
+    setNotice(null);
     try {
-      const created = await jinniu.add(name);
+      const created = await jinniu.add();
       if (!mounted.current) return;
-      setAddOpen(false);
-      setLabel("");
-      setNotice(t("jinniu.accounts.addedToast", { label: created.label }));
+      setNotice(t("jinniu.accounts.addedToast"));
       await refresh();
+      const payload = await jinniu.login(created.id);
+      if (!mounted.current) return;
+      setRows((prev) => prev.map((item) => (item.id === created.id ? mergeStatus(item, payload) : item)));
     } catch (cause) {
       fail(cause);
     } finally {
@@ -136,13 +143,9 @@ export function JinniuAccountsPage(): JSX.Element {
     }
   }
 
-  async function onConnect(row: JinniuAccountWithStatus): Promise<void> {
-    const ok = await confirm({
-      title: t("jinniu.accounts.connectConfirmTitle", { label: row.label }),
-      body: t("jinniu.accounts.connectConfirmBody"),
-      confirmLabel: t("jinniu.accounts.connectConfirmLabel"),
-    });
-    if (!ok) return;
+  /** 启动账户：直接打开金牛浏览器（复用登录态或扫码），无确认弹窗。 */
+  async function onStart(row: JinniuAccountWithStatus): Promise<void> {
+    if (busyId !== null) return;
     setBusyId(row.id);
     setError(null);
     setNotice(null);
@@ -150,7 +153,6 @@ export function JinniuAccountsPage(): JSX.Element {
       const payload = await jinniu.login(row.id);
       if (!mounted.current) return;
       setRows((prev) => prev.map((item) => (item.id === row.id ? mergeStatus(item, payload) : item)));
-      setNotice(t("jinniu.accounts.connectedToast"));
     } catch (cause) {
       fail(cause);
     } finally {
@@ -158,29 +160,7 @@ export function JinniuAccountsPage(): JSX.Element {
     }
   }
 
-  async function onSwitch(row: JinniuAccountWithStatus): Promise<void> {
-    const ok = await confirm({
-      title: t("jinniu.accounts.switchConfirmTitle", { label: row.label }),
-      body: t("jinniu.accounts.switchConfirmBody"),
-      confirmLabel: t("jinniu.accounts.switchConfirmLabel"),
-    });
-    if (!ok) return;
-    setBusyId(row.id);
-    setError(null);
-    setNotice(null);
-    try {
-      await jinniu.setActive(row.id);
-      if (!mounted.current) return;
-      setNotice(t("jinniu.accounts.switchedToast"));
-      await refresh();
-    } catch (cause) {
-      fail(cause);
-    } finally {
-      if (mounted.current) setBusyId(null);
-    }
-  }
-
-  async function onDisconnect(row: JinniuAccountWithStatus): Promise<void> {
+  async function onStop(row: JinniuAccountWithStatus): Promise<void> {
     if (busyId !== null) return;
     setBusyId(row.id);
     setError(null);
@@ -189,7 +169,7 @@ export function JinniuAccountsPage(): JSX.Element {
       const payload = await jinniu.disconnect(row.id);
       if (!mounted.current) return;
       setRows((prev) => prev.map((item) => (item.id === row.id ? mergeStatus(item, payload) : item)));
-      setNotice(t("jinniu.accounts.disconnectedToast"));
+      setNotice(t("jinniu.accounts.stoppedToast"));
     } catch (cause) {
       fail(cause);
     } finally {
@@ -225,10 +205,7 @@ export function JinniuAccountsPage(): JSX.Element {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-6 py-4">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="min-w-0">
-          <h2 className="text-[15px] font-semibold">{t("jinniu.accounts.title")}</h2>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">{t("jinniu.accounts.subtitle")}</p>
-        </div>
+        <h2 className="text-[15px] font-semibold">{t("jinniu.accounts.title")}</h2>
         <div className="flex-1" />
         <span className="mono text-[11px] text-slate-600">{rows.length}</span>
         <Button
@@ -244,10 +221,12 @@ export function JinniuAccountsPage(): JSX.Element {
           size="sm"
           variant="primary"
           disabled={busy}
-          onClick={() => setAddOpen(true)}
-          leftIcon={<Plus size={12} />}
+          onClick={() => void onAdd()}
+          leftIcon={
+            busyId === "add" ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />
+          }
         >
-          {t("jinniu.accounts.add")}
+          {busyId === "add" ? t("jinniu.accounts.adding") : t("jinniu.accounts.add")}
         </Button>
       </div>
 
@@ -270,9 +249,7 @@ export function JinniuAccountsPage(): JSX.Element {
       <section aria-label={t("jinniu.accounts.title")} className="mt-3">
         {loading ? (
           <p className="text-[13px] text-muted-foreground">{t("jinniu.accounts.loading")}</p>
-        ) : rows.length === 0 ? (
-          <p className="text-[13px] text-muted-foreground">{t("jinniu.accounts.empty")}</p>
-        ) : (
+        ) : rows.length === 0 ? null : (
           <ul data-testid="jinniu-list" className="flex flex-col gap-2">
             {rows.map((row) => (
               <li
@@ -313,31 +290,23 @@ export function JinniuAccountsPage(): JSX.Element {
                       size="sm"
                       variant="secondary"
                       disabled={busy}
-                      onClick={() => void onDisconnect(row)}
+                      onClick={() => void onStop(row)}
                     >
-                      {t("jinniu.accounts.disconnect")}
+                      {t("jinniu.accounts.stop")}
                     </Button>
                   ) : (
                     <Button
                       size="sm"
                       variant="accent"
                       disabled={busy}
-                      onClick={() => void onConnect(row)}
+                      onClick={() => void onStart(row)}
                       leftIcon={
                         busyId === row.id ? <Loader2 size={10} className="animate-spin" /> : undefined
                       }
                     >
-                      {busyId === row.id ? t("jinniu.accounts.connecting") : t("jinniu.accounts.connect")}
+                      {busyId === row.id ? t("jinniu.accounts.starting") : t("jinniu.accounts.start")}
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={busy || row.isActive}
-                    onClick={() => void onSwitch(row)}
-                  >
-                    {t("jinniu.accounts.switch")}
-                  </Button>
                   <Button
                     size="icon"
                     variant="danger"
@@ -351,59 +320,12 @@ export function JinniuAccountsPage(): JSX.Element {
                   />
                 </div>
 
-                {row.status === "awaiting-sub-account" && (
-                  <p className="w-full text-[11px] text-amber-300">{t("jinniu.accounts.awaitingHint")}</p>
-                )}
                 {row.error && <p className="w-full text-[11px] text-red-300">{row.error}</p>}
               </li>
             ))}
           </ul>
         )}
       </section>
-
-      <Modal
-        open={addOpen}
-        onClose={() => {
-          if (busyId !== null) return;
-          setAddOpen(false);
-        }}
-        title={t("jinniu.accounts.addTitle")}
-        subtitle={t("jinniu.accounts.addBody")}
-        width={460}
-        footer={
-          <>
-            <Button size="sm" variant="secondary" disabled={busy} onClick={() => setAddOpen(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              disabled={!label.trim() || busy}
-              onClick={() => void onAdd()}
-            >
-              {t("jinniu.accounts.addConfirm")}
-            </Button>
-          </>
-        }
-      >
-        <div className="px-5 py-4">
-          <label className="flex flex-col gap-1.5 text-[12px] text-slate-400">
-            {t("jinniu.accounts.labelField")}
-            <input
-              data-autofocus
-              value={label}
-              onChange={(event) => setLabel(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") void onAdd();
-              }}
-              placeholder={t("jinniu.accounts.labelPlaceholder")}
-              aria-label={t("jinniu.accounts.labelField")}
-              className="h-8 rounded-md bg-white/[0.04] px-2.5 text-[12px] text-slate-200 outline-none"
-              style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
-            />
-          </label>
-        </div>
-      </Modal>
     </div>
   );
 }

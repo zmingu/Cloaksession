@@ -6,34 +6,86 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PipelineConfig {
     /// 目标平台。
+    #[serde(default = "default_platform")]
     pub platform: String,
     /// 默认提前量（秒）：send_at = spoken_at - lead_time。
+    #[serde(default = "default_lead")]
     pub default_lead_time_sec: f64,
     /// 氛围弹幕相对保真弹幕的数量比例（0 表示不补）。
+    #[serde(default = "default_filler_ratio")]
     pub filler_ratio: f64,
-    /// read 置信度阈值，低于此值的识别结果丢弃。
+    /// read/cta/cue 置信度阈值，低于此值的识别结果丢弃。
+    #[serde(default = "default_confidence")]
     pub confidence_threshold: f64,
     /// 虚拟观众数量，用于给事件轮换分配 account_hint。
+    #[serde(default = "default_viewers")]
     pub viewer_count: u32,
     /// 氛围弹幕词库。
+    #[serde(default = "default_filler_pool")]
     pub filler_pool: Vec<String>,
     /// ASR 模型标识（仅溯源写入 meta）。
+    #[serde(default)]
     pub asr_model: Option<String>,
     /// LLM 模型标识（仅溯源写入 meta）。
+    #[serde(default)]
     pub llm_model: Option<String>,
+    /// cta 默认延迟（秒）：首条 send = spoken + delay。
+    #[serde(default = "default_cta_delay")]
+    pub cta_delay_sec: f64,
+    /// cta 默认刷屏条数。
+    #[serde(default = "default_cta_burst")]
+    pub cta_burst: usize,
+    /// cta 刷屏条间 stagger（秒）。
+    #[serde(default = "default_cta_stagger")]
+    pub cta_stagger_sec: f64,
+}
+
+fn default_platform() -> String {
+    "kuaishou".to_string()
+}
+
+fn default_lead() -> f64 {
+    5.0
+}
+
+fn default_filler_ratio() -> f64 {
+    0.5
+}
+
+fn default_confidence() -> f64 {
+    0.6
+}
+
+fn default_viewers() -> u32 {
+    8
+}
+
+fn default_cta_delay() -> f64 {
+    2.5
+}
+
+fn default_cta_burst() -> usize {
+    5
+}
+
+fn default_cta_stagger() -> f64 {
+    0.5
 }
 
 impl Default for PipelineConfig {
     fn default() -> Self {
         Self {
-            platform: "kuaishou".to_string(),
-            default_lead_time_sec: 5.0,
-            filler_ratio: 0.5,
-            confidence_threshold: 0.6,
-            viewer_count: 8,
+            platform: default_platform(),
+            default_lead_time_sec: default_lead(),
+            filler_ratio: default_filler_ratio(),
+            confidence_threshold: default_confidence(),
+            viewer_count: default_viewers(),
             filler_pool: default_filler_pool(),
             asr_model: None,
             llm_model: None,
+            cta_delay_sec: default_cta_delay(),
+            cta_burst: default_cta_burst(),
+            cta_stagger_sec: default_cta_stagger(),
         }
     }
 }

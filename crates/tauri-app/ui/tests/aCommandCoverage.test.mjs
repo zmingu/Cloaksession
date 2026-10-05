@@ -23,11 +23,6 @@ const EXPECTED = {
     "live_launch_mate_credentials", "live_launch_mate_stream_start",
     "live_launch_mate_stream_stop",
   ],
-  "src/lib/liveRoomMonitor.ts": [
-    "start_live_room_monitor", "stop_live_room_monitor", "get_live_room_monitor_state",
-    // 多槽改版：无参列举全部槽快照。
-    "list_live_room_monitor_states",
-  ],
 };
 
 // Event names are the Rust consts; every subscription must be awaitable so the
@@ -36,7 +31,6 @@ const EVENTS = {
   "src/lib/kuaishouAuth.ts": "kuaishou-auth-phase",
   "src/lib/mateLogin.ts": "mate-login-state-changed",
   "src/lib/liveLaunch.ts": "live-launch-state-changed",
-  "src/lib/liveRoomMonitor.ts": "live-room-monitor-state-changed",
 };
 
 test("all A-group commands have TS wrappers", () => {
@@ -50,8 +44,8 @@ test("all A-group commands have TS wrappers", () => {
   }
   assert.equal(
     total,
-    20,
-    "3 kuaishou-auth + 3 mate-login + 10 live-launch (7 profile + 3 mate) + 4 live-room-monitor",
+    16,
+    "3 kuaishou-auth + 3 mate-login + 10 live-launch (7 profile + 3 mate)",
   );
 });
 
@@ -67,27 +61,12 @@ test("A-group event subscriptions are awaitable and return an unlisten", () => {
   }
 });
 
-test("live_launch_prerequisites takes no args; monitor stop/state take a profileId; list takes none", () => {
+test("live_launch_prerequisites takes no args", () => {
   // The real contract is the invoke call: no second argument object at all.
   const launch = read("src/lib/liveLaunch.ts");
   assert.ok(
     launch.includes('invoke<PrerequisitesReport>("live_launch_prerequisites")'),
     "live_launch_prerequisites must be invoked with no arguments",
-  );
-  const monitor = read("src/lib/liveRoomMonitor.ts");
-  // 多槽改版：stop / get 均按 profileId 定位单个监控实例（旧版无参）。
-  assert.ok(
-    monitor.includes('invoke<LiveRoomMonitorState>("stop_live_room_monitor", { profileId })'),
-    "stop_live_room_monitor must carry the profileId",
-  );
-  assert.ok(
-    monitor.includes('invoke<LiveRoomMonitorState>("get_live_room_monitor_state", { profileId })'),
-    "get_live_room_monitor_state must carry the profileId",
-  );
-  // 列举全部槽仍是无参命令。
-  assert.ok(
-    monitor.includes('invoke<LiveRoomMonitorState[]>("list_live_room_monitor_states")'),
-    "list_live_room_monitor_states takes no arguments",
   );
 });
 

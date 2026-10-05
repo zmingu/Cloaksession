@@ -42,18 +42,15 @@ test("list renders every account with a status badge and the active marker", asy
   await expect(row(page, "jinniu-2")).toContainText("大户乙");
   await expect(row(page, "jinniu-3")).toContainText("大户丙");
 
-  // One badge per status wire value, localized.
-  await expect(status(page, "jinniu-1")).toHaveText("Connected");
-  await expect(status(page, "jinniu-2")).toHaveText("Disconnected");
-  await expect(status(page, "jinniu-3")).toHaveText("Awaiting sub-account");
+  // One badge per status wire value, localized. Awaiting and connected both
+  // present as "Running" — sub-account picking is not a visible stage.
+  await expect(status(page, "jinniu-1")).toHaveText("Running");
+  await expect(status(page, "jinniu-2")).toHaveText("Stopped");
+  await expect(status(page, "jinniu-3")).toHaveText("Running");
 
   // Only the active account carries the marker.
   await expect(page.getByTestId("jinniu-active-jinniu-1")).toBeVisible();
   await expect(page.getByTestId("jinniu-active-jinniu-2")).toHaveCount(0);
-
-  // The awaiting account surfaces the "pick a sub-account" hint; the others do not.
-  await expect(row(page, "jinniu-3")).toContainText("pick the target sub-account");
-  await expect(row(page, "jinniu-1")).not.toContainText("pick the target sub-account");
 
   // The sub-account is shown for the connected account.
   await expect(row(page, "jinniu-1")).toContainText("子户一");
@@ -62,46 +59,48 @@ test("list renders every account with a status badge and the active marker", asy
   expect(lists.length).toBeGreaterThanOrEqual(1);
 });
 
-test("empty state offers the add entry point", async ({ page }) => {
+test("empty state offers the add entry point (placeholder copy removed)", async ({ page }) => {
   await installJinniuMock(page, []);
-  await expect(page.getByText("No accounts yet.", { exact: false })).toBeVisible();
+  // 空态文案已按产品要求删除；添加入口仍可用。
+  await expect(page.getByText("No accounts yet.", { exact: false })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Add account", exact: true })).toBeEnabled();
 });
 
-test("adding a master account creates it through IPC and refreshes the list", async ({ page }) => {
+test("adding an account creates a placeholder row and starts recognition without a name", async ({
+  page,
+}) => {
   await installJinniuMock(page, [CONNECTED]);
 
+  // No label prompt: the click goes straight to IPC with label = null.
   await page.getByRole("button", { name: "Add account", exact: true }).click();
-  await expect(dialog(page)).toBeVisible();
-  await dialog(page).getByLabel("Label").fill("新大户");
-  await dialog(page).getByRole("button", { name: "Add", exact: true }).click();
-
   await expect(dialog(page)).toHaveCount(0);
   const adds = await jinniuRequests(page, "jinniu_account_add");
-  expect(adds).toEqual([{ command: "jinniu_account_add", args: { label: "新大户" } }]);
-  await expect(page.getByTestId("jinniu-list")).toContainText("新大户");
-  await expect(page.getByRole("status")).toContainText("Account added: 新大户");
+  expect(adds).toEqual([{ command: "jinniu_account_add", args: { label: null } }]);
+
+  // The fresh row starts recognition immediately (add → login on the new id),
+  // without waiting for a sub-account selection.
+  await expect.poll(async () => jinniuRequests(page, "jinniu_login")).toEqual([
+    { command: "jinniu_login", args: { id: "jinniu-2", options: null } },
+  ]);
+  await expect(page.getByTestId("jinniu-list")).toContainText("未命名金牛");
+  await expect(status(page, "jinniu-2")).toHaveText("Starting");
+  await expect(page.getByRole("status")).toContainText("Account created");
 });
 
-test("connect is confirm-gated and the pushed status snapshot flips the badge", async ({ page }) => {
+test("start opens the session without a confirm dialog; a pushed snapshot flips the badge", async ({
+  page,
+}) => {
   await installJinniuMock(page, [IDLE]);
 
-  await row(page, "jinniu-2").getByRole("button", { name: "Connect", exact: true }).click();
-  // The write is armed by the confirm dialog, not by the row click.
-  await expect(dialog(page)).toBeVisible();
-  await expect(dialog(page)).toContainText("Connect account \"大户乙\"?");
-  expect(await jinniuRequests(page, "jinniu_login")).toEqual([]);
+  await row(page, "jinniu-2").getByRole("button", { name: "Start", exact: true }).click();
+  // No confirm gate: the session start fires straight away.
+  await expect.poll(async () => jinniuRequests(page, "jinniu_login")).toEqual([
+    { command: "jinniu_login", args: { id: "jinniu-2", options: null } },
+  ]);
+  // The command's immediate snapshot shows `Starting`.
+  await expect(status(page, "jinniu-2")).toHaveText("Starting");
 
-  await dialog(page).getByRole("button", { name: "Connect", exact: true }).click();
-  await expect(dialog(page)).toHaveCount(0);
-  const logins = await jinniuRequests(page, "jinniu_login");
-  expect(logins).toEqual([{ command: "jinniu_login", args: { id: "jinniu-2", options: null } }]);
-
-  // The command's immediate snapshot shows `connecting` (scan ≠ connected).
-  await expect(status(page, "jinniu-2")).toHaveText("Connecting");
-  await expect(page.getByRole("status")).toContainText("Login started");
-
-  // The backend later pushes `connected` (user picked a sub-account) — patch in place.
+  // The backend later pushes the running snapshot — patch in place.
   const listCallsBefore = (await jinniuRequests(page, "jinniu_accounts_list")).length;
   await page.evaluate(() => {
     (window as any).__TEST_IPC__.emit("jinniu-status-changed", {
@@ -115,29 +114,21 @@ test("connect is confirm-gated and the pushed status snapshot flips the badge", 
       balanceText: "¥ 99.00",
     });
   });
-  await expect(status(page, "jinniu-2")).toHaveText("Connected");
+  await expect(status(page, "jinniu-2")).toHaveText("Running");
   await expect(row(page, "jinniu-2")).toContainText("子户九");
   // A status push patches the row without a full list re-read.
   expect((await jinniuRequests(page, "jinniu_accounts_list")).length).toBe(listCallsBefore);
 });
 
-test("switch is confirm-gated and moves the single active marker", async ({ page }) => {
+test("stop tears the session down without a confirm dialog", async ({ page }) => {
   await installJinniuMock(page, [CONNECTED, IDLE]);
-  await expect(page.getByTestId("jinniu-active-jinniu-1")).toBeVisible();
 
-  // The active row cannot switch onto itself.
-  await expect(row(page, "jinniu-1").getByRole("button", { name: "Switch", exact: true })).toBeDisabled();
-
-  await row(page, "jinniu-2").getByRole("button", { name: "Switch", exact: true }).click();
-  await expect(dialog(page)).toContainText("Switch to account \"大户乙\"?");
-  expect(await jinniuRequests(page, "jinniu_account_set_active")).toEqual([]);
-
-  await dialog(page).getByRole("button", { name: "Switch", exact: true }).click();
-  await expect.poll(async () => (await jinniuRequests(page, "jinniu_account_set_active"))).toEqual([
-    { command: "jinniu_account_set_active", args: { id: "jinniu-2" } },
+  await row(page, "jinniu-1").getByRole("button", { name: "Stop", exact: true }).click();
+  await expect.poll(async () => jinniuRequests(page, "jinniu_disconnect")).toEqual([
+    { command: "jinniu_disconnect", args: { id: "jinniu-1" } },
   ]);
-  await expect(page.getByTestId("jinniu-active-jinniu-2")).toBeVisible();
-  await expect(page.getByTestId("jinniu-active-jinniu-1")).toHaveCount(0);
+  await expect(status(page, "jinniu-1")).toHaveText("Stopped");
+  await expect(page.getByRole("status")).toContainText("Stopped.");
 });
 
 test("delete requires a second confirmation before removing the account", async ({ page }) => {

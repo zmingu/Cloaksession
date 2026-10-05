@@ -33,6 +33,8 @@ interface Props<T> {
   /** Stable id for a row, used for the row hover/selected states. */
   onRowClick?: (row: T) => void;
   rowClassName?: (row: T) => string | undefined;
+  /** Optional per-row test id, rendered as `data-testid` on the row element. */
+  rowTestId?: (row: T) => string;
   empty?: ReactNode;
   /** Rendered in place of the body while the first load is in flight. */
   loading?: boolean;
@@ -54,6 +56,7 @@ export function DataTable<T>({
   rowKey,
   onRowClick,
   rowClassName,
+  rowTestId,
   empty,
   loading = false,
   loadingRows = 8,
@@ -179,6 +182,7 @@ export function DataTable<T>({
                 <div
                   key={key}
                   role="row"
+                  data-testid={rowTestId?.(row)}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                   className={cn(
                     "grid items-center gap-2 border-b border-white/[0.04] px-3 transition-colors hover:bg-white/[0.025]",

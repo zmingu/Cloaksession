@@ -90,7 +90,7 @@ async fn identity_first_ticks_handoff_to_unfinished_initialization() {
         let context = guard.context.clone();
         let lease = driver
             .init_db(Some(guard), move |pm| {
-                pm.kuaishou_init_claim(&context, KuaishouInitStep::Subject)
+                pm.kuaishou_init_claim(&context, KuaishouInitStep::Subject, true)
             })
             .await
             .unwrap()
@@ -98,30 +98,13 @@ async fn identity_first_ticks_handoff_to_unfinished_initialization() {
         assert_eq!(lease.attempts(), attempt);
         driver
             .init_db(None, move |pm| {
-                pm.kuaishou_init_fail(&lease, Code::PersistenceUnverified, 0)
+                pm.kuaishou_init_fail(&lease, Code::PersistenceUnverified)
             })
             .await
             .unwrap();
         drop(active);
     }
     driver.shutdown().await;
-}
-
-fn step(
-    kind: KuaishouInitStep,
-    state: KuaishouInitState,
-    retry: Option<&str>,
-) -> KuaishouInitStepRecord {
-    KuaishouInitStepRecord {
-        platform_user_id: "12345".into(),
-        step: kind,
-        state,
-        attempts: 1,
-        next_retry_at: retry.map(str::to_owned),
-        last_error_code: Some(Code::PersistenceUnverified),
-        completed_at: None,
-        updated_at: "2026-10-01T00:00:00Z".into(),
-    }
 }
 
 async fn pending<F: std::future::Future>(mut future: std::pin::Pin<&mut F>) {
@@ -397,59 +380,6 @@ fn shared_profile_reservation_does_not_relax_commit_context_validation() {
             _ => unreachable!(),
         }
         assert!(super::super::validate(&pm, &context).is_err(), "{change}");
-    }
-}
-
-#[test]
-fn retry_waits_for_earliest_persisted_failure_without_resetting_done() {
-    let now = chrono::DateTime::parse_from_rfc3339("2026-10-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
-    let subject = step(
-        KuaishouInitStep::Subject,
-        KuaishouInitState::Failed,
-        Some("2026-10-01T00:01:20Z"),
-    );
-    let mut slice = step(
-        KuaishouInitStep::Slice,
-        KuaishouInitState::Failed,
-        Some("2026-10-01T00:00:40Z"),
-    );
-    assert_eq!(
-        retry_delay(&[subject.clone(), slice.clone()], now),
-        Some(Duration::from_secs(40))
-    );
-    slice.state = KuaishouInitState::Done;
-    assert_eq!(
-        retry_delay(&[subject, slice.clone()], now),
-        Some(Duration::from_secs(80))
-    );
-    assert_eq!(retry_delay(&[slice], now), None);
-    assert_eq!(retry_delay(&[], now), None);
-}
-
-#[test]
-fn retry_does_not_take_over_running_or_wait_unboundedly_on_bad_dates() {
-    let now = chrono::DateTime::parse_from_rfc3339("2026-10-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
-    let mut failed = step(
-        KuaishouInitStep::Subject,
-        KuaishouInitState::Failed,
-        Some("2026-09-30T00:00:00Z"),
-    );
-    assert_eq!(
-        retry_delay(&[failed.clone()], now),
-        Some(Duration::from_millis(1))
-    );
-    let running = step(KuaishouInitStep::Slice, KuaishouInitState::Running, None);
-    assert_eq!(retry_delay(&[failed.clone(), running], now), None);
-    failed.last_error_code = Some(Code::ContextChanged);
-    assert_eq!(retry_delay(&[failed.clone()], now), None); // Release identity reservation for a fresh observation.
-    failed.last_error_code = Some(Code::PersistenceUnverified);
-    for date in [None, Some("invalid"), Some("2099-01-01T00:00:00Z")] {
-        failed.next_retry_at = date.map(str::to_owned);
-        assert_eq!(retry_delay(&[failed.clone()], now), None);
     }
 }
 

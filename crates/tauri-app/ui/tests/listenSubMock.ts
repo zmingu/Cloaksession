@@ -153,7 +153,7 @@ export async function installListenSubMock(page: Page): Promise<void> {
   // first and then call `enterInteract` to mount them against the fixture.
 }
 
-/** Mount the interact tab (互动账号脚本互动 hosts the listener + sub-account panels). */
+/** Mount the interact tab (互动账号脚本互动 hosts the scene-script panel). */
 export async function enterInteract(page: Page): Promise<void> {
   await page.getByRole("tab", { name: /直播互动|Live interact/ }).click();
 }

@@ -92,7 +92,7 @@ fn save(
     context: &KuaishouInitContext,
 ) -> (KuaishouInitLease, KuaishouSubjectArchive) {
     let lease = pm
-        .kuaishou_init_claim(context, KuaishouInitStep::Subject)
+        .kuaishou_init_claim(context, KuaishouInitStep::Subject, false)
         .unwrap()
         .unwrap();
     let saved = pm
@@ -297,7 +297,7 @@ fn revision_confirmation_and_ocr_recheck_fields_and_photo_version() {
 fn invalid_fields_or_images_cannot_set_subject_done_and_failed_write_has_no_reference() {
     let (dir, pm, context) = fixture();
     let lease = pm
-        .kuaishou_init_claim(&context, KuaishouInitStep::Subject)
+        .kuaishou_init_claim(&context, KuaishouInitStep::Subject, false)
         .unwrap()
         .unwrap();
     let mut bad = candidate();
@@ -339,19 +339,19 @@ fn same_account_profiles_and_connections_share_lease_different_accounts_do_not()
     let other_account = account(&pm, "23456");
     let second = manager(&dir);
     let lease = pm
-        .kuaishou_init_claim(&context, KuaishouInitStep::Subject)
+        .kuaishou_init_claim(&context, KuaishouInitStep::Subject, false)
         .unwrap()
         .unwrap();
     assert!(second
-        .kuaishou_init_claim(&another, KuaishouInitStep::Subject)
+        .kuaishou_init_claim(&another, KuaishouInitStep::Subject, false)
         .unwrap()
         .is_none());
     assert!(second
-        .kuaishou_init_claim(&another, KuaishouInitStep::Slice)
+        .kuaishou_init_claim(&another, KuaishouInitStep::Slice, false)
         .unwrap()
         .is_none());
     assert!(second
-        .kuaishou_init_claim(&other_account, KuaishouInitStep::Slice)
+        .kuaishou_init_claim(&other_account, KuaishouInitStep::Slice, false)
         .unwrap()
         .is_some());
     let saved = pm
@@ -377,7 +377,7 @@ fn same_account_profiles_and_connections_share_lease_different_accounts_do_not()
     pm.kuaishou_init_complete_subject(&lease, saved.revision, &saved.attachments)
         .unwrap();
     assert!(second
-        .kuaishou_init_claim(&context, KuaishouInitStep::Subject)
+        .kuaishou_init_claim(&context, KuaishouInitStep::Subject, false)
         .unwrap()
         .is_none());
 }
@@ -394,11 +394,11 @@ fn stale_session_binding_or_deleted_profile_rejects_commits_but_owner_can_releas
         .kuaishou_init_complete_subject(&lease, saved.revision, &saved.attachments)
         .is_err());
     assert!(pm
-        .kuaishou_init_fail(&lease, KuaishouInitErrorCode::ContextChanged, 0)
+        .kuaishou_init_fail(&lease, KuaishouInitErrorCode::ContextChanged)
         .unwrap());
     let new = observe(&pm, &context.profile_id, "12345", "changed-generation");
     let lease = pm
-        .kuaishou_init_claim(&new, KuaishouInitStep::Subject)
+        .kuaishou_init_claim(&new, KuaishouInitStep::Subject, true)
         .unwrap()
         .unwrap();
     let manual = pm
@@ -422,7 +422,7 @@ fn stale_session_binding_or_deleted_profile_rejects_commits_but_owner_can_releas
         .kuaishou_init_complete_subject(&lease, saved.revision, &saved.attachments)
         .is_err());
     assert!(pm
-        .kuaishou_init_fail(&lease, KuaishouInitErrorCode::ContextChanged, 0)
+        .kuaishou_init_fail(&lease, KuaishouInitErrorCode::ContextChanged)
         .unwrap());
     assert_eq!(
         pm.kuaishou_subject_detail("12345")
@@ -434,10 +434,10 @@ fn stale_session_binding_or_deleted_profile_rejects_commits_but_owner_can_releas
 }
 
 #[test]
-fn retries_are_cas_backed_and_done_cannot_be_reset_or_faked() {
+fn failed_steps_need_manual_rearm_and_done_cannot_be_reset_or_faked() {
     let (_dir, pm, context) = fixture();
     let lease = pm
-        .kuaishou_init_claim(&context, KuaishouInitStep::Slice)
+        .kuaishou_init_claim(&context, KuaishouInitStep::Slice, false)
         .unwrap()
         .unwrap();
     let mut proof = SliceVerification {
@@ -450,13 +450,14 @@ fn retries_are_cas_backed_and_done_cannot_be_reset_or_faked() {
     proof.all_four_disabled[3] = false;
     assert!(pm.kuaishou_init_complete_slice(&lease, &proof).is_err());
     assert!(pm
-        .kuaishou_init_fail(&lease, KuaishouInitErrorCode::PersistenceUnverified, 60)
+        .kuaishou_init_fail(&lease, KuaishouInitErrorCode::PersistenceUnverified)
         .unwrap());
     assert!(!pm
-        .kuaishou_init_fail(&lease, KuaishouInitErrorCode::TimedOut, 0)
+        .kuaishou_init_fail(&lease, KuaishouInitErrorCode::TimedOut)
         .unwrap());
+    // The monitor never re-claims a failed step; only the manual re-arm may.
     assert!(pm
-        .kuaishou_init_claim(&context, KuaishouInitStep::Slice)
+        .kuaishou_init_claim(&context, KuaishouInitStep::Slice, false)
         .unwrap()
         .is_none());
     let failed = pm
@@ -470,10 +471,10 @@ fn retries_are_cas_backed_and_done_cannot_be_reset_or_faked() {
         failed.last_error_code,
         Some(KuaishouInitErrorCode::PersistenceUnverified)
     );
-    chrono::DateTime::parse_from_rfc3339(failed.next_retry_at.as_ref().unwrap()).unwrap();
+    assert!(failed.next_retry_at.is_none());
     assert_eq!(pm.kuaishou_init_retry_failed("12345").unwrap(), 1);
     let next = pm
-        .kuaishou_init_claim(&context, KuaishouInitStep::Slice)
+        .kuaishou_init_claim(&context, KuaishouInitStep::Slice, true)
         .unwrap()
         .unwrap();
     assert_eq!(next.attempts(), 2);
@@ -483,11 +484,11 @@ fn retries_are_cas_backed_and_done_cannot_be_reset_or_faked() {
     assert_eq!(pm.kuaishou_init_retry_failed("12345").unwrap(), 0);
     assert_eq!(pm.kuaishou_init_recover_interrupted().unwrap(), 0);
     assert!(pm
-        .kuaishou_init_claim(&context, KuaishouInitStep::Slice)
+        .kuaishou_init_claim(&context, KuaishouInitStep::Slice, false)
         .unwrap()
         .is_none());
     assert!(!pm
-        .kuaishou_init_fail(&next, KuaishouInitErrorCode::TimedOut, 0)
+        .kuaishou_init_fail(&next, KuaishouInitErrorCode::TimedOut)
         .unwrap());
     let done = pm
         .kuaishou_init_steps("12345")
@@ -505,7 +506,7 @@ fn retries_are_cas_backed_and_done_cannot_be_reset_or_faked() {
 fn startup_recovery_preserves_attempts_and_revokes_old_tokens_without_completing() {
     let (dir, pm, context) = fixture();
     let lease = pm
-        .kuaishou_init_claim(&context, KuaishouInitStep::Subject)
+        .kuaishou_init_claim(&context, KuaishouInitStep::Subject, false)
         .unwrap()
         .unwrap();
     drop(pm);
@@ -524,7 +525,7 @@ fn startup_recovery_preserves_attempts_and_revokes_old_tokens_without_completing
         .kuaishou_subject_save_candidate(&lease, 0, candidate())
         .is_err());
     let next = pm
-        .kuaishou_init_claim(&context, KuaishouInitStep::Subject)
+        .kuaishou_init_claim(&context, KuaishouInitStep::Subject, true)
         .unwrap()
         .unwrap();
     assert_eq!(next.attempts(), 2);

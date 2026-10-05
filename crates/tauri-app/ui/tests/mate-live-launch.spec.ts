@@ -9,6 +9,7 @@ import {
 /**
  * 伴侣开播（LiveLaunchPage）契约套件 —— 对齐 jieger `pages/live-launch`。
  *
+ * 落点「直播 › 正式开播」下的伴侣子区块（`live-live-mate`）。
  * 覆盖：选伴侣账号下拉渲染、未登录禁用、取流、推流二次确认、状态推进。
  * 全部 IPC 浏览器本地伪造：不启浏览器、不取真实推流码、不推真实流。
  */
@@ -17,7 +18,7 @@ const LOGGED_IN = mateAccountFixture({ id: "mate-1", label: "伴侣甲", loginAt
 const LOGGED_OUT = mateAccountFixture({ id: "mate-2", label: "伴侣乙", loginAt: null });
 
 async function mateBlock(page: Page) {
-  return page.getByTestId("live-prepare-mate").getByRole("region", { name: "Live launch" });
+  return page.getByTestId("live-live-mate").getByRole("region", { name: "Live launch" });
 }
 
 test.beforeEach(async ({ page }) => {

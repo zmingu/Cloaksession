@@ -1,17 +1,24 @@
-import { useCallback, useEffect, useRef, useState, type JSX } from "react";
-import { Loader2, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
+import { Loader2, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 
 import { useT } from "../../i18n/LanguageProvider";
 import type { TranslationKey } from "../../i18n/en";
+import { cn } from "../../lib/cn";
 import { mateLogin, onMateLoginStateChanged } from "../../lib/mateLogin";
 import type { MateAccount, MateLoginStage, MateLoginState } from "../../types";
+import { Avatar } from "../atoms";
 import { Button } from "../atoms/Button";
 import { confirm, Modal } from "../atoms/Modal";
 import { Pill, type PillKind } from "../atoms/Pill";
+import { DataTable, type DataTableColumn } from "../table/DataTable";
+
+const CONTROL =
+  "h-8 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 text-[12px] text-slate-200 outline-none focus:border-purple-400/60 disabled:opacity-50";
 
 /**
  * 9 阶段 → 中文/英文文案键（对齐 jieger `MateLoginCard.tsx` 的 `STAGE_LABEL`）。
  * 阶段取值是后端 `#[serde(rename_all = "kebab-case")]` 的 `MateLoginStage`。
+ * 完整阶段只在二维码弹窗里展示；列表行的徽章收敛为四态（见 STATUS_KEY）。
  */
 const STAGE_KEY: Record<MateLoginStage, TranslationKey> = {
   idle: "biz.mate.stage.idle",
@@ -25,34 +32,56 @@ const STAGE_KEY: Record<MateLoginStage, TranslationKey> = {
   error: "biz.mate.stage.error",
 };
 
-/** 阶段 → 徽章色调。 */
-const STAGE_PILL: Record<MateLoginStage, PillKind> = {
-  idle: "idle",
-  starting: "pending",
-  "awaiting-scan": "pending",
-  "awaiting-confirm": "pending",
-  receiving: "pending",
-  success: "running",
-  expired: "error",
-  cancelled: "error",
-  error: "error",
+/** 列表行徽章的四态收敛，与小店 / 互动账号列表的状态列一致。 */
+type MateStatus = "loggedOut" | "loggingIn" | "loggedIn" | "failed";
+
+const STATUS_KEY: Record<MateStatus, TranslationKey> = {
+  loggedOut: "biz.mate.status.loggedOut",
+  loggingIn: "biz.mate.status.loggingIn",
+  loggedIn: "biz.mate.status.loggedIn",
+  failed: "biz.mate.status.failed",
 };
+
+const STATUS_PILL: Record<MateStatus, PillKind> = {
+  loggedOut: "idle",
+  loggingIn: "pending",
+  loggedIn: "running",
+  failed: "error",
+};
+
+/**
+ * 行内可见状态：在途流程（starting → receiving）都是「登录中」，error 是
+ * 「登录失败」，success 或已有登录态是「已登录」，expired / cancelled 不是
+ * 失败——落回登录事实（loginAt）判断，重新登录失败的旧账号仍显示已登录。
+ */
+function visibleStatus(row: MateAccount, snapshot: MateLoginState | undefined): MateStatus {
+  const stage = snapshot?.stage;
+  if (
+    stage === "starting" ||
+    stage === "awaiting-scan" ||
+    stage === "awaiting-confirm" ||
+    stage === "receiving"
+  ) {
+    return "loggingIn";
+  }
+  if (stage === "error") return "failed";
+  if (stage === "success" || row.loginAt != null) return "loggedIn";
+  return "loggedOut";
+}
 
 function errorText(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
 }
 
 /**
- * 直播伴侣账号管理页（快手账号 › 直播伴侣）。
+ * 直播伴侣账号管理页（快手账号 › 直播伴侣）。列表样式与小店 / 互动账号一致：
+ * 可搜索的 DataTable（账号 / 快手ID / 状态 / 操作），行内动作只有
+ * 扫码登录（或重新登录）和删除（二次确认）。别名不手动维护：添加账号先落
+ * 占位行，首次扫码成功后由后端以平台昵称命名。
  *
- * 对齐 jieger `src/pages/live-launch/MateLoginCard.tsx`：账号列表（别名 + 阶段
- * 徽章 + 已登录时的 `昵称 · UID`）/ 添加 / 重命名 / 删除（二次确认），每行可发起
- * 「扫码登录 / 重新登录」，扫码走 QR 弹窗（`qrImageDataUrl`）并显示阶段推进。
- *
- * 「添加账号」不再要求先填别名：直接建行（后端落占位别名）并立即出二维码，首次
- * 扫码成功后由后端以平台昵称命名。若扫码失败或用户中途关闭弹窗，本页会自动删除
- * 这次新建的占位行（`pendingAddId`），不留「未命名伴侣」残渣；早先已存在的账号
- * 不受影响。
+ * 「添加账号」直接建行并立即出二维码。若扫码失败或用户中途关闭弹窗，本页会
+ * 自动删除这次新建的占位行（`pendingAddId`），不留「未命名伴侣」残渣；早先
+ * 已存在的账号不受影响。
  *
  * 数据流：进入页拉 `mate_accounts_list`，逐个拉 `mate_login_state`；订阅
  * `mate-login-state-changed` 实时推进阶段（成功时重拉列表以同步真实昵称）。
@@ -65,13 +94,12 @@ export function MateLoginPage(): JSX.Element {
   const [accounts, setAccounts] = useState<MateAccount[]>([]);
   const [stateMap, setStateMap] = useState<Record<string, MateLoginState>>({});
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const [renameTarget, setRenameTarget] = useState<MateAccount | null>(null);
-  const [renameLabel, setRenameLabel] = useState("");
   const [qrAccountId, setQrAccountId] = useState<string | null>(null);
   /**
    * 由「添加账号」新建、尚未登录成功的占位行 id（ref 保存，不参与渲染）。
@@ -228,28 +256,6 @@ export function MateLoginPage(): JSX.Element {
     }
   }
 
-  async function onRename(): Promise<void> {
-    const target = renameTarget;
-    if (target === null) return;
-    const label = renameLabel.trim();
-    if (!label || busyId !== null) return;
-    setBusyId(target.id);
-    setError(null);
-    setNotice(null);
-    try {
-      const renamed = await mateLogin.rename(target.id, label);
-      if (!mounted.current) return;
-      setRenameTarget(null);
-      setRenameLabel("");
-      setAccounts((prev) => prev.map((row) => (row.id === renamed.id ? renamed : row)));
-      setNotice(t("biz.mate.renamedToast", { label: renamed.label }));
-    } catch (cause) {
-      fail(cause);
-    } finally {
-      if (mounted.current) setBusyId(null);
-    }
-  }
-
   async function onDelete(row: MateAccount): Promise<void> {
     if (busyId !== null) return;
     const ok = await confirm({
@@ -320,19 +326,108 @@ export function MateLoginPage(): JSX.Element {
     cleanupPendingAdd(id);
   }
 
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase();
+    if (!needle) return accounts;
+    return accounts.filter((row) =>
+      [row.label, row.userName ?? "", row.platformUserId ?? ""].some((value) =>
+        value.toLocaleLowerCase().includes(needle),
+      ),
+    );
+  }, [accounts, query]);
+
   const busy = busyId !== null;
   const qrAccount = qrAccountId === null ? null : accounts.find((a) => a.id === qrAccountId) ?? null;
   const qrState = qrAccountId === null ? null : stateMap[qrAccountId] ?? null;
 
+  const columns: ReadonlyArray<DataTableColumn<MateAccount>> = useMemo(
+    () => [
+      {
+        id: "account",
+        header: t("biz.mate.col.account"),
+        flex: true,
+        cell: (row) => <AccountCell row={row} />,
+      },
+      {
+        id: "kuaishouId",
+        header: t("biz.mate.col.kuaishouId"),
+        width: 130,
+        cell: (row) => (
+          <span
+            className={cn(
+              "mono block truncate text-[11px]",
+              row.platformUserId ? "text-slate-300" : "text-slate-600",
+            )}
+            title={row.platformUserId ?? undefined}
+          >
+            {row.platformUserId ?? "—"}
+          </span>
+        ),
+      },
+      {
+        id: "status",
+        header: t("biz.mate.col.status"),
+        width: 150,
+        cell: (row) => {
+          const status = visibleStatus(row, stateMap[row.id]);
+          return (
+            <span data-testid={`mate-status-${row.id}`}>
+              <Pill kind={STATUS_PILL[status]} dot>
+                {t(STATUS_KEY[status])}
+              </Pill>
+            </span>
+          );
+        },
+      },
+      {
+        id: "actions",
+        header: "",
+        width: 150,
+        align: "right",
+        cell: (row) => (
+          <div className="flex items-center justify-end gap-1.5">
+            <Button
+              size="sm"
+              variant="accent"
+              disabled={busy}
+              onClick={() => void onStartLogin(row)}
+              leftIcon={
+                busyId === row.id ? <Loader2 size={10} className="animate-spin" /> : undefined
+              }
+            >
+              {visibleStatus(row, stateMap[row.id]) === "loggedIn"
+                ? t("biz.mate.relogin")
+                : t("biz.mate.login")}
+            </Button>
+            <Button
+              size="icon"
+              variant="danger"
+              disabled={busy}
+              title={t("biz.mate.delete")}
+              aria-label={t("biz.mate.delete")}
+              onClick={() => void onDelete(row)}
+              leftIcon={
+                busyId === row.id ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <Trash2 size={12} />
+                )
+              }
+            />
+          </div>
+        ),
+      },
+    ],
+    // `stateMap` / `busyId` are read inside cells; the memo intentionally
+    // refreshes with them so the row button reflects the in-flight state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, stateMap, busyId],
+  );
+
   return (
-    <section
-      aria-label={t("biz.mate.title")}
-      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-6 py-4"
-    >
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col px-6 pt-4">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="min-w-0">
-          <h2 className="text-[15px] font-semibold text-slate-100">{t("biz.mate.title")}</h2>
-        </div>
+        <h2 className="text-[15px] font-semibold">{t("biz.mate.title")}</h2>
         <div className="flex-1" />
         <span className="mono text-[11px] text-slate-600">{accounts.length}</span>
         <Button
@@ -357,166 +452,52 @@ export function MateLoginPage(): JSX.Element {
         </Button>
       </div>
 
+      <div className="relative mt-3">
+        <Search
+          size={13}
+          strokeWidth={1.5}
+          className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-slate-500"
+        />
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t("biz.mate.searchPlaceholder")}
+          aria-label={t("biz.mate.searchPlaceholder")}
+          className={cn(CONTROL, "w-full max-w-[360px] pl-8")}
+        />
+      </div>
+
       {listError && (
-        <div role="alert" className="mt-3 text-[12px] text-amber-300">
+        <div role="alert" className="mt-2 text-[12px] text-amber-300">
           {t("biz.mate.loadFailed", { error: listError })}
         </div>
       )}
       {error && (
-        <div role="alert" className="mt-3 text-[12px] text-red-300">
+        <div role="alert" className="mt-2 text-[12px] text-red-300">
           {t("biz.mate.opFailed", { detail: error })}
         </div>
       )}
       {notice && (
-        <div role="status" className="mt-3 text-[12px] text-emerald-300">
+        <div role="status" className="mt-2 text-[12px] text-emerald-300">
           {notice}
         </div>
       )}
 
-      <div className="mt-3">
-        {loading ? (
-          <p className="text-[13px] text-muted-foreground">{t("biz.mate.loading")}</p>
-        ) : accounts.length === 0 ? (
-          <p className="text-[13px] text-muted-foreground">{t("biz.mate.empty")}</p>
-        ) : (
-          <ul data-testid="mate-list" className="flex flex-col gap-2">
-            {accounts.map((row) => {
-              // An in-memory `idle` snapshot only means "no flow running"; the
-              // persisted `loginAt` is the source of truth for logged-in state.
-              const snapshot = stateMap[row.id];
-              const stage: MateLoginStage =
-                snapshot != null && snapshot.stage !== "idle"
-                  ? snapshot.stage
-                  : row.loginAt != null
-                    ? "success"
-                    : "idle";
-              const loggedIn = row.loginAt != null && stage !== "expired" && stage !== "error";
-              return (
-                <li
-                  key={row.id}
-                  data-testid={`mate-row-${row.id}`}
-                  className="flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5"
-                  style={{
-                    background: "rgba(255,255,255,0.03)",
-                    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
-                  }}
-                >
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-100">
-                    {row.label}
-                  </span>
-
-                  <span data-testid={`mate-status-${row.id}`}>
-                    <Pill kind={STAGE_PILL[stage]} dot>
-                      {t(STAGE_KEY[stage])}
-                    </Pill>
-                  </span>
-
-                  <span className="min-w-0 max-w-[240px] truncate text-[11px] text-slate-500">
-                    {loggedIn && row.userName != null
-                      ? t("biz.mate.identity", {
-                          name: row.userName,
-                          id: row.platformUserId ?? "—",
-                        })
-                      : t("biz.mate.notLoggedIn")}
-                  </span>
-
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      size="sm"
-                      variant="accent"
-                      disabled={busy}
-                      onClick={() => void onStartLogin(row)}
-                      leftIcon={
-                        busyId === row.id ? <Loader2 size={10} className="animate-spin" /> : undefined
-                      }
-                    >
-                      {loggedIn ? t("biz.mate.relogin") : t("biz.mate.login")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={busy}
-                      title={t("biz.mate.rename")}
-                      aria-label={t("biz.mate.rename")}
-                      onClick={() => {
-                        setRenameTarget(row);
-                        setRenameLabel(row.label);
-                      }}
-                      leftIcon={<Pencil size={12} />}
-                    >
-                      {t("biz.mate.rename")}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="danger"
-                      disabled={busy}
-                      title={t("biz.mate.delete")}
-                      aria-label={t("biz.mate.delete")}
-                      onClick={() => void onDelete(row)}
-                      leftIcon={
-                        busyId === row.id ? (
-                          <Loader2 size={12} className="animate-spin" />
-                        ) : (
-                          <Trash2 size={12} />
-                        )
-                      }
-                    />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+      <div data-testid="mate-list" className="mt-3 flex min-h-0 flex-1 flex-col">
+        <DataTable
+          ariaLabel={t("biz.mate.title")}
+          columns={columns}
+          rows={filtered}
+          rowKey={(row) => row.id}
+          rowTestId={(row) => `mate-row-${row.id}`}
+          loading={loading}
+          empty={
+            <div className="py-16 text-center text-[13px] text-slate-500">
+              {query.trim() ? t("biz.mate.emptyFiltered") : t("biz.mate.empty")}
+            </div>
+          }
+        />
       </div>
-
-      <Modal
-        open={renameTarget !== null}
-        onClose={() => {
-          if (busyId !== null) return;
-          setRenameTarget(null);
-        }}
-        title={t("biz.mate.renameTitle", { label: renameTarget?.label ?? "" })}
-        subtitle={t("biz.mate.renameBody")}
-        width={460}
-        footer={
-          <>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={busy}
-              onClick={() => setRenameTarget(null)}
-            >
-              {t("common.cancel")}
-            </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              disabled={!renameLabel.trim() || busy}
-              onClick={() => void onRename()}
-            >
-              {t("biz.mate.renameConfirm")}
-            </Button>
-          </>
-        }
-      >
-        <div className="px-5 py-4">
-          <label className="flex flex-col gap-1.5 text-[12px] text-slate-400">
-            {t("biz.mate.labelField")}
-            <input
-              data-autofocus
-              value={renameLabel}
-              onChange={(event) => setRenameLabel(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") void onRename();
-              }}
-              placeholder={t("biz.mate.labelPlaceholder")}
-              aria-label={t("biz.mate.labelField")}
-              className="h-8 rounded-md bg-white/[0.04] px-2.5 text-[12px] text-slate-200 outline-none"
-              style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }}
-            />
-          </label>
-        </div>
-      </Modal>
 
       <Modal
         open={qrAccountId !== null}
@@ -586,6 +567,31 @@ export function MateLoginPage(): JSX.Element {
           )}
         </div>
       </Modal>
-    </section>
+    </div>
+  );
+}
+
+/** Avatar + 别名，昵称与别名不同时才附加展示（自动命名后两者通常一致）。 */
+function AccountCell({ row }: { row: MateAccount }): JSX.Element {
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      {row.avatarUrl ? (
+        <img
+          src={row.avatarUrl}
+          alt=""
+          className="size-6 shrink-0 rounded-[9px] object-cover"
+        />
+      ) : (
+        <Avatar initials={row.label.slice(0, 2).toUpperCase()} size={24} />
+      )}
+      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-100">
+        {row.label}
+      </span>
+      {row.userName && row.userName !== row.label && (
+        <span className="min-w-0 max-w-[40%] shrink truncate text-[11px] text-slate-500" title={row.userName}>
+          {row.userName}
+        </span>
+      )}
+    </div>
   );
 }

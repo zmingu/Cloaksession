@@ -14,6 +14,8 @@
 //! - **状态机**：`disconnected → connecting → awaiting-sub-account → connected → error`。
 //!   扫码完成 ≠ connected：必须用户在弹窗手动选子户、URL 出现 `__accountId__`
 //!   才算 connected（**纯 URL 判定，无 DOM 选择器**）。
+//! - **登录即识别**：离开登录页后即轮询页面文本识别右上角主账号并自动命名
+//!   （占位别名 [`JINNIU_PLACEHOLDER_LABEL`]），识别不依赖选子户。
 //!
 //! # 离线可测部分
 //!
@@ -55,6 +57,10 @@ pub const JINNIU_LOGIN_POLL_MS: u64 = 2_000;
 pub const JINNIU_AWAIT_SUB_TIMEOUT_MS: u64 = 5 * 60_000;
 /// 等待选子户阶段的 URL 轮询间隔（jieger `KS_AWAIT_POLL_MS`）。
 pub const JINNIU_AWAIT_POLL_MS: u64 = 1_500;
+
+/// 新建账户时的占位别名：前端「添加账户」不再预填名字，先落占位行，待登录
+/// 识别出右上角主账号后由 [`TauriBrowserDriver::jinniu_autoname`] 覆盖。
+pub const JINNIU_PLACEHOLDER_LABEL: &str = "未命名金牛";
 
 /// 金牛状态机，wire 值与 jieger `JinniuStatus` 一致（kebab-case）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -486,14 +492,16 @@ impl TauriBrowserDriver {
         Ok(self.jinniu_payload(id, &record.state))
     }
 
-    /// 添加大户：一个大户 = 一个新 Profile + 一行 `business_accounts(kind=jinniu)`
-    /// + 一行金牛状态。第一个大户自动设为活跃。
-    pub async fn jinniu_add_account(&self, label: &str) -> Result<JinniuAccountWithStatus> {
-        let label = label.trim();
-        if label.is_empty() || label.chars().count() > 100 {
-            return Err(MultizenError::Config(
-                "大户备注名不能为空，最多100个字符".into(),
-            ));
+    /// 添加账户：不要求手输名称——缺省落「未命名金牛」占位行，登录识别到右上角
+    /// 主账号后自动命名。一个大户 = 一个新 Profile + 一行
+    /// `business_accounts(kind=jinniu)` + 一行金牛状态。第一个账户自动设为活跃。
+    pub async fn jinniu_add_account(&self, label: Option<&str>) -> Result<JinniuAccountWithStatus> {
+        let label = match label.map(str::trim) {
+            Some(v) if !v.is_empty() => v.to_string(),
+            _ => JINNIU_PLACEHOLDER_LABEL.to_string(),
+        };
+        if label.chars().count() > 100 {
+            return Err(MultizenError::Config("账户备注名最多100个字符".into()));
         }
         let profile = self
             .create_profile(multizen_core::CreateProfileInput {
@@ -536,6 +544,40 @@ impl TauriBrowserDriver {
             .find(|r| r.account.id == account_id)
             .map(|record| self.project_jinniu_account(record))
             .ok_or_else(|| MultizenError::NotFound(format!("金牛大户 {account_id} 写入后未找到")))
+    }
+
+    /// 识别出主账号后的自动命名（best-effort，对齐伴侣账号「扫码后自动命名」）：
+    /// 仅当显示名仍是占位别名时，用主账号名覆盖备注名并登记平台 ID；已命名过的
+    /// 行保持不变。直改别名（不碰 profile 绑定），因此会话存活时也可命名；失败
+    /// 只记日志，不影响连接状态。
+    pub(crate) async fn jinniu_autoname(&self, id: &str, master_name: &str, master_id: &str) {
+        let name = master_name.trim();
+        if name.is_empty() || name.chars().count() > 100 {
+            return;
+        }
+        let Ok(record) = self.jinniu_record(id).await else {
+            return;
+        };
+        if record.account.display_name != JINNIU_PLACEHOLDER_LABEL {
+            return;
+        }
+        let account_id = record.account.id;
+        let name_for_db = name.to_string();
+        let mid_for_db = master_id.trim().to_string();
+        match self
+            .jinniu_store(move |pm| {
+                pm.business_account_rename(&account_id, &name_for_db, Some(&mid_for_db))
+            })
+            .await
+        {
+            Ok(_) => {
+                self.jinniu.emit(JINNIU_ACCOUNTS_CHANGED, &serde_json::json!({}));
+                tracing::info!(account = %id, label = %name, "jinniu: 已用主账号名自动命名");
+            }
+            Err(e) => {
+                tracing::warn!(account = %id, error = %e, "jinniu: 自动命名失败，保持占位名");
+            }
+        }
     }
 
     /// 删除大户：断开连接 → 删除业务账号 + 状态行 → 删除专属环境 → 活跃补位。
@@ -600,10 +642,12 @@ impl TauriBrowserDriver {
         Ok(payload)
     }
 
-    /// 登录指定大户。状态迁移：connecting → (connected | awaiting-sub-account | error)。
+    /// 启动指定账户的金牛会话。状态迁移：connecting → (connected | awaiting-sub-account | error)。
     ///
-    /// 扫码完成不等于 connected：只有 URL 出现 `__accountId__` 才置 connected；
-    /// 离开登录页但无子户时进入 awaiting-sub-account，并在后台轮询等用户手动选子户。
+    /// wire 状态机沿用 jieger 五态，但对外（UI）只有 启动中/已启动——connected 与
+    /// awaiting-sub-account 都呈现为已启动：扫码完成即识别主账号并自动命名，
+    /// 选子户不再是可见阶段（后台仍轮询 URL 捕获子户信息）。
+    /// 启动即单选：其它存活的账户会话会被先停止，活跃标记切到本账户。
     pub async fn jinniu_login(
         self: &Arc<Self>,
         id: &str,
@@ -611,10 +655,22 @@ impl TauriBrowserDriver {
     ) -> Result<JinniuStatePayload> {
         let record = self.jinniu_record(id).await?;
         let profile_id = record.account.profile_id.clone().ok_or_else(|| {
-            MultizenError::Config(format!("金牛大户 {id} 未绑定环境，请删除后重新添加"))
+            MultizenError::Config(format!("金牛账户 {id} 未绑定环境，请删除后重新添加"))
         })?;
         if self.jinniu.is_login_in_flight(id) {
-            return Err(MultizenError::Config("正在登录中，请稍候".into()));
+            return Err(MultizenError::Config("正在启动中，请稍候".into()));
+        }
+
+        // 启动即单选：停止其它存活的账户会话，并把活跃标记切到本账户。
+        let current_active = self.jinniu_get_active().await?;
+        if current_active.as_deref() != Some(id) {
+            if let Some(old) = current_active.as_deref() {
+                let _ = self.jinniu_disconnect(old).await;
+            }
+            let target = Some(id.to_string());
+            self.jinniu_store(move |pm| pm.jinniu_account_set_active(target.as_deref()))
+                .await?;
+            self.jinniu.emit(JINNIU_ACCOUNTS_CHANGED, &serde_json::json!({}));
         }
 
         let target_sub = target_sub_account_for_login(
@@ -636,7 +692,7 @@ impl TauriBrowserDriver {
         self.jinniu.emit(JINNIU_STATUS_CHANGED, &payload);
 
         let outcome = self
-            .jinniu_login_flow(id, &profile_id, target_sub, &options, generation, &record.state)
+            .jinniu_login_flow(id, &profile_id, target_sub, &options, &record.state)
             .await;
         // 仅清理在途标记；awaiting 阶段的轮询与单会话槽位需要保活。
         if self.jinniu.current_generation(id) == Some(generation) {
@@ -652,7 +708,6 @@ impl TauriBrowserDriver {
         profile_id: &str,
         target_sub: Option<String>,
         options: &JinniuLoginOptions,
-        generation: u64,
         fallback: &JinniuAccountState,
     ) -> Result<JinniuStatePayload> {
         let startup_url = kuaishou::build_startup_url(target_sub.as_deref());
@@ -677,9 +732,9 @@ impl TauriBrowserDriver {
             }
         };
 
-        // 打开金牛入口页（新标签）。
+        // 打开金牛入口页（新标签；新启动浏览器残留的空白起始页会被顺带关闭）。
         let bound = session
-            .new_bound_page(&startup_url)
+            .new_bound_page_drop_blank(&startup_url)
             .await
             .map_err(|e| MultizenError::Cdp(format!("金牛入口页打开失败：{e}")))?;
         let target_id = bound.target_id().to_string();
@@ -688,6 +743,8 @@ impl TauriBrowserDriver {
             profile_id: profile_id.to_string(),
             target_id: target_id.clone(),
         });
+        // 把入口页带到前台：启动 / 扫码都需要用户看到页面。
+        let _ = session.activate_page(&target_id).await;
 
         // 阶段一：storageState 复用校验（URL 判定）。
         let cancel = self
@@ -723,7 +780,7 @@ impl TauriBrowserDriver {
                 return Ok(payload);
             }
             return Ok(self
-                .jinniu_after_login(id, profile_id, &session, &target_id, generation, fallback)
+                .jinniu_after_login(id, profile_id, &session, &target_id, fallback)
                 .await);
         }
 
@@ -742,7 +799,7 @@ impl TauriBrowserDriver {
 
         // 阶段二：等待用户扫码（URL 离开登录页即视为扫码完成）。
         if let Err(e) = self
-            .jinniu_wait_for_login(id, &session, &target_id, &cancel, generation)
+            .jinniu_wait_for_login(id, &session, &target_id, &cancel)
             .await
         {
             let (status, message) = classify_login_error(&e);
@@ -753,18 +810,20 @@ impl TauriBrowserDriver {
         }
 
         Ok(self
-            .jinniu_after_login(id, profile_id, &session, &target_id, generation, fallback)
+            .jinniu_after_login(id, profile_id, &session, &target_id, fallback)
             .await)
     }
 
     /// 扫码等待：轮询 URL，离开登录页即返回。
+    ///
+    /// 存活由取消令牌保证（新登录 begin_login 会取消旧令牌）；generation 守卫
+    /// 不再需要——在途标记在登录返回后即被清理。
     async fn jinniu_wait_for_login(
         &self,
         id: &str,
         session: &Arc<BrowserSession>,
         target_id: &str,
         cancel: &TaskCancel,
-        generation: u64,
     ) -> Result<()> {
         let deadline = tokio::time::Instant::now() + Duration::from_millis(JINNIU_LOGIN_TIMEOUT_MS);
         loop {
@@ -773,9 +832,6 @@ impl TauriBrowserDriver {
                 _ = cancel.cancelled() => return Err(MultizenError::Config("已取消".into())),
                 _ = self.jinniu.stop.cancelled() => return Err(MultizenError::Config("已取消".into())),
                 _ = tokio::time::sleep(Duration::from_millis(JINNIU_LOGIN_POLL_MS)) => {}
-            }
-            if self.jinniu.current_generation(id) != Some(generation) {
-                return Err(MultizenError::Config("已取消".into()));
             }
             let Some(url) = Self::jinniu_current_url(session, target_id).await else {
                 return Err(MultizenError::Cdp("浏览器已关闭".into()));
@@ -797,7 +853,6 @@ impl TauriBrowserDriver {
         profile_id: &str,
         session: &Arc<BrowserSession>,
         target_id: &str,
-        generation: u64,
         fallback: &JinniuAccountState,
     ) -> JinniuStatePayload {
         // 给页面一点稳定时间（导航/弹窗渲染较慢）。
@@ -818,6 +873,8 @@ impl TauriBrowserDriver {
                 self.jinniu.emit(JINNIU_ACCOUNTS_CHANGED, &serde_json::json!({}));
                 // connected 后 best-effort 捕获大户/子户信息（不阻塞）。
                 self.spawn_jinniu_capture(id, session.clone(), target_id.to_string());
+                // 登录即识别右上角主账号并自动命名（不依赖选子户）。
+                self.spawn_jinniu_recognize(id, profile_id, session.clone(), target_id.to_string());
                 tracing::info!(account = %id, sub = %sub_id, "jinniu: 已进入子户 → connected");
                 payload
             }
@@ -828,7 +885,9 @@ impl TauriBrowserDriver {
                 });
                 let payload = self.jinniu_payload(id, fallback);
                 self.jinniu.emit(JINNIU_STATUS_CHANGED, &payload);
-                self.spawn_jinniu_await_sub(id, profile_id, session.clone(), target_id.to_string(), generation);
+                self.spawn_jinniu_await_sub(id, profile_id, session.clone(), target_id.to_string());
+                // 扫码完成即开始识别主账号（无需等用户选子户）。
+                self.spawn_jinniu_recognize(id, profile_id, session.clone(), target_id.to_string());
                 tracing::info!(account = %id, "jinniu: 进入 awaiting-sub-account，等待用户手动选子户");
                 payload
             }
@@ -841,13 +900,15 @@ impl TauriBrowserDriver {
     }
 
     /// awaiting-sub-account 后台轮询：URL 出现 `__accountId__` → connected。
+    ///
+    /// 不挂在登录 generation 上：登录返回时在途标记会被清理，轮询的存活由
+    /// 状态守卫（非 awaiting 即退出）+ 浏览器存活检查保证。
     fn spawn_jinniu_await_sub(
         self: &Arc<Self>,
         id: &str,
         profile_id: &str,
         session: Arc<BrowserSession>,
         target_id: String,
-        generation: u64,
     ) {
         let driver = self.clone();
         let id = id.to_string();
@@ -860,9 +921,6 @@ impl TauriBrowserDriver {
                     biased;
                     _ = driver.jinniu.stop.cancelled() => return,
                     _ = tokio::time::sleep(Duration::from_millis(JINNIU_AWAIT_POLL_MS)) => {}
-                }
-                if driver.jinniu.current_generation(&id) != Some(generation) {
-                    return;
                 }
                 if driver.jinniu.state_of(&id).status != JinniuStatus::AwaitingSubAccount {
                     return;
@@ -900,6 +958,75 @@ impl TauriBrowserDriver {
                     return;
                 }
             }
+        });
+    }
+
+    /// 登录后识别：轮询页面文本直到解析出右上角主账号（用户名 + 快手ID），回写
+    /// 缓存并自动命名。扫码完成 ≠ 页面渲染完成，首页顶栏加载慢时多试几次；
+    /// 识别失败不影响连接状态机，子户/余额由 connected 后的
+    /// [`Self::spawn_jinniu_capture`] 负责。
+    fn spawn_jinniu_recognize(
+        self: &Arc<Self>,
+        id: &str,
+        profile_id: &str,
+        session: Arc<BrowserSession>,
+        target_id: String,
+    ) {
+        let driver = self.clone();
+        let id = id.to_string();
+        let profile_id = profile_id.to_string();
+        tokio::spawn(async move {
+            // ~30 × 2s = 60s 预算；浏览器关闭 / 会话终止则提前退出。
+            for attempt in 0..30u32 {
+                if attempt > 0 {
+                    tokio::select! {
+                        biased;
+                        _ = driver.jinniu.stop.cancelled() => return,
+                        _ = tokio::time::sleep(Duration::from_millis(2_000)) => {}
+                    }
+                }
+                if matches!(
+                    driver.jinniu.state_of(&id).status,
+                    JinniuStatus::Disconnected | JinniuStatus::Error
+                ) {
+                    return;
+                }
+                let text = match Self::jinniu_page_text(&session, &target_id).await {
+                    Some(text) => text,
+                    None => {
+                        if driver.registry.get(&profile_id).await.is_none() {
+                            return;
+                        }
+                        continue;
+                    }
+                };
+                let Some((name, mid)) = parse_master_info(&text) else {
+                    continue;
+                };
+                let account_id = id.clone();
+                let name_for_db = name.clone();
+                let mid_for_db = mid.clone();
+                let _ = driver
+                    .jinniu_store(move |pm| {
+                        pm.jinniu_account_update_master(&account_id, &name_for_db, &mid_for_db, None)
+                    })
+                    .await;
+                driver.jinniu_autoname(&id, &name, &mid).await;
+                driver.jinniu.patch(&id, |state| {
+                    state.master = Some(JinniuMaster {
+                        name: name.clone(),
+                        id: mid.clone(),
+                        avatar_url: None,
+                    });
+                });
+                if let Ok(record) = driver.jinniu_record(&id).await {
+                    let payload = driver.jinniu_payload(&id, &record.state);
+                    driver.jinniu.emit(JINNIU_STATUS_CHANGED, &payload);
+                }
+                tracing::info!(account = %id, master = %name, "jinniu: 已识别右上角主账号");
+                return;
+            }
+            tracing::warn!(account = %id, "jinniu: 主账号识别超时（不影响连接状态）");
         });
     }
 
@@ -964,6 +1091,13 @@ impl TauriBrowserDriver {
     async fn jinniu_current_url(session: &Arc<BrowserSession>, target_id: &str) -> Option<String> {
         let bound = session.bind_page(target_id).await.ok()?;
         let value = bound.evaluate("location.href").await.ok()?;
+        value.as_str().map(str::to_string)
+    }
+
+    /// 读取页面可见文本（best-effort；失败返回 `None`）。
+    async fn jinniu_page_text(session: &Arc<BrowserSession>, target_id: &str) -> Option<String> {
+        let bound = session.bind_page(target_id).await.ok()?;
+        let value = bound.evaluate(JINNIU_PAGE_TEXT_JS).await.ok()?;
         value.as_str().map(str::to_string)
     }
 
@@ -1226,13 +1360,13 @@ mod tests {
         assert!(driver.jinniu_list_accounts().await.unwrap().is_empty());
         assert!(driver.jinniu_get_active().await.unwrap().is_none());
 
-        let first = driver.jinniu_add_account("大户甲").await.unwrap();
+        let first = driver.jinniu_add_account(Some("大户甲")).await.unwrap();
         assert_eq!(first.label, "大户甲");
         assert!(first.is_active, "第一个大户自动活跃");
         assert_eq!(first.status, JinniuStatus::Disconnected);
         assert!(first.profile_id.is_some(), "一个大户 = 一个专属环境");
 
-        let second = driver.jinniu_add_account("大户乙").await.unwrap();
+        let second = driver.jinniu_add_account(Some("大户乙")).await.unwrap();
         assert!(!second.is_active, "第二个大户不自动活跃");
 
         let listed = driver.jinniu_list_accounts().await.unwrap();
@@ -1310,12 +1444,38 @@ mod tests {
         driver.shutdown().await;
     }
 
+    /// 不手输名称 → 落「未命名金牛」占位行（对齐伴侣账号）；超长备注名仍拒绝
+    /// 且不留孤儿环境。
     #[tokio::test]
-    async fn add_rejects_empty_label_without_creating_profile() {
+    async fn add_without_label_uses_placeholder_and_rejects_oversize() {
         let (_dir, driver) =
             super::super::business_tests::fixture(multizen_core::ChromixSettings::default());
-        assert!(driver.jinniu_add_account("   ").await.is_err());
-        assert!(driver.list_profiles().await.unwrap().is_empty());
+        let created = driver.jinniu_add_account(None).await.unwrap();
+        assert_eq!(created.label, JINNIU_PLACEHOLDER_LABEL);
+        assert_eq!(created.label, "未命名金牛");
+        assert!(created.profile_id.is_some(), "一个账户 = 一个专属环境");
+        assert!(driver
+            .jinniu_add_account(Some(&"x".repeat(101)))
+            .await
+            .is_err());
+        assert_eq!(driver.list_profiles().await.unwrap().len(), 1);
+        driver.shutdown().await;
+    }
+
+    /// 自动命名：仅覆盖占位行（识别到主账号名后）；已命名的行保持不变。
+    #[tokio::test]
+    async fn autoname_overwrites_placeholder_only() {
+        let (_dir, driver) =
+            super::super::business_tests::fixture(multizen_core::ChromixSettings::default());
+        let first = driver.jinniu_add_account(None).await.unwrap();
+        driver.jinniu_autoname(&first.id, "张三", "123456").await;
+        let listed = driver.jinniu_list_accounts().await.unwrap();
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].label, "张三");
+        // 二次识别不覆盖已命名的行。
+        driver.jinniu_autoname(&first.id, "李四", "654321").await;
+        let listed = driver.jinniu_list_accounts().await.unwrap();
+        assert_eq!(listed[0].label, "张三");
         driver.shutdown().await;
     }
 }

@@ -908,11 +908,10 @@ export interface JinniuAccountWithStatus {
 
 // ---------------------------------------------------------------------------
 // Frontend A group: accounts & live launch (kuaishou_auth / mate_login /
-// live_launch / live_room_monitor). Mirrors:
+// live_launch). Mirrors:
 //   crates/cdp-driver/src/platforms/kuaishou.rs (EnsureAuthResult, AuthPhase)
 //   crates/tauri-app/src/driver/mate_login.rs
 //   crates/tauri-app/src/driver/live_launch.rs
-//   crates/tauri-app/src/driver/live_room_monitor.rs
 // All structs use `#[serde(rename_all = "camelCase")]` except where noted.
 // ---------------------------------------------------------------------------
 
@@ -1068,62 +1067,5 @@ export interface PrerequisitesReport {
   available: boolean;
   ffmpegPath?: string | null;
   searched: string[];
-  error?: string | null;
-}
-
-/** `MonitorConfig` (driver/live_room_monitor.rs:184). */
-export interface MonitorConfig {
-  liveRoomUrl: string;
-  sceneId?: number | null;
-  groupId?: string | null;
-  productScriptId?: number | null;
-  productScriptAccountId?: string | null;
-  autoExitSubAccounts: boolean;
-}
-
-/** `LiveRoomMonitorStatus`, `#[serde(rename_all = "lowercase")]`. */
-export type LiveRoomMonitorStatus =
-  | "idle"
-  | "checking"
-  | "offline"
-  | "live"
-  | "triggering"
-  | "triggered"
-  | "error";
-
-/** `LiveRoomLiveStatus`, `#[serde(rename_all = "lowercase")]`. */
-export type LiveRoomLiveStatus = "unknown" | "offline" | "live";
-
-/** Downstream batch result (enter/exit/product-script share shape). */
-export interface TriggerBatchResult {
-  attempted: number;
-  succeeded: number;
-  failed: number;
-  message?: string | null;
-  error?: string | null;
-  at: string;
-}
-
-/** `LiveRoomMonitorState` (driver/live_room_monitor.rs:197). */
-export interface LiveRoomMonitorState {
-  enabled: boolean;
-  profileId?: string | null;
-  liveRoomUrl?: string | null;
-  sceneId?: number | null;
-  groupId?: string | null;
-  productScriptId?: number | null;
-  productScriptAccountId?: string | null;
-  autoExitSubAccounts: boolean;
-  status: LiveRoomMonitorStatus;
-  liveStatus: LiveRoomLiveStatus;
-  triggeredForCurrentLive: boolean;
-  enteringRooms: boolean;
-  exitingRooms: boolean;
-  lastCheckedAt?: number | null;
-  lastTriggeredAt?: number | null;
-  nextCheckAt?: number | null;
-  lastEnterAllResult?: TriggerBatchResult | null;
-  lastExitAllResult?: TriggerBatchResult | null;
-  lastProductScriptResult?: TriggerBatchResult | null;
   error?: string | null;
 }

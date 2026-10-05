@@ -28,7 +28,7 @@ function errText(e: unknown): string {
 }
 
 /**
- * 伴侣开播块（「直播 › 开播准备」）。
+ * 伴侣开播块（「直播 › 正式开播」）。
  *
  * 对齐 jieger `pages/live-launch` 的伴侣开播流程：**选择直播伴侣账号**
  * （数据源 `mate_accounts_list`）→ 获取推流码（`live_launch_mate_credentials`）
@@ -42,7 +42,7 @@ function errText(e: unknown): string {
  * 慧播开播是独立组件（`HuiboLivePage`），本页只负责伴侣块。
  *
  * **命名空间**：伴侣账号（`mate_accounts`，键 = `mateAccountId`）与浏览器环境
- * （`profile_id`）是**两套独立命名空间**，当前没有绑定关系。本块作为「开播准备」
+ * （`profile_id`）是**两套独立命名空间**，当前没有绑定关系。本块作为「正式开播」
  * 账号维度下的**独立子区块**保留，不消费左侧选中的 profile。
  */
 export function LiveLaunchPage(): JSX.Element {

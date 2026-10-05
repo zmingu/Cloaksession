@@ -1,6 +1,6 @@
 import { activity, chromium, profiles as profilesApi, profilesDeleteGroup, profilesListGroups, system, onActivityEvent, onChromiumStatus, onExtensionInstalled, onProxyCountryUpdated, onRunningChanged } from "./lib/ipc";
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
-import { Sidebar, type Section, type KuaishouTab } from "./components/screens/Sidebar";
+import { Sidebar, type Section, type KuaishouTab, type JinniuTab } from "./components/screens/Sidebar";
 import { Constellation, type GroupFilter } from "./components/profile/Constellation";
 import { NewProfileSheet } from "./components/profile/NewProfileSheet";
 import { ProfileEditSheet } from "./components/profile/ProfileEditSheet";
@@ -8,7 +8,7 @@ import type { Profile, ProfileGroup } from "./types";
 import { ActivityDrawer } from "./components/activity/ActivityDrawer";
 import { McpPanel } from "./components/mcp/McpPanel";
 import { Settings } from "./components/screens/Settings";
-import { BusinessSection } from "./components/business/BusinessSection";
+import { BindAuthorizePage } from "./components/business/BindAuthorizePage";
 import { KuaishouAccountsPage } from "./components/kuaishou/KuaishouAccountsPage";
 import { JinniuAccountsPage } from "./components/jinniu/JinniuAccountsPage";
 import { LiveSection } from "./components/live/LiveSection";
@@ -36,12 +36,15 @@ export function App(): JSX.Element {
   // Persisted UI state — survives app restarts under localStorage `multizen.ui.*`.
   const [section, setSection] = usePersistedState<Section>("section", "profiles");
   const [kuaishouTab, setKuaishouTab] = usePersistedState<KuaishouTab>("kuaishouTab", "shop");
+  const [jinniuTab, setJinniuTab] = usePersistedState<JinniuTab>("jinniuTab", "accounts");
   const [drawerOpen, setDrawerOpen] = usePersistedState<boolean>("drawerOpen", false);
 
-  // Migrate the legacy "activity" section (renamed to "mcp") from localStorage
-  // so an existing install doesn't land on a blank screen.
+  // Migrate legacy sections (renamed / archived) from localStorage so an
+  // existing install doesn't land on a blank screen:
+  //   "activity" → "mcp" (section renamed); "live" → "business" (直播板块归档到其它).
   useEffect(() => {
     if ((section as string) === "activity") setSection("mcp");
+    if ((section as string) === "live") setSection("business");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -393,6 +396,8 @@ export function App(): JSX.Element {
           onDeleteGroup={deleteGroup}
           kuaishouTab={kuaishouTab}
           onKuaishouTabChange={setKuaishouTab}
+          jinniuTab={jinniuTab}
+          onJinniuTabChange={setJinniuTab}
         />
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
@@ -475,11 +480,11 @@ export function App(): JSX.Element {
             <KuaishouAccountsPage tab={kuaishouTab} onAddAccount={() => setWizardOpen(true)} />
           )}
 
-          {section === "jinniu" && <JinniuAccountsPage />}
+          {section === "jinniu" &&
+            (jinniuTab === "authorize" ? <BindAuthorizePage profiles={profiles} /> : <JinniuAccountsPage />)}
 
-          {section === "live" && <LiveSection profiles={profiles} />}
-
-          {section === "business" && <BusinessSection />}
+          {/* 直播板块（开播准备 / 直播互动 / 投流）已归档到「其它」，待重新设计。 */}
+          {section === "business" && <LiveSection profiles={profiles} />}
         </div>
 
       </div>
