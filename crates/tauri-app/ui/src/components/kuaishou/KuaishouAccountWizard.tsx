@@ -481,8 +481,15 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
 
   async function close(): Promise<void> {
     const id = profileId;
-    // Stop the hidden browser so it does not linger; the account (profile) stays.
-    if (id) await profilesApi.close(id).catch(() => {});
+    // A cancelled onboarding must not leave a stray "unnamed" environment. Only
+    // discard it when it was created by this wizard run and no account was ever
+    // detected (never signed in); an account the user set up is never removed.
+    const discard = created.current && !snapshot?.platformUserId;
+    if (id) {
+      await profilesApi.close(id).catch(() => {});
+      if (discard) await profilesApi.delete(id).catch(() => {});
+    }
+    if (discard) onCreated?.("");
     onClose();
   }
 
@@ -827,7 +834,7 @@ export function KuaishouAccountWizard({ open, onClose, onCreated }: Props): JSX.
             ) : (
               <>
                 <span className="flex-1 self-center text-[11px] text-slate-500">
-                  {created.current ? t("kuaishou.wizard.cancelCreated") : ""}
+                  {created.current && !snapshot?.platformUserId ? t("kuaishou.wizard.cancelCreated") : ""}
                 </span>
                 <Button onClick={() => void close()}>{t("common.cancel")}</Button>
               </>

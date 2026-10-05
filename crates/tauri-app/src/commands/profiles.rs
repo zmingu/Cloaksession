@@ -88,9 +88,14 @@ impl LaunchEntry {
 
 pub const KUAISHOU_LOGIN_URL: &str = "https://login.kwaixiaodian.com/?biz=zone&redirect_url=https%3A%2F%2Fs.kwaixiaodian.com%2Fzone%2Fhome";
 
-/// Kuaishou main-site viewer entry. The homepage is where the viewer identity
-/// (`www.kuaishou.com`) is read from; it is the only URL opened for this entry.
-pub const KUAISHOU_SUB_LOGIN_URL: &str = "https://www.kuaishou.com/";
+/// Kuaishou main-site viewer (互动账号 / 小号) login entry.
+///
+/// The homepage shows no QR by itself — the QR appears only after **立即登录**
+/// is clicked (navigating to the passport QR page). The QR reader drives that
+/// click on each poll until the image renders, so opening the main site (with
+/// `startUrl`/restored tabs) and clicking 立即登录 in the UI both lead to a
+/// scannable QR. After a scan the viewer identity is read from `www.kuaishou.com`.
+pub const KUAISHOU_SUB_LOGIN_URL: &str = "https://www.kuaishou.com/new-reco";
 
 #[tauri::command]
 pub async fn profiles_launch(

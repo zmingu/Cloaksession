@@ -405,10 +405,12 @@ test("interact wizard: create, hidden main-site launch, QR + detect, register", 
     },
   ]);
 
-  // Done stops the hidden browser and closes the wizard; the environment stays.
+  // Done stops the hidden browser and closes the wizard; the registered
+  // environment is never deleted.
   await dialog.getByRole("button", { name: "完成", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   expect((await wizardCalls(page, "profiles_close")).length).toBe(1);
+  expect(await wizardCalls(page, "profiles_delete")).toEqual([]);
 });
 
 /**
@@ -429,6 +431,11 @@ test("interact wizard: closing during the wait stops the QR/identity polling", a
 
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(dialog).toHaveCount(0);
+
+  // Cancelling an onboarding that was never registered discards the environment
+  // it just created, so no stray "unnamed" profile is left behind.
+  expect(await wizardCalls(page, "profiles_close")).toEqual([{ id: "fixture-profile" }]);
+  expect(await wizardCalls(page, "profiles_delete")).toEqual([{ id: "fixture-profile" }]);
 
   const qrAfterClose = (await wizardCalls(page, "kuaishou_login_qr")).length;
   const detectAfterClose = (await wizardCalls(page, "kuaishou_identity_detect")).length;
@@ -482,7 +489,7 @@ async function installInteractWizardMock(page: Page, language: "en" | "zh-CN" = 
           group: null,
         };
       }
-      if (command === "profiles_launch" || command === "profiles_close") {
+      if (command === "profiles_launch" || command === "profiles_close" || command === "profiles_delete") {
         mock.calls.push({ command, args: structuredClone(args) });
         if (command === "profiles_launch") {
           return { id: args.id, cdpEndpoint: "http://127.0.0.1:9", pid: 1, startedAt: "2026-01-01T00:00:00Z" };

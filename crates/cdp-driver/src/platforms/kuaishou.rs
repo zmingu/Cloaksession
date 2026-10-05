@@ -295,37 +295,91 @@ pub fn is_jinniu_login_page(url: &str) -> bool {
         .any(|marker| url.contains(marker))
 }
 
-/// DOM selectors that locate the shop login QR image, most specific first.
+/// DOM selectors that locate a login QR image, most specific first.
 ///
-/// Live page (`login.kwaixiaodian.com`): a single `<img alt="qrcode"
+/// Shop page (`login.kwaixiaodian.com`): a single `<img alt="qrcode"
 /// class="qrcode-img">` whose `src` is already an inline `data:image/png;base64,…`
 /// PNG. The class carries a Svelte scope hash, so only the stable `alt` and the
-/// `qrcode` class prefix are matched here.
+/// `qrcode` class prefix are matched.
+///
+/// Main-site passport page (`passport.kuaishou.com/pc/account/login`): once the
+/// QR tab is active the image lives in `.qrcode > img` (also an inline
+/// `data:image/png;base64,…` PNG, ~180px), covered by `.qrcode img`.
+/// No broad base64-`img` fallback is used: an unrelated avatar rendered as a
+/// data URL must never be mistaken for a login QR.
 const QR_IMG_SELECTORS: &[&str] = &[
     "img[alt=\"qrcode\"]",
     "img.qrcode-img",
     "img[class*=\"qrcode\"]",
+    ".qrcode-img img",
+    ".qrcode img",
+    "[class*=\"qrcode\"] img",
 ];
 
 /// The page marks an expired QR by swapping the status overlay to this class
-/// (showing "二维码已过期" + a refresh control) while leaving the stale `<img>`
-/// in place — so reading `src` alone would keep returning the dead QR.
+/// (shop: "二维码已过期"; main site: "二维码失效") while leaving the stale `<img>`
+/// in place — so reading `src` alone would keep returning the dead QR. Both pages
+/// expose a refresh control *inside* this overlay, but with different selectors:
+/// the shop page uses `.scan-button`, the main site a `p.qrcode-desc-text`
+/// ("点击刷新"). Both must be clicked, else the main-site QR never refreshes.
 const QR_EXPIRED_SELECTOR: &str = ".qrcode-status-timeout";
+const QR_REFRESH_SELECTORS: &[&str] = &[".scan-button", ".qrcode-desc-text"];
 
-/// Read the shop login QR straight from the page DOM, refreshing it when stale.
+/// The main-site homepage (`www.kuaishou.com/new-reco`) only reveals the login QR
+/// after the user clicks **立即登录**; the passport login page defaults to the
+/// password tab and must be switched to the 扫码 tab. Both are the same shape:
+/// click a trigger, then read on the next poll. Neither class/text exists on the
+/// shop login page, so the clicks are no-ops there.
+const QR_SWITCH_SELECTOR: &str = ".platform-switch-tips";
+/// Guard so only the 扫码 (QR) switch is ever clicked, never a password tab.
+const QR_SWITCH_MARKER: &str = "扫码";
+/// The main-site "sign in now" trigger whose click surfaces the QR.
+const QR_LOGIN_TEXT: &str = "立即登录";
+
+/// Build the single self-contained `Runtime.evaluate` expression that reads the
+/// login QR: refresh it when the page flags it expired, otherwise return the
+/// first inline PNG found. When no QR is rendered yet it clicks the reveal
+/// trigger — the passport 扫码 tab ([`QR_SWITCH_SELECTOR`]) or the main-site
+/// 立即登录 button ([`QR_LOGIN_TEXT`]) — so the next poll reads the freshly shown
+/// image. Kept as a function so a unit test can pin the selector wiring without a
+/// live browser.
+fn qr_expression(selectors: &str) -> String {
+    let refresh = serde_json::to_string(QR_REFRESH_SELECTORS).expect("static selector list");
+    [
+        "(function(){var expired=document.querySelector('",
+        QR_EXPIRED_SELECTOR,
+        "');if(expired){var rs=",
+        refresh.as_str(),
+        ";for(var k=0;k<rs.length;k++){var rb=expired.querySelector(rs[k]);if(rb&&rb.click){rb.click();break;}}return null;}var sels=",
+        selectors,
+        ";var img=null;for(var i=0;i<sels.length;i++){var el=document.querySelector(sels[i]);if(el){img=el;break;}}var src=img&&(img.currentSrc||img.src);if(src&&src.indexOf('data:image/png;base64,')===0)return src;var sw=document.querySelector('",
+        QR_SWITCH_SELECTOR,
+        "');if(sw&&sw.textContent&&sw.textContent.indexOf('",
+        QR_SWITCH_MARKER,
+        "')>=0){if(sw.click)sw.click();return null;}var els=document.querySelectorAll('a,button,[role=\"button\"],span,div,p');for(var j=0;j<els.length;j++){if((els[j].textContent||'').trim()==='",
+        QR_LOGIN_TEXT,
+        "'){if(els[j].click)els[j].click();break;}}return null;})()",
+    ]
+    .concat()
+}
+
+/// Read a login QR straight from the page DOM, refreshing it when stale.
 ///
-/// The login page renders the QR as an `<img>` whose `src` is an inline
-/// `data:image/png;base64,…` PNG, so the exact image can be lifted without a
-/// screenshot or a brittle region crop. When the QR expires the page only swaps
-/// its status overlay to [`QR_EXPIRED_SELECTOR`] and leaves the dead image in
-/// the DOM; this helper clicks the page's own refresh control (`.scan-button`)
-/// to mint a new one and returns `Ok(None)` for that poll, so the next poll reads
-/// the fresh image instead of the dead one.
+/// The shop login page and the main-site passport login page both render the QR
+/// as an `<img>` whose `src` is an inline `data:image/png;base64,…` PNG, so the
+/// exact image can be lifted without a screenshot or a brittle region crop. When
+/// the QR expires the page only swaps its status overlay to
+/// [`QR_EXPIRED_SELECTOR`] and leaves the dead image in the DOM; this helper
+/// clicks the page's own refresh control ([`QR_REFRESH_SELECTORS`]) to mint a new
+/// one and returns `Ok(None)` for that poll. On the passport page the QR is hidden
+/// behind the password tab, and on the main-site homepage it is behind 立即登录,
+/// so [`QR_SWITCH_SELECTOR`] / [`QR_LOGIN_TEXT`] are clicked to reveal it (again
+/// returning `Ok(None)` for that poll).
 ///
 /// Returns the bare base64 payload (no `data:` prefix) so the wire shape matches
 /// the previous screenshot contract. `Ok(None)` means "no valid QR right now"
-/// (not rendered, expired-and-refreshing, or the target is not the login page) —
-/// callers keep polling, never treat it as an error.
+/// (not rendered, expired-and-refreshing, password tab just switched, or the
+/// target is not a login page) — callers keep polling, never treat it as an error.
 pub async fn qr_image(
     session: &BrowserSession,
     target_id: &str,
@@ -343,17 +397,9 @@ pub async fn qr_image(
     let selectors = serde_json::to_string(QR_IMG_SELECTORS).map_err(|error| {
         TaskError::Driver(MultizenError::Cdp(format!("qr selectors: {error}")))
     })?;
-    // One round-trip: refresh an expired QR (click the page's own control), else
-    // return the first selector's inline PNG data URL. Everything is injected so
-    // the expression stays self-contained for a single Runtime.evaluate call.
-    let expression = [
-        "(function(){var expired=document.querySelector('",
-        QR_EXPIRED_SELECTOR,
-        "');if(expired){var btn=expired.querySelector('.scan-button');if(btn&&btn.click)btn.click();return null;}var sels=",
-        selectors.as_str(),
-        ";var img=null;for(var i=0;i<sels.length;i++){var el=document.querySelector(sels[i]);if(el){img=el;break;}}var src=img&&(img.currentSrc||img.src);if(src&&src.indexOf('data:image/png;base64,')===0)return src;return null;})()",
-    ]
-    .concat();
+    // One round-trip: refresh an expired QR, else return the first selector's
+    // inline PNG data URL, else reveal the QR tab on the passport page.
+    let expression = qr_expression(&selectors);
     let value = page.evaluate(&expression, timeout).await?;
     page.release();
     let Some(src) = value.as_str() else {
@@ -943,5 +989,27 @@ mod tests {
             serde_json::to_value(&ok).unwrap(),
             serde_json::json!({"ok": true, "scanned": false, "error": null})
         );
+    }
+
+    #[test]
+    fn qr_expression_covers_both_login_pages_and_switches_to_qr_tab() {
+        let expr = qr_expression(&serde_json::to_string(QR_IMG_SELECTORS).unwrap());
+        // Shop login page: the inline `alt="qrcode"` / `qrcode-img` image is tried.
+        assert!(expr.contains("qrcode-img"));
+        // Main-site passport page: the QR sits under `.qrcode`, and the password
+        // tab must be switched to the QR tab before it renders.
+        assert!(expr.contains(".qrcode img"));
+        assert!(expr.contains(QR_SWITCH_SELECTOR));
+        assert!(expr.contains(QR_SWITCH_MARKER));
+        // Main-site homepage: 立即登录 must be clicked to surface the QR.
+        assert!(expr.contains(QR_LOGIN_TEXT));
+        // An expired QR is refreshed through the page's own control — the shop
+        // page's `.scan-button` and the main site's `.qrcode-desc-text`.
+        assert!(expr.contains(QR_EXPIRED_SELECTOR));
+        assert!(expr.contains(".scan-button"));
+        assert!(expr.contains(".qrcode-desc-text"));
+        // Self-contained single-evaluate IIFE.
+        assert!(expr.starts_with("(function(){"));
+        assert!(expr.ends_with("})()"));
     }
 }

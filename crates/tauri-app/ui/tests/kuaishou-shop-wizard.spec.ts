@@ -82,10 +82,12 @@ test("shop account wizard: partitioned form (no General), shop home, create, QR,
     { id: "fixture-profile", patch: { name: "本地小店" } },
   ]);
 
-  // AC9/close: Done stops the hidden browser and closes the wizard.
+  // AC9/close: Done stops the hidden browser and closes the wizard; a detected
+  // account is never deleted.
   await dialog.getByRole("button", { name: "完成", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   expect((await wizardCalls(page, "profiles_close")).length).toBe(1);
+  expect(await wizardCalls(page, "profiles_delete")).toEqual([]);
 });
 
 /**
@@ -112,9 +114,12 @@ test("shop account wizard: a proxy requests Chromix GeoIP alignment on create", 
   expect(input.proxy).toEqual(expect.objectContaining({ host: "1.2.3.4" }));
   expect(input.chromixOptions).toEqual(expect.objectContaining({ geoip: true }));
 
-  // Clean up: cancel stops the hidden browser.
+  // Clean up: cancelling before any account is detected stops the hidden browser
+  // and discards the just-created environment (no stray "unnamed" profile).
   await dialog.getByRole("button", { name: "取消", exact: true }).click();
   await expect(dialog).toHaveCount(0);
+  expect(await wizardCalls(page, "profiles_close")).toEqual([{ id: "fixture-profile" }]);
+  expect(await wizardCalls(page, "profiles_delete")).toEqual([{ id: "fixture-profile" }]);
 });
 
 async function wizardCalls(page: Page, command: string) {
@@ -278,7 +283,7 @@ async function installWizardMock(page: Page, language: "en" | "zh-CN" = "en"): P
           group: null,
         };
       }
-      if (command === "profiles_launch" || command === "profiles_close") {
+      if (command === "profiles_launch" || command === "profiles_close" || command === "profiles_delete") {
         mock.calls.push({ command, args: structuredClone(args) });
         if (command === "profiles_launch") return { id: args.id, cdpEndpoint: "http://127.0.0.1:9", pid: 1, startedAt: "2026-01-01T00:00:00Z" };
         return undefined;

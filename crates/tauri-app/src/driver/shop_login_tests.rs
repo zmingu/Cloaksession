@@ -46,7 +46,9 @@ fn launch_entry_wire_is_explicit_and_url_is_login_not_post_login_home() {
     // that opens the homepage (not the merchant console).
     let sub: LaunchEntry = serde_json::from_value(serde_json::json!("kuaishou-sub")).unwrap();
     assert_eq!(sub.login_url(), KUAISHOU_SUB_LOGIN_URL);
-    assert_eq!(KUAISHOU_SUB_LOGIN_URL, "https://www.kuaishou.com/");
+    // The viewer entry opens the main site; the login QR is reached by clicking
+    // 立即登录 (driven by the QR reader), not by the URL itself.
+    assert_eq!(KUAISHOU_SUB_LOGIN_URL, "https://www.kuaishou.com/new-reco");
     assert_eq!(
         serde_json::from_value::<LaunchEntry>(serde_json::json!("kuaishou-shop")).unwrap().login_url(),
         KUAISHOU_LOGIN_URL
