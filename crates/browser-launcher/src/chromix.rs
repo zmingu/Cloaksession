@@ -50,6 +50,16 @@ fn launch_error(message: impl std::fmt::Display) -> MultizenError {
     MultizenError::Launch(format!("Chromix: {message}"))
 }
 
+/// Bridge-side resource profile tag. Kuaishou viewer (互动账号) profiles get the
+/// media/font resource guard; every other profile stays untouched.
+fn resource_profile(sub_account: bool) -> &'static str {
+    if sub_account {
+        "sub"
+    } else {
+        "default"
+    }
+}
+
 fn request(
     profile: &Profile,
     binary_path: &Path,
@@ -57,6 +67,7 @@ fn request(
     config: &ChromixSettings,
     port: u16,
     skip_download: bool,
+    sub_account: bool,
 ) -> Value {
     let mut extensions = Vec::new();
     if let Some(dir) = companion_dir.filter(|dir| dir.is_dir()) {
@@ -96,6 +107,8 @@ fn request(
         "proxy": proxy,
         "extensionPaths": extensions,
         "startUrl": profile.start_url,
+        // 互动账号（小号）：桥接层据此安装资源守卫（阻断媒体/字体 + 静音暂停）。
+        "resourceProfile": resource_profile(sub_account),
     })
 }
 
@@ -143,6 +156,7 @@ pub(crate) async fn start(
     config: &ChromixSettings,
     runtime_dir: &Path,
     skip_download: bool,
+    sub_account: bool,
 ) -> Result<ChromixProcess> {
     let script = runtime_dir.join("bridge.mjs");
     if !script.is_file() {
@@ -164,6 +178,7 @@ pub(crate) async fn start(
         config,
         port,
         skip_download,
+        sub_account,
     ))?;
     payload.push(b'\n');
     let mut command = Command::new(&config.node_path);
@@ -269,5 +284,17 @@ pub(crate) async fn start(
                 _ => launch_error("bridge supervisor stopped before ready"),
             })
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resource_profile_marks_only_sub_accounts() {
+        // 互动账号（小号）→ "sub"，其余环境 → "default"：桥接层据此决定是否安装资源守卫。
+        assert_eq!(resource_profile(true), "sub");
+        assert_eq!(resource_profile(false), "default");
     }
 }

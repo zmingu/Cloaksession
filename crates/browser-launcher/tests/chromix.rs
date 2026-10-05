@@ -212,6 +212,8 @@ async fn persistent_launch_preserves_options_and_keeps_secrets_off_argv() {
     }
     assert_eq!(captured["options"]["proxy"]["password"], "private-password");
     assert_eq!(captured["secret"], "private-env-token");
+    // 宿主资源守卫标记只走桥接请求，不泄漏进 SDK options。
+    assert_eq!(captured["options"].get("resourceProfile"), None);
     let argv = captured["argv"].as_array().unwrap();
     assert_eq!(argv.len(), 2);
     assert!(argv

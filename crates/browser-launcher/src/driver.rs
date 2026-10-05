@@ -113,6 +113,15 @@ impl BrowserLauncher {
             crate::data_dir::effective_data_dir(&profile, BrowserEngine::Chromix, config)?;
         let verified_data_dir = crate::data_dir::verify_data_dir(&data_dir).ok();
         let business_scope = self.pm.business_profile_scope(profile_id)?;
+        // 互动账号（小号）多开优化：按业务身份判定，向桥接层下发
+        // `resourceProfile=sub`，使其阻断媒体/字体并静音暂停。
+        let sub_account = matches!(
+            self.pm
+                .business_accounts_profile_state(profile_id)?
+                .account
+                .map(|account| account.kind),
+            Some(multizen_core::BusinessAccountKind::KuaishouSub)
+        );
         let process = crate::chromix::start(
             &profile,
             binary_path,
@@ -120,6 +129,7 @@ impl BrowserLauncher {
             config,
             runtime_dir,
             skip_download,
+            sub_account,
         )
         .await?;
         if let Err(error) = self.pm.mark_opened(profile_id) {

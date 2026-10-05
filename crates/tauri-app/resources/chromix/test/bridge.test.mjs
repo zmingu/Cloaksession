@@ -285,3 +285,67 @@ test('invalid JSON does not launch and CDP cancellation is bounded', async (t) =
   controller.abort();
   await assert.rejects(waitForCdp('http://127.0.0.1:1', controller.signal), /cancelled/);
 });
+
+/** Launch a bridge with a context stub that records guard installation. */
+async function launchWithGuard(resourceProfile) {
+  const calls = { route: [], scripts: [] };
+  const context = new EventEmitter();
+  context.pages = () => [{ url: () => 'about:blank', goto: async () => {} }];
+  context.close = async () => context.emit('close');
+  context.route = async (pattern, handler) => { calls.route.push({ pattern, handler }); };
+  context.addInitScript = async (script) => { calls.scripts.push(script); };
+  const messages = [];
+  const input = new PassThrough();
+  const done = runBridge({
+    input, send: (message) => messages.push(message), env: {}, ready: async () => {},
+    loadSdk: async () => ({ launchPersistentContext: async () => context }),
+  });
+  input.write(`${JSON.stringify({ ...request({}), userDataDir: '/tmp/chromix-guard', resourceProfile })}\n`);
+  for (let i = 0; i < 200 && !messages.some((message) => message.type === 'ready'); i++) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  assert.ok(messages.some((message) => message.type === 'ready'), 'bridge must become ready');
+  return { calls, input, done };
+}
+
+test('resourceProfile sub installs the media/font guard and mutes media', async () => {
+  const { calls, input, done } = await launchWithGuard('sub');
+  try {
+    assert.equal(calls.route.length, 1);
+    assert.equal(calls.route[0].pattern, '**/*');
+    assert.equal(calls.scripts.length, 1);
+    // Media, fonts and common video segment URLs are aborted; everything else continues.
+    const aborted = [];
+    const continued = [];
+    const handler = calls.route[0].handler;
+    const hit = (resourceType, url) => handler({
+      request: () => ({ resourceType: () => resourceType, url: () => url }),
+      abort: async () => { aborted.push(url); },
+      continue: async () => { continued.push(url); },
+    });
+    await hit('media', 'https://live.example/stream');
+    await hit('font', 'https://static.example/font.woff2');
+    await hit('xhr', 'https://cdn.example/clip.MP4?token=1');
+    await hit('xhr', 'https://api.example/danmaku');
+    assert.deepEqual(aborted, [
+      'https://live.example/stream',
+      'https://static.example/font.woff2',
+      'https://cdn.example/clip.MP4?token=1',
+    ]);
+    assert.deepEqual(continued, ['https://api.example/danmaku']);
+  } finally {
+    input.end();
+    await done;
+  }
+});
+
+test('default resource profile leaves the context untouched', async () => {
+  const { calls, input, done } = await launchWithGuard('default');
+  try {
+    assert.equal(calls.route.length, 0);
+    assert.equal(calls.scripts.length, 0);
+  } finally {
+    input.end();
+    await done;
+  }
+});

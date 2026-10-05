@@ -5,6 +5,98 @@ import { pathToFileURL } from 'node:url';
 import { applyWindowsFonts } from './windows-fonts.mjs';
 
 const own = (object, key) => Object.hasOwn(object, key);
+
+// 互动账号（小号）资源守卫：与 jieger `installSubAccountResourceSaver` +
+// `installSubAccountMediaPauser` 等价。小号只做弹幕互动，直播间音视频、字体与
+// 弹幕渲染都是纯开销，多开时会显著抬高 CPU/内存/带宽，因此整站阻断并静音。
+const GUARD_MEDIA_RESOURCE_TYPES = new Set(['media', 'font']);
+const GUARD_MEDIA_URL_PATTERN = /\.(?:m3u8|flv|mp4|m4s|webm|ts)(?:[?#]|$)/i;
+/** 快手直播间弹幕开关（jieger 同款 localStorage 键）。 */
+export const DANMAKU_STORAGE_KEY = 'kslive.chatSetting.danmakuCustomConfig';
+
+/**
+ * 在互动账号的持久上下文上安装资源守卫：
+ * - `route` 层阻断 media/font 请求与常见视频分片 URL；
+ * - `addInitScript` 在新文档执行前静音并暂停 `<video>/<audio>`，并关闭快手弹幕。
+ * 仅当上下文支持对应 API 时安装，缺失时静默跳过（fake SDK / 测试桩）。
+ */
+export async function installResourceGuard(context) {
+  if (typeof context?.route === 'function') {
+    await context.route('**/*', (route) => {
+      const request = route.request();
+      const blocked =
+        GUARD_MEDIA_RESOURCE_TYPES.has(request.resourceType()) ||
+        GUARD_MEDIA_URL_PATTERN.test(request.url());
+      return (blocked ? route.abort() : route.continue()).catch(() => {});
+    });
+  }
+  if (typeof context?.addInitScript === 'function') {
+    await context.addInitScript((danmakuKey) => {
+      const pauseMedia = () => {
+        for (const media of Array.from(document.querySelectorAll('video,audio'))) {
+          media.muted = true;
+          media.autoplay = false;
+          media.preload = 'metadata';
+          try {
+            media.pause();
+          } catch {
+            /* 元素可能已被移除 */
+          }
+        }
+      };
+      const disableDanmaku = () => {
+        if (location.hostname !== 'live.kuaishou.com') return;
+        try {
+          const current = JSON.parse(localStorage.getItem(danmakuKey) || '{}');
+          localStorage.setItem(danmakuKey, JSON.stringify({ ...current, enabled: false }));
+        } catch {
+          localStorage.setItem(danmakuKey, JSON.stringify({ enabled: false }));
+        }
+      };
+      const sweep = () => {
+        disableDanmaku();
+        pauseMedia();
+      };
+      let timer = null;
+      const scheduleSweep = () => {
+        if (timer !== null) window.clearTimeout(timer);
+        timer = window.setTimeout(() => {
+          timer = null;
+          sweep();
+        }, 100);
+      };
+      document.addEventListener(
+        'play',
+        (event) => {
+          disableDanmaku();
+          if (event.target instanceof HTMLMediaElement) {
+            event.target.muted = true;
+            try {
+              event.target.pause();
+            } catch {
+              /* 元素可能已被移除 */
+            }
+          }
+        },
+        true,
+      );
+      window.addEventListener('DOMContentLoaded', scheduleSweep, true);
+      window.addEventListener('load', scheduleSweep, true);
+      const observe = () => {
+        sweep();
+        const root = document.documentElement;
+        if (!root) return;
+        new MutationObserver(scheduleSweep).observe(root, { childList: true, subtree: true });
+      };
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', observe, { once: true });
+      } else {
+        observe();
+      }
+    }, DANMAKU_STORAGE_KEY);
+  }
+}
+
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const reserved = /^--?(?:remote-debugging(?:-[^=\s]+)?|user-data-dir|profile-directory)(?:=|\s|$)/i;
 const extensionFlag = /^--?(?:load-extension|disable-extensions(?:-except)?)(?:=|\s|$)/i;
@@ -224,6 +316,8 @@ export function runBridge({
         await mkdir(options.userDataDir, { recursive: true });
         if (stopping) return;
         context = await sdk.launchPersistentContext(options);
+        // 互动账号（小号）多开优化：整站阻断媒体/字体并静音暂停，仅由宿主标记触发。
+        if (request.resourceProfile === 'sub') await installResourceGuard(context);
         context.once?.('close', () => {
           if (!stopping) {
             stopping = true;

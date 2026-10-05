@@ -35,6 +35,17 @@ Hidden launch (`hidden: true`) appends `--window-position=-32000,-32000` into
 `launchOptions.args` by hand (a shallow merge would drop the profile's own
 `launchOptions`), keeping the window headed but off-screen — never `--headless`.
 
+Kuaishou viewer profiles (互动账号, `business_accounts.kind = kuaishou-sub`) are
+launched with `resourceProfile: "sub"` in the bridge request. The bridge then
+installs a resource guard on the persistent context — equivalent to jieger's
+`installSubAccountResourceSaver` + `installSubAccountMediaPauser`: it aborts
+`media`/`font` requests and common video-segment URLs (`m3u8/flv/mp4/m4s/webm/ts`),
+and injects an init script that mutes + pauses every `<video>`/`<audio>` and
+disables the Kuaishou live-room danmaku overlay. This is a pure multi-account
+CPU/memory/bandwidth optimization: viewer accounts only send danmaku, so playback
+and danmaku rendering are pure overhead. Every other profile keeps
+`resourceProfile: "default"` and is untouched.
+
 An omitted headless setting defaults to a visible browser. A profile proxy
 is used only without explicit proxy options or proxy arguments. Enabled,
 existing profile/companion extension directories default `extensionPaths`
