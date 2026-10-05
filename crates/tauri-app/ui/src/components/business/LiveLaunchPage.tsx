@@ -40,6 +40,10 @@ function errText(e: unknown): string {
  *
  * 不再手输 profile-id / 中控页 URL——伴侣开播走 liveMate 直连取流。
  * 慧播开播是独立组件（`HuiboLivePage`），本页只负责伴侣块。
+ *
+ * **命名空间**：伴侣账号（`mate_accounts`，键 = `mateAccountId`）与浏览器环境
+ * （`profile_id`）是**两套独立命名空间**，当前没有绑定关系。本块作为「开播准备」
+ * 账号维度下的**独立子区块**保留，不消费左侧选中的 profile。
  */
 export function LiveLaunchPage(): JSX.Element {
   const t = useT();
@@ -149,10 +153,8 @@ export function LiveLaunchPage(): JSX.Element {
 
   return (
     <section aria-label={t("biz.live.title")} className="flex flex-col gap-4 p-6 max-w-2xl">
-      <div>
-        <h2 className="text-[15px] font-bold text-slate-100">{t("biz.live.title")}</h2>
-        <p className="text-[12px] text-slate-500 mt-1">{t("biz.live.hint")}</p>
-      </div>
+      {/* 独立于浏览器环境：mate 账号（mate_accounts）与 profile 是两套命名空间。 */}
+      <p className="text-[12px] text-amber-300/90">{t("live.prepare.mateNote")}</p>
 
       <div className="flex items-end gap-2">
         <label className="flex flex-col gap-1 text-[12px] text-slate-400 flex-1 min-w-0">

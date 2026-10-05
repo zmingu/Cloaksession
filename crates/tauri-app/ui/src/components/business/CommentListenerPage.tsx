@@ -19,9 +19,13 @@ import {
  * `recent()` polling returns the full newest-first list in one shot and
  * degrades cleanly when the backend build lacks the commands.
  */
-export function CommentListenerPage(): JSX.Element {
+interface Props {
+  /** 账号键（浏览器环境 = 快手小店账号）。由「直播互动」工作台传入。 */
+  profileId: string;
+}
+
+export function CommentListenerPage({ profileId }: Props): JSX.Element {
   const t = useT();
-  const [profileId, setProfileId] = useState("");
   const [targetId, setTargetId] = useState("");
   const [status, setStatus] = useState<ListenerStatus | null>(null);
   const [all, setAll] = useState<ListenerStatus[]>([]);
@@ -154,6 +158,7 @@ export function CommentListenerPage(): JSX.Element {
   }
 
   const running = status?.running ?? false;
+  const hasAccount = profileId.trim() !== "";
 
   return (
     <div className="flex flex-col gap-4 p-6 overflow-y-auto" data-testid="comments-page">
@@ -169,6 +174,13 @@ export function CommentListenerPage(): JSX.Element {
         )}
       </div>
 
+      <p className="text-xs text-slate-400">{t("live.accounts.current", { id: profileId })}</p>
+      {!hasAccount && (
+        <p role="note" className="text-xs text-amber-300">
+          {t("live.accounts.selectFirst")}
+        </p>
+      )}
+
       {error && (
         <div role="alert" className="text-sm text-red-300">
           {t("biz.comments.failedToast", { detail: error })}
@@ -176,16 +188,6 @@ export function CommentListenerPage(): JSX.Element {
       )}
 
       <div className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-1 text-xs">
-          {t("biz.comments.profileId")}
-          <input
-            aria-label={t("biz.comments.profileId")}
-            value={profileId}
-            onChange={(e) => setProfileId(e.target.value)}
-            placeholder="profile-id"
-            className="h-8 px-2 rounded-md bg-transparent border border-[var(--border)]"
-          />
-        </label>
         <label className="flex flex-col gap-1 text-xs">
           {t("biz.comments.targetId")}
           <input
@@ -196,13 +198,13 @@ export function CommentListenerPage(): JSX.Element {
             className="h-8 px-2 rounded-md bg-transparent border border-[var(--border)]"
           />
         </label>
-        <Button variant="primary" disabled={!profileId.trim() || busy || running} onClick={() => void onStart()}>
+        <Button variant="primary" disabled={!hasAccount || busy || running} onClick={() => void onStart()}>
           {t("biz.comments.start")}
         </Button>
-        <Button variant="secondary" disabled={!profileId.trim() || busy || !running} onClick={() => void onStop()}>
+        <Button variant="secondary" disabled={!hasAccount || busy || !running} onClick={() => void onStop()}>
           {t("biz.comments.stop")}
         </Button>
-        <Button variant="secondary" disabled={!profileId.trim() || busy} onClick={() => void refreshStatus()}>
+        <Button variant="secondary" disabled={!hasAccount || busy} onClick={() => void refreshStatus()}>
           {t("biz.comments.refresh")}
         </Button>
       </div>

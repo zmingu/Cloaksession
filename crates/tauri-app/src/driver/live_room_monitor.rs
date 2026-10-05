@@ -19,6 +19,8 @@
 //! - 轮询快慢自动切换：开播中 / 已触发用 [`FAST_POLL_MS`]，离线用
 //!   [`SLOW_POLL_MS`]。
 
+use std::collections::HashMap;
+use std::pin::Pin;
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
@@ -478,28 +480,118 @@ const SNAPSHOT_EXTRACTOR_JS: &str = r#"(() => {
   };
 })()"#;
 
-struct MonitorRuntime {
-    state: RwLock<LiveRoomMonitorState>,
-    cancel: RwLock<Option<TaskCancel>>,
+/// 单个 profile 的监控槽：状态 / 取消句柄 / 检测互斥各自独立。
+/// `checking` 必须**每槽独立**，否则 A 槽检测会阻塞 B 槽的检测。
+/// `checking` 用 `Arc` 包裹，便于循环在不持有槽读锁的情况下克隆后在锁外 await。
+pub struct MonitorSlot {
+    state: LiveRoomMonitorState,
+    cancel: Option<TaskCancel>,
     /// `checking` 互斥：上轮检测未完成时跳过本轮（同 jieger）。
-    checking: Mutex<()>,
+    checking: Arc<Mutex<()>>,
 }
 
-static MONITOR: LazyLock<MonitorRuntime> = LazyLock::new(|| MonitorRuntime {
-    state: RwLock::new(LiveRoomMonitorState::default()),
-    cancel: RwLock::new(None),
-    checking: Mutex::new(()),
-});
-
-fn emit_state(app: &tauri::AppHandle, state: &LiveRoomMonitorState) {
-    if let Err(e) = app.emit(LIVE_ROOM_MONITOR_STATE_CHANGED, state) {
-        tracing::warn!(error = %e, "live-room-monitor: 状态推送失败");
+impl MonitorSlot {
+    fn new(state: LiveRoomMonitorState, cancel: Option<TaskCancel>) -> Self {
+        Self {
+            state,
+            cancel,
+            checking: Arc::new(Mutex::new(())),
+        }
     }
 }
 
-/// 同步读当前快照（给同步 IPC 命令用；低频调用，可接受阻塞读）。
-pub fn current_state_blocking() -> LiveRoomMonitorState {
-    MONITOR.state.blocking_read().clone()
+/// 监控运行时：按 profile 分槽，支持多账号同时监控。
+struct MonitorRuntime {
+    slots: RwLock<HashMap<String, MonitorSlot>>,
+    /// 单次检测桩：默认走真实浏览器检测；测试注入离线桩，避免真实网络。
+    probe: RwLock<Option<MonitorProbe>>,
+}
+
+impl MonitorRuntime {
+    fn new() -> Self {
+        Self {
+            slots: RwLock::new(HashMap::new()),
+            probe: RwLock::new(None),
+        }
+    }
+
+    /// 所有槽快照（仅测试用；按 profileId 稳定排序，便于断言）。
+    #[cfg(test)]
+    async fn list(&self) -> Vec<LiveRoomMonitorState> {
+        let slots = self.slots.read().await;
+        let mut states: Vec<LiveRoomMonitorState> =
+            slots.values().map(|slot| slot.state.clone()).collect();
+        states.sort_by(|a, b| a.profile_id.cmp(&b.profile_id));
+        states
+    }
+
+    /// 单槽快照（仅测试用）；未知 profile → `default()`（`profile_id: None`，
+    /// 行为与改动前的“未启动”一致）。
+    #[cfg(test)]
+    async fn state(&self, profile_id: &str) -> LiveRoomMonitorState {
+        self.slots
+            .read()
+            .await
+            .get(profile_id)
+            .map(|slot| slot.state.clone())
+            .unwrap_or_default()
+    }
+}
+
+static MONITOR: LazyLock<MonitorRuntime> = LazyLock::new(MonitorRuntime::new);
+
+/// 状态推送出口：生产环境推 Tauri 事件；测试可注入内存 sink。
+pub type StateSink = Arc<dyn Fn(&LiveRoomMonitorState) + Send + Sync>;
+
+/// 默认出口：emit `LIVE_ROOM_MONITOR_STATE_CHANGED`（payload 含 `profileId`，
+/// 前端据此分发到对应账号）。
+fn default_sink<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> StateSink {
+    let app = app.clone();
+    Arc::new(move |state: &LiveRoomMonitorState| {
+        if let Err(e) = app.emit(LIVE_ROOM_MONITOR_STATE_CHANGED, state) {
+            tracing::warn!(error = %e, "live-room-monitor: 状态推送失败");
+        }
+    })
+}
+
+/// 经出口推送一次状态。
+fn emit_state(sink: &StateSink, state: &LiveRoomMonitorState) {
+    sink(state);
+}
+
+/// 单次检测桩的返回 future（`Box<dyn Future>` 便于注入不同实现）。
+pub type ProbeFuture =
+    Pin<Box<dyn std::future::Future<Output = Result<RoomPageClass, String>> + Send + 'static>>;
+
+/// 单次检测桩：给定 `(profileId, url)` 返回页面分类。
+/// 测试注入离线桩，避免真实网络；生产不注入，走
+/// [`TauriBrowserDriver::check_once`] 真实浏览器检测。
+pub type MonitorProbe = Arc<dyn Fn(&str, &str) -> ProbeFuture + Send + Sync>;
+
+/// 下游任务/测试接入时调用：注入 / 清除单次检测桩（`None` 恢复真实检测）。
+#[allow(dead_code)]
+pub async fn set_monitor_probe(probe: Option<MonitorProbe>) {
+    *MONITOR.probe.write().await = probe;
+}
+
+/// 同步读单槽快照（给同步 IPC 命令用；低频调用，可接受阻塞读）。
+/// 未知 profile → 默认快照（`profileId: null`，与“未启动”一致）。
+pub fn current_state_blocking(profile_id: &str) -> LiveRoomMonitorState {
+    MONITOR
+        .slots
+        .blocking_read()
+        .get(profile_id)
+        .map(|slot| slot.state.clone())
+        .unwrap_or_default()
+}
+
+/// 同步读所有槽快照（给同步 IPC 命令用；供前端一次拉全）。
+pub fn list_states_blocking() -> Vec<LiveRoomMonitorState> {
+    let slots = MONITOR.slots.blocking_read();
+    let mut states: Vec<LiveRoomMonitorState> =
+        slots.values().map(|slot| slot.state.clone()).collect();
+    states.sort_by(|a, b| a.profile_id.cmp(&b.profile_id));
+    states
 }
 
 /// 把一次检测结论合入状态（含联动触发）。
@@ -570,16 +662,23 @@ pub async fn apply_live_status(
 }
 
 impl TauriBrowserDriver {
-    /// 当前监控快照（未启动过 → Idle 默认）。
-    pub async fn live_room_monitor_state(&self) -> LiveRoomMonitorState {
-        MONITOR.state.read().await.clone()
+    /// 指定 profile 的监控快照（未启动过 → Idle 默认）。
+    pub async fn live_room_monitor_state(&self, profile_id: &str) -> LiveRoomMonitorState {
+        MONITOR
+            .slots
+            .read()
+            .await
+            .get(profile_id)
+            .map(|slot| slot.state.clone())
+            .unwrap_or_default()
     }
 
-    /// 启动监控：校验配置 → 落状态 → 起 tokio 循环（`&Arc<Self>` 起循环，
-    /// 同 identity monitor 模式）。重复启动直接拒绝。
-    pub fn start_live_room_monitor(
+    /// 启动监控：校验配置 → 落该 profile 的槽 → 起 tokio 循环。
+    /// 同一 profile 重复启动是**幂等替换**：先取消旧循环再起新的，
+    /// 不影响其他 profile 的槽（支持多账号同时监控）。
+    pub async fn start_live_room_monitor<R: tauri::Runtime>(
         self: &Arc<Self>,
-        app: &tauri::AppHandle,
+        app: &tauri::AppHandle<R>,
         profile_id: &str,
         config: MonitorConfig,
     ) -> std::result::Result<LiveRoomMonitorState, String> {
@@ -589,61 +688,73 @@ impl TauriBrowserDriver {
         if profile_id.trim().is_empty() {
             return Err("请先选择执行检测的浏览器环境".into());
         }
-        // 同步检查运行态：已在运行则拒绝（tokio RwLock 用 blocking 写锁，
-        // 启动路径低频，可接受）。
-        {
-            let mut state = MONITOR.state.blocking_write();
-            if state.enabled {
-                return Err("直播间监控已在运行，请先停止".into());
-            }
-            *state = LiveRoomMonitorState {
-                enabled: true,
-                profile_id: Some(profile_id.to_string()),
-                live_room_url: Some(config.live_room_url.clone()),
-                scene_id: config.scene_id,
-                group_id: config.group_id.clone(),
-                product_script_id: config.product_script_id,
-                product_script_account_id: config.product_script_account_id.clone(),
-                auto_exit_sub_accounts: config.auto_exit_sub_accounts,
-                status: LiveRoomMonitorStatus::Checking,
-                ..LiveRoomMonitorState::default()
-            };
-            // enabled 必须在 struct-update 之后重新置 true（default 为 false）。
-            state.enabled = true;
-            state.status = LiveRoomMonitorStatus::Checking;
-        }
         let cancel = TaskCancel::new();
-        MONITOR.cancel.blocking_write().replace(cancel.clone());
-        let snapshot = MONITOR.state.blocking_read().clone();
-        emit_state(app, &snapshot);
+        let state = LiveRoomMonitorState {
+            enabled: true,
+            profile_id: Some(profile_id.to_string()),
+            live_room_url: Some(config.live_room_url.clone()),
+            scene_id: config.scene_id,
+            group_id: config.group_id.clone(),
+            product_script_id: config.product_script_id,
+            product_script_account_id: config.product_script_account_id.clone(),
+            auto_exit_sub_accounts: config.auto_exit_sub_accounts,
+            status: LiveRoomMonitorStatus::Checking,
+            ..LiveRoomMonitorState::default()
+        };
+        let sink = default_sink(app);
+        // 快照检测桩（测试可注入离线桩；生产为 None → 走真实检测）。
+        let probe = MONITOR.probe.read().await.clone();
+        // 落槽：同 profile 先取消旧任务再替换（幂等）；其他槽不动。
+        let snapshot = {
+            let mut slots = MONITOR.slots.write().await;
+            if let Some(old) = slots.get(profile_id).and_then(|slot| slot.cancel.as_ref()) {
+                old.cancel();
+            }
+            slots.insert(
+                profile_id.to_string(),
+                MonitorSlot::new(state.clone(), Some(cancel.clone())),
+            );
+            state
+        };
+        emit_state(&sink, &snapshot);
         tracing::info!(
             profile = %profile_id,
             url = %config.live_room_url,
             "live-room-monitor: 启动"
         );
-        tauri::async_runtime::spawn(monitor_loop(Arc::clone(self), app.clone(), cancel));
+        tauri::async_runtime::spawn(monitor_loop(
+            Arc::clone(self),
+            profile_id.to_string(),
+            cancel,
+            sink,
+            probe,
+        ));
         Ok(snapshot)
     }
 
-    /// 停止监控：取消循环 → 落 Idle（幂等，未运行也返回当前快照）。
-    pub async fn stop_live_room_monitor(
+    /// 停止指定 profile 的监控：取消循环 → 从槽中移除（幂等）。
+    /// 只影响该 profile，其他槽继续运行；未启动的 profile 返回默认快照。
+    pub async fn stop_live_room_monitor<R: tauri::Runtime>(
         &self,
-        app: &tauri::AppHandle,
+        app: &tauri::AppHandle<R>,
+        profile_id: &str,
     ) -> std::result::Result<LiveRoomMonitorState, String> {
-        if let Some(cancel) = MONITOR.cancel.write().await.take() {
-            cancel.cancel();
-        }
-        let snapshot = {
-            let mut state = MONITOR.state.write().await;
-            state.enabled = false;
-            state.status = LiveRoomMonitorStatus::Idle;
-            state.entering_rooms = false;
-            state.exiting_rooms = false;
-            state.clone()
+        let mut slots = MONITOR.slots.write().await;
+        let removed = match slots.remove(profile_id) {
+            Some(slot) => {
+                if let Some(cancel) = slot.cancel.as_ref() {
+                    cancel.cancel();
+                }
+                slot.state
+            }
+            // 幂等：未启动过该 profile → 默认快照（与改动前一致）。
+            None => LiveRoomMonitorState::default(),
         };
-        emit_state(app, &snapshot);
-        tracing::info!("live-room-monitor: 已停止");
-        Ok(snapshot)
+        drop(slots);
+        let sink = default_sink(app);
+        emit_state(&sink, &removed);
+        tracing::info!(profile = %profile_id, "live-room-monitor: 已停止");
+        Ok(removed)
     }
 
     /// 单次检测：临时 tab 导航 + settle + 快照提取 + 分类。
@@ -693,44 +804,65 @@ impl TauriBrowserDriver {
     }
 }
 
-async fn current_poll_ms() -> u64 {
-    let state = MONITOR.state.read().await;
-    next_poll_ms(state.live_status, state.triggered_for_current_live)
+/// 该槽当前应有的轮询间隔（槽不存在 → 慢轮询兜底）。
+async fn current_poll_ms(profile_id: &str) -> u64 {
+    let slots = MONITOR.slots.read().await;
+    match slots.get(profile_id) {
+        Some(slot) => next_poll_ms(slot.state.live_status, slot.state.triggered_for_current_live),
+        None => SLOW_POLL_MS,
+    }
 }
 
+/// 单次检测并落回该 profile 的槽。所有状态读写都限定在本槽，
+/// 绝不触碰其他 profile 的槽（多账号并发安全）。
+/// 检测优先用注入桩 `probe`，否则走 `driver` 的真实浏览器检测。
 async fn monitor_tick(
-    driver: &TauriBrowserDriver,
-    app: &tauri::AppHandle,
+    driver: Option<&TauriBrowserDriver>,
+    probe: Option<&MonitorProbe>,
+    sink: &StateSink,
+    profile_id: &str,
     cancel: &TaskCancel,
 ) {
-    let (profile_id, url, prev_status) = {
-        let state = MONITOR.state.read().await;
-        if !state.enabled {
+    let (url, prev_status) = {
+        let slots = MONITOR.slots.read().await;
+        let Some(slot) = slots.get(profile_id) else {
+            return;
+        };
+        if !slot.state.enabled {
             return;
         }
-        (
-            state.profile_id.clone().unwrap_or_default(),
-            state.live_room_url.clone(),
-            state.status,
-        )
+        (slot.state.live_room_url.clone(), slot.state.status)
     };
     let Some(url) = url else {
-        let mut state = MONITOR.state.write().await;
-        state.status = LiveRoomMonitorStatus::Error;
-        state.error = Some("未配置直播间链接".into());
-        let snapshot = state.clone();
-        drop(state);
-        emit_state(app, &snapshot);
+        let snapshot = {
+            let mut slots = MONITOR.slots.write().await;
+            let Some(slot) = slots.get_mut(profile_id) else {
+                return;
+            };
+            slot.state.status = LiveRoomMonitorStatus::Error;
+            slot.state.error = Some("未配置直播间链接".into());
+            slot.state.clone()
+        };
+        emit_state(sink, &snapshot);
         return;
     };
     {
-        let mut state = MONITOR.state.write().await;
-        if !state.enabled {
+        let mut slots = MONITOR.slots.write().await;
+        let Some(slot) = slots.get_mut(profile_id) else {
+            return;
+        };
+        if !slot.state.enabled {
             return;
         }
-        state.status = LiveRoomMonitorStatus::Checking;
+        slot.state.status = LiveRoomMonitorStatus::Checking;
     }
-    let outcome = driver.check_once(&profile_id, &url).await;
+    let outcome = match probe {
+        Some(probe) => probe(profile_id, &url).await,
+        None => match driver {
+            Some(driver) => driver.check_once(profile_id, &url).await,
+            None => Err("监控检测未接入".into()),
+        },
+    };
     if cancel.is_cancelled() {
         return;
     }
@@ -740,130 +872,179 @@ async fn monitor_tick(
             // 检测链路失败（环境关闭/导航超时等）：记 Error 但不清触发位，
             // 下轮继续，不丢同一场直播的触发状态。
             let snapshot = {
-                let mut state = MONITOR.state.write().await;
-                state.status = LiveRoomMonitorStatus::Error;
-                state.error = Some(message);
-                state.last_checked_at = Some(now_ms);
-                state.next_check_at = Some(now_ms + SLOW_POLL_MS as i64);
-                state.clone()
+                let mut slots = MONITOR.slots.write().await;
+                let Some(slot) = slots.get_mut(profile_id) else {
+                    return;
+                };
+                slot.state.status = LiveRoomMonitorStatus::Error;
+                slot.state.error = Some(message);
+                slot.state.last_checked_at = Some(now_ms);
+                slot.state.next_check_at = Some(now_ms + SLOW_POLL_MS as i64);
+                slot.state.clone()
             };
-            emit_state(app, &snapshot);
+            emit_state(sink, &snapshot);
         }
         Ok(RoomPageClass::Invalid) => {
             // fatal：房间不存在，停机（保留配置供用户修正后重启）。
-            let snapshot = {
-                let mut state = MONITOR.state.write().await;
-                state.enabled = false;
-                state.status = LiveRoomMonitorStatus::Error;
-                state.error = Some("直播间不存在或已删除，监控已停止".into());
-                state.last_checked_at = Some(now_ms);
-                state.clone()
+            // 只停本槽并取消本槽循环，其他 profile 不受影响。
+            let (snapshot, own_cancel) = {
+                let mut slots = MONITOR.slots.write().await;
+                let Some(slot) = slots.get_mut(profile_id) else {
+                    return;
+                };
+                slot.state.enabled = false;
+                slot.state.status = LiveRoomMonitorStatus::Error;
+                slot.state.error = Some("直播间不存在或已删除，监控已停止".into());
+                slot.state.last_checked_at = Some(now_ms);
+                (slot.state.clone(), slot.cancel.clone())
             };
-            MONITOR.cancel.write().await.take().map(|c| c.cancel());
+            if let Some(c) = own_cancel {
+                c.cancel();
+            }
             cancel.cancel();
-            emit_state(app, &snapshot);
+            emit_state(sink, &snapshot);
         }
         Ok(RoomPageClass::Limited) | Ok(RoomPageClass::Unknown) => {
             // 非明确信号：恢复 Checking 之前的状态，只刷新时间戳。
             let snapshot = {
-                let mut state = MONITOR.state.write().await;
-                if state.status == LiveRoomMonitorStatus::Checking {
-                    state.status = prev_status;
+                let mut slots = MONITOR.slots.write().await;
+                let Some(slot) = slots.get_mut(profile_id) else {
+                    return;
+                };
+                if slot.state.status == LiveRoomMonitorStatus::Checking {
+                    slot.state.status = prev_status;
                 }
-                state.last_checked_at = Some(now_ms);
-                state.next_check_at = Some(
-                    now_ms + next_poll_ms(state.live_status, state.triggered_for_current_live) as i64,
+                slot.state.last_checked_at = Some(now_ms);
+                slot.state.next_check_at = Some(
+                    now_ms
+                        + next_poll_ms(
+                            slot.state.live_status,
+                            slot.state.triggered_for_current_live,
+                        ) as i64,
                 );
-                state.clone()
+                slot.state.clone()
             };
-            emit_state(app, &snapshot);
+            emit_state(sink, &snapshot);
         }
         Ok(RoomPageClass::Offline) => {
             let trigger = TRIGGER.read().await.clone();
             let snapshot = {
-                let mut state = MONITOR.state.write().await;
-                if !state.enabled {
+                let mut slots = MONITOR.slots.write().await;
+                let Some(slot) = slots.get_mut(profile_id) else {
+                    return;
+                };
+                if !slot.state.enabled {
                     return;
                 }
-                let app_emit = |s: &LiveRoomMonitorState| emit_state(app, s);
+                let app_emit = |s: &LiveRoomMonitorState| sink(s);
                 apply_live_status(
                     trigger.as_ref(),
-                    &mut state,
+                    &mut slot.state,
                     LiveRoomLiveStatus::Offline,
                     now_ms,
                     app_emit,
                 )
                 .await;
-                state.clone()
+                slot.state.clone()
             };
-            emit_state(app, &snapshot);
+            emit_state(sink, &snapshot);
         }
         Ok(RoomPageClass::Live) => {
             let trigger = TRIGGER.read().await.clone();
             let snapshot = {
-                let mut state = MONITOR.state.write().await;
-                if !state.enabled {
+                let mut slots = MONITOR.slots.write().await;
+                let Some(slot) = slots.get_mut(profile_id) else {
+                    return;
+                };
+                if !slot.state.enabled {
                     return;
                 }
-                let app_emit = |s: &LiveRoomMonitorState| emit_state(app, s);
+                let app_emit = |s: &LiveRoomMonitorState| sink(s);
                 apply_live_status(
                     trigger.as_ref(),
-                    &mut state,
+                    &mut slot.state,
                     LiveRoomLiveStatus::Live,
                     now_ms,
                     app_emit,
                 )
                 .await;
-                state.clone()
+                slot.state.clone()
             };
-            emit_state(app, &snapshot);
+            emit_state(sink, &snapshot);
         }
     }
 }
 
+/// 单个 profile 的监控循环：state / cancel / checking 全部绑定到本槽，
+/// 与其他 profile 的循环互不阻塞。
 async fn monitor_loop(
     driver: Arc<TauriBrowserDriver>,
-    app: tauri::AppHandle,
+    profile_id: String,
     cancel: TaskCancel,
+    sink: StateSink,
+    probe: Option<MonitorProbe>,
 ) {
     loop {
         if cancel.is_cancelled() {
             break;
         }
         {
-            let enabled = MONITOR.state.read().await.enabled;
-            if !enabled {
-                break;
+            let slots = MONITOR.slots.read().await;
+            match slots.get(&profile_id) {
+                Some(slot) if slot.state.enabled => {}
+                _ => break,
             }
         }
-        // checking 互斥：上轮未完成则跳过本轮，不堆积。
-        match MONITOR.checking.try_lock() {
-            Ok(_guard) => monitor_tick(&driver, &app, &cancel).await,
-            Err(_) => tracing::debug!("live-room-monitor: 上轮检测未完成，跳过本轮"),
+        // checking 互斥：取本槽的独立互斥锁，上轮未完成则跳过本轮，不堆积。
+        // 用 Arc 克隆后在锁外 await，避免持槽读锁跨 await。
+        let checking = {
+            let slots = MONITOR.slots.read().await;
+            match slots.get(&profile_id) {
+                Some(slot) => Arc::clone(&slot.checking),
+                None => break,
+            }
+        };
+        match checking.try_lock() {
+            Ok(_guard) => {
+                monitor_tick(
+                    Some(&driver),
+                    probe.as_ref(),
+                    &sink,
+                    &profile_id,
+                    &cancel,
+                )
+                .await
+            }
+            Err(_) => tracing::debug!(
+                profile = %profile_id,
+                "live-room-monitor: 上轮检测未完成，跳过本轮"
+            ),
         }
         if cancel.is_cancelled() {
             break;
         }
         {
-            let enabled = MONITOR.state.read().await.enabled;
-            if !enabled {
-                break;
+            let slots = MONITOR.slots.read().await;
+            match slots.get(&profile_id) {
+                Some(slot) if slot.state.enabled => {}
+                _ => break,
             }
         }
-        let delay_ms = current_poll_ms().await;
+        let delay_ms = current_poll_ms(&profile_id).await;
         tokio::select! {
             biased;
             _ = cancel.cancelled() => break,
             _ = tokio::time::sleep(Duration::from_millis(delay_ms)) => {}
         }
     }
-    tracing::info!("live-room-monitor: 循环退出");
+    tracing::info!(profile = %profile_id, "live-room-monitor: 循环退出");
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use tempfile::TempDir;
 
     fn snapshot(title: &str, text: &str, input_visible: bool, media_visible: bool) -> LiveRoomStatusSnapshot {
         LiveRoomStatusSnapshot {
@@ -1111,5 +1292,379 @@ mod tests {
         assert_eq!(trigger.ends.load(Ordering::SeqCst), 0);
         assert_eq!(state.last_checked_at, Some(5000));
         assert!(state.next_check_at.is_some());
+    }
+
+    // --- 多槽（按 profile）监控测试：注入检测桩，不触真实网络 ---
+
+    /// 多槽测试共享全局 MONITOR，串行化避免槽/桩互相干扰。
+    static TEST_LOCK: std::sync::LazyLock<tokio::sync::Mutex<()>> =
+        std::sync::LazyLock::new(|| tokio::sync::Mutex::new(()));
+
+    /// 返回固定分类的检测桩（离线，不触网络）。
+    fn probe_returning(class: RoomPageClass) -> MonitorProbe {
+        Arc::new(move |_profile: &str, _url: &str| {
+            Box::pin(async move { Ok(class) }) as ProbeFuture
+        })
+    }
+
+    fn mon_config(url: &str) -> MonitorConfig {
+        MonitorConfig {
+            live_room_url: url.into(),
+            scene_id: None,
+            group_id: None,
+            product_script_id: None,
+            product_script_account_id: None,
+            auto_exit_sub_accounts: false,
+        }
+    }
+
+    /// 离线可用的 driver（不启动浏览器、不触网络）。
+    fn monitor_driver() -> (TempDir, Arc<TauriBrowserDriver>) {
+        use multizen_core::BrowserEngine;
+        let dir = TempDir::new().unwrap();
+        let driver = TauriBrowserDriver::start(
+            dir.path().join("p.db"),
+            dir.path().join("profiles"),
+            dir.path().join("extensions"),
+            Arc::new(crate::registry::ProfileRegistry::new()),
+            BrowserEngine::Chromix,
+            std::path::PathBuf::new(),
+            None,
+        )
+        .unwrap();
+        (dir, Arc::new(driver))
+    }
+
+    /// 清空所有槽 + 注入离线检测桩（测试起始统一调用）。
+    async fn reset_monitor(class: RoomPageClass) {
+        MONITOR.slots.write().await.clear();
+        set_monitor_probe(Some(probe_returning(class))).await;
+    }
+
+    /// 手工插入一个“在跑”的槽（用于直接驱动 monitor_loop 的测试）。
+    async fn insert_slot(profile_id: &str, url: &str) {
+        let mut slots = MONITOR.slots.write().await;
+        slots.insert(
+            profile_id.to_string(),
+            MonitorSlot::new(
+                LiveRoomMonitorState {
+                    enabled: true,
+                    profile_id: Some(profile_id.to_string()),
+                    live_room_url: Some(url.to_string()),
+                    status: LiveRoomMonitorStatus::Checking,
+                    ..LiveRoomMonitorState::default()
+                },
+                Some(TaskCancel::new()),
+            ),
+        );
+    }
+
+    /// 等该槽完成至少一轮检测（last_checked_at 有值）。
+    async fn wait_checked(profile_id: &str, timeout_ms: u64) {
+        let deadline = std::time::Instant::now() + Duration::from_millis(timeout_ms);
+        while std::time::Instant::now() < deadline {
+            if MONITOR.state(profile_id).await.last_checked_at.is_some() {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        panic!("profile {profile_id} 未在 {timeout_ms}ms 内完成一次检测");
+    }
+
+    /// 两个不同 profile 同时 start → 两槽各自独立、都在跑、profileId 正确。
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn multi_slot_start_keeps_profiles_independent() {
+        let _guard = TEST_LOCK.lock().await;
+        reset_monitor(RoomPageClass::Offline).await;
+        let (_dir, driver) = monitor_driver();
+        let app = tauri::test::mock_app().handle().clone();
+
+        let a = driver
+            .start_live_room_monitor(&app, "profileA", mon_config("https://live.kuaishou.com/u/a"))
+            .await
+            .unwrap();
+        let b = driver
+            .start_live_room_monitor(&app, "profileB", mon_config("https://live.kuaishou.com/u/b"))
+            .await
+            .unwrap();
+        assert_eq!(a.profile_id.as_deref(), Some("profileA"));
+        assert_eq!(b.profile_id.as_deref(), Some("profileB"));
+        assert!(a.enabled && b.enabled);
+
+        // 两个槽都在，互不覆盖。
+        let states = MONITOR.list().await;
+        assert_eq!(states.len(), 2);
+        assert_eq!(states[0].profile_id.as_deref(), Some("profileA"));
+        assert_eq!(states[1].profile_id.as_deref(), Some("profileB"));
+
+        // 两槽并发各自完成检测。
+        wait_checked("profileA", 5000).await;
+        wait_checked("profileB", 5000).await;
+        let sa = MONITOR.state("profileA").await;
+        let sb = MONITOR.state("profileB").await;
+        assert_eq!(sa.profile_id.as_deref(), Some("profileA"));
+        assert_eq!(sb.profile_id.as_deref(), Some("profileB"));
+        assert_eq!(sa.live_status, LiveRoomLiveStatus::Offline);
+        assert_eq!(sb.live_status, LiveRoomLiveStatus::Offline);
+
+        driver
+            .stop_live_room_monitor(&app, "profileA")
+            .await
+            .unwrap();
+        driver
+            .stop_live_room_monitor(&app, "profileB")
+            .await
+            .unwrap();
+        set_monitor_probe(None).await;
+    }
+
+    /// stop(profileA) 后：A 槽为空（default），B 槽仍在跑。
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn stop_one_profile_leaves_others_running() {
+        let _guard = TEST_LOCK.lock().await;
+        reset_monitor(RoomPageClass::Offline).await;
+        let (_dir, driver) = monitor_driver();
+        let app = tauri::test::mock_app().handle().clone();
+
+        driver
+            .start_live_room_monitor(&app, "profileA", mon_config("https://live.kuaishou.com/u/a"))
+            .await
+            .unwrap();
+        driver
+            .start_live_room_monitor(&app, "profileB", mon_config("https://live.kuaishou.com/u/b"))
+            .await
+            .unwrap();
+        wait_checked("profileA", 5000).await;
+        wait_checked("profileB", 5000).await;
+
+        let stopped = driver
+            .stop_live_room_monitor(&app, "profileA")
+            .await
+            .unwrap();
+        assert_eq!(stopped.profile_id.as_deref(), Some("profileA"));
+
+        // A 槽已移除 → get 返回默认（profileId: null）。
+        let a = MONITOR.state("profileA").await;
+        assert!(a.profile_id.is_none());
+        assert!(!a.enabled);
+        assert_eq!(a.status, LiveRoomMonitorStatus::Idle);
+
+        // B 槽仍在跑，未受影响。
+        let b = MONITOR.state("profileB").await;
+        assert_eq!(b.profile_id.as_deref(), Some("profileB"));
+        assert!(b.enabled);
+        assert_eq!(MONITOR.list().await.len(), 1);
+
+        driver
+            .stop_live_room_monitor(&app, "profileB")
+            .await
+            .unwrap();
+        set_monitor_probe(None).await;
+    }
+
+    /// list_* 返回全部槽（按 profileId 排序）；未知 profile 的 get 返回默认。
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn list_returns_all_slots_and_get_unknown_is_default() {
+        let _guard = TEST_LOCK.lock().await;
+        reset_monitor(RoomPageClass::Offline).await;
+        let (_dir, driver) = monitor_driver();
+        let app = tauri::test::mock_app().handle().clone();
+
+        // 未启动任何槽 → list 空、get 默认（行为与“未启动”一致）。
+        assert!(MONITOR.list().await.is_empty());
+        let none = MONITOR.state("ghost").await;
+        assert!(none.profile_id.is_none());
+        assert!(!none.enabled);
+        assert_eq!(none.status, LiveRoomMonitorStatus::Idle);
+
+        driver
+            .start_live_room_monitor(&app, "profileA", mon_config("https://live.kuaishou.com/u/a"))
+            .await
+            .unwrap();
+        driver
+            .start_live_room_monitor(&app, "profileB", mon_config("https://live.kuaishou.com/u/b"))
+            .await
+            .unwrap();
+
+        let list = MONITOR.list().await;
+        assert_eq!(list.len(), 2);
+        assert_eq!(list[0].profile_id.as_deref(), Some("profileA"));
+        assert_eq!(list[1].profile_id.as_deref(), Some("profileB"));
+
+        driver
+            .stop_live_room_monitor(&app, "profileA")
+            .await
+            .unwrap();
+        driver
+            .stop_live_room_monitor(&app, "profileB")
+            .await
+            .unwrap();
+        set_monitor_probe(None).await;
+    }
+
+    /// 同一 profile 重复 start 为替换：旧任务被取消、槽只有一个、新循环照跑。
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn restart_same_profile_replaces_without_leaking() {
+        let _guard = TEST_LOCK.lock().await;
+        reset_monitor(RoomPageClass::Offline).await;
+        let (_dir, driver) = monitor_driver();
+        let app = tauri::test::mock_app().handle().clone();
+
+        driver
+            .start_live_room_monitor(&app, "profileA", mon_config("https://live.kuaishou.com/u/a1"))
+            .await
+            .unwrap();
+        wait_checked("profileA", 5000).await;
+        let first = MONITOR.state("profileA").await;
+        assert_eq!(
+            first.live_room_url.as_deref(),
+            Some("https://live.kuaishou.com/u/a1")
+        );
+        let t1 = first.last_checked_at.unwrap();
+
+        // 同 profile 再启动（新链接）→ 幂等替换，槽仍只有一个。
+        let second = driver
+            .start_live_room_monitor(&app, "profileA", mon_config("https://live.kuaishou.com/u/a2"))
+            .await
+            .unwrap();
+        assert_eq!(
+            second.live_room_url.as_deref(),
+            Some("https://live.kuaishou.com/u/a2")
+        );
+        assert_eq!(MONITOR.list().await.len(), 1);
+        let replaced = MONITOR.state("profileA").await;
+        assert_eq!(
+            replaced.live_room_url.as_deref(),
+            Some("https://live.kuaishou.com/u/a2")
+        );
+        assert!(replaced.enabled);
+
+        // 新循环确实在跑：last_checked_at 前进。
+        let deadline = std::time::Instant::now() + Duration::from_secs(3);
+        loop {
+            let now = MONITOR.state("profileA").await.last_checked_at.unwrap_or(0);
+            if now > t1 {
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "替换后新循环未运行（last_checked_at 未前进）"
+            );
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+
+        driver
+            .stop_live_room_monitor(&app, "profileA")
+            .await
+            .unwrap();
+        set_monitor_probe(None).await;
+    }
+
+    /// 每槽 checking 互斥独立：A 槽检测阻塞时，B 槽仍能推进。
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn per_slot_checking_is_independent() {
+        let _guard = TEST_LOCK.lock().await;
+        MONITOR.slots.write().await.clear();
+        let (_dir, driver) = monitor_driver();
+        let app = tauri::test::mock_app().handle().clone();
+
+        // A 槽检测阻塞（等一个信号量许可）；B 槽正常返回。
+        let gate = Arc::new(tokio::sync::Semaphore::new(0));
+        let gate_a = Arc::clone(&gate);
+        let probe: MonitorProbe = Arc::new(move |profile: &str, _url: &str| {
+            let gate = Arc::clone(&gate_a);
+            let is_a = profile == "profileA";
+            Box::pin(async move {
+                if is_a {
+                    let _permit = gate.acquire().await.unwrap();
+                }
+                Ok(RoomPageClass::Offline)
+            }) as ProbeFuture
+        });
+        set_monitor_probe(Some(probe)).await;
+
+        driver
+            .start_live_room_monitor(&app, "profileA", mon_config("https://live.kuaishou.com/u/a"))
+            .await
+            .unwrap();
+        driver
+            .start_live_room_monitor(&app, "profileB", mon_config("https://live.kuaishou.com/u/b"))
+            .await
+            .unwrap();
+
+        // A 卡在检测中：B 不受影响，照常完成检测。
+        wait_checked("profileB", 3000).await;
+        assert!(MONITOR.state("profileA").await.last_checked_at.is_none());
+        assert!(MONITOR.state("profileB").await.last_checked_at.is_some());
+
+        // 释放 A → A 也完成。
+        gate.add_permits(1);
+        wait_checked("profileA", 3000).await;
+
+        driver
+            .stop_live_room_monitor(&app, "profileA")
+            .await
+            .unwrap();
+        driver
+            .stop_live_room_monitor(&app, "profileB")
+            .await
+            .unwrap();
+        set_monitor_probe(None).await;
+    }
+
+    /// 事件推送 payload 含 profileId：每槽推送都能定位到对应账号。
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn state_changes_carry_profile_id() {
+        let _guard = TEST_LOCK.lock().await;
+        MONITOR.slots.write().await.clear();
+        let (_dir, driver) = monitor_driver();
+
+        // 捕获推送出口：记录 (profileId, status)。
+        let captured: Arc<std::sync::Mutex<Vec<(Option<String>, LiveRoomMonitorStatus)>>> =
+            Arc::new(std::sync::Mutex::new(Vec::new()));
+        let captured_clone = Arc::clone(&captured);
+        let sink: StateSink = Arc::new(move |s: &LiveRoomMonitorState| {
+            captured_clone
+                .lock()
+                .unwrap()
+                .push((s.profile_id.clone(), s.status));
+        });
+
+        // 手工插槽 + 直接驱动 monitor_loop（注入桩 + 捕获出口）。
+        insert_slot("profileA", "https://live.kuaishou.com/u/a").await;
+        insert_slot("profileB", "https://live.kuaishou.com/u/b").await;
+        let cancel_a = TaskCancel::new();
+        let cancel_b = TaskCancel::new();
+        let handle_a = tokio::spawn(monitor_loop(
+            Arc::clone(&driver),
+            "profileA".into(),
+            cancel_a.clone(),
+            Arc::clone(&sink),
+            Some(probe_returning(RoomPageClass::Offline)),
+        ));
+        let handle_b = tokio::spawn(monitor_loop(
+            Arc::clone(&driver),
+            "profileB".into(),
+            cancel_b.clone(),
+            Arc::clone(&sink),
+            Some(probe_returning(RoomPageClass::Offline)),
+        ));
+
+        wait_checked("profileA", 3000).await;
+        wait_checked("profileB", 3000).await;
+        cancel_a.cancel();
+        cancel_b.cancel();
+        let _ = handle_a.await;
+        let _ = handle_b.await;
+
+        let events = captured.lock().unwrap().clone();
+        assert!(events
+            .iter()
+            .any(|(p, _)| p.as_deref() == Some("profileA")));
+        assert!(events
+            .iter()
+            .any(|(p, _)| p.as_deref() == Some("profileB")));
+        // 每个推送都带 profileId（前端可据此分发到对应账号）。
+        assert!(events.iter().all(|(p, _)| p.is_some()));
     }
 }

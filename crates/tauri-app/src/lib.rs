@@ -96,7 +96,8 @@ use crate::commands::{
         live_launch_stream_start, live_launch_stream_stop,
     },
     live_room_monitor::{
-        get_live_room_monitor_state, start_live_room_monitor, stop_live_room_monitor,
+        get_live_room_monitor_state, list_live_room_monitor_states, start_live_room_monitor,
+        stop_live_room_monitor,
     },
     profiles::{
         profiles_close, profiles_create, profiles_delete, profiles_get, profiles_launch,
@@ -681,6 +682,7 @@ pub fn run() {
             start_live_room_monitor,
             stop_live_room_monitor,
             get_live_room_monitor_state,
+            list_live_room_monitor_states,
             // profiles
             profiles_list,
             profiles_get,

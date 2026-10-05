@@ -5,6 +5,11 @@ import { useT } from "../../i18n/LanguageProvider";
 import { autoMessage, onAutoMessageProgress, onAutoMessageStopped } from "../../lib/autoMessage";
 import type { AutoMessageLine, AutoMessageState } from "../../types";
 
+interface Props {
+  /** 账号键（浏览器环境 = 快手小店账号）。由「直播互动」工作台传入。 */
+  accountId: string;
+}
+
 /**
  * C-group: 主播互动（时间轴弹幕）.
  *
@@ -14,9 +19,8 @@ import type { AutoMessageLine, AutoMessageState } from "../../types";
  * `auto-message:progress`; termination on `auto-message:stopped`.
  * Random-space injection is not offered anywhere in this panel.
  */
-export function CAutoMessagePanel(): JSX.Element {
+export function CAutoMessagePanel({ accountId }: Props): JSX.Element {
   const t = useT();
-  const [accountId, setAccountId] = useState("");
   const [message, setMessage] = useState("");
   const [offsetSec, setOffsetSec] = useState("5");
   const [nickname, setNickname] = useState("");
@@ -53,8 +57,9 @@ export function CAutoMessagePanel(): JSX.Element {
   }, [t]);
 
   const offsetValue = Number(offsetSec);
+  const hasAccount = accountId.trim() !== "";
   const canAdd =
-    accountId.trim() !== "" && message.trim() !== "" && Number.isFinite(offsetValue) && offsetValue >= 0;
+    hasAccount && message.trim() !== "" && Number.isFinite(offsetValue) && offsetValue >= 0;
 
   function addLine(): void {
     if (!canAdd) return;
@@ -117,16 +122,14 @@ export function CAutoMessagePanel(): JSX.Element {
     <section aria-label={t("biz.msg.title")} className="space-y-4">
       <p className="text-[12px] text-slate-400">{t("biz.msg.desc")}</p>
 
+      <p className="text-[12px] text-slate-400">{t("live.accounts.current", { id: accountId })}</p>
+      {!hasAccount && (
+        <p role="note" className="text-[12px] text-amber-300">
+          {t("live.accounts.selectFirst")}
+        </p>
+      )}
+
       <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1 text-[12px] text-slate-300">
-          {t("biz.msg.form.account")}
-          <input
-            aria-label={t("biz.msg.form.account")}
-            className="rounded-md bg-white/5 px-2 py-1.5 text-slate-100"
-            value={accountId}
-            onChange={(e) => setAccountId(e.target.value)}
-          />
-        </label>
         <label className="flex flex-col gap-1 text-[12px] text-slate-300">
           {t("biz.msg.form.offset")}
           <input
@@ -196,7 +199,7 @@ export function CAutoMessagePanel(): JSX.Element {
       <div className="flex items-center gap-2">
         {!confirming && (
           <>
-            <Button variant="primary" disabled={busy || lines.length === 0 || runId !== null} onClick={() => setConfirming("start")}>
+            <Button variant="primary" disabled={busy || !hasAccount || lines.length === 0 || runId !== null} onClick={() => setConfirming("start")}>
               {t("biz.msg.start")}
             </Button>
             <Button variant="danger" disabled={busy || runId === null} onClick={() => setConfirming("stop")}>

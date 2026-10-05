@@ -14,18 +14,22 @@ import {
   type SubAccountLoginResult,
 } from "../../lib/subAccounts";
 
+interface Props {
+  /** 账号键（浏览器环境 = 快手小店账号）。由「直播互动」工作台传入。 */
+  profileId: string;
+}
+
 /**
  * 小号页 (PRD R4): 列表/新增/解绑(二次确认)、单登/批量登录、进直播间、
  * 发弹幕(二次确认+结果展示)、互动记录查询.
  */
-export function SubAccountsPage(): JSX.Element {
+export function SubAccountsPage({ profileId }: Props): JSX.Element {
   const t = useT();
   const [accounts, setAccounts] = useState<BusinessAccount[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [displayName, setDisplayName] = useState("");
   const [kind, setKind] = useState<BusinessAccountKind>("kuaishou-sub");
   const [platformUserId, setPlatformUserId] = useState("");
-  const [profileId, setProfileId] = useState("");
   const [liveUrl, setLiveUrl] = useState("");
   const [danmaku, setDanmaku] = useState("");
   const [results, setResults] = useState<SubAccountLoginResult[]>([]);
@@ -37,6 +41,8 @@ export function SubAccountsPage(): JSX.Element {
   const [unavailable, setUnavailable] = useState(false);
   const [confirmUnbind, setConfirmUnbind] = useState<string | null>(null);
   const [confirmDanmaku, setConfirmDanmaku] = useState<string | null>(null);
+
+  const hasAccount = profileId.trim() !== "";
 
   const fail = useCallback((e: unknown) => {
     const detail = typeof e === "string" ? e : (e as Error)?.message ?? String(e);
@@ -71,7 +77,7 @@ export function SubAccountsPage(): JSX.Element {
 
   async function onCreate(): Promise<void> {
     const name = displayName.trim();
-    if (!name || !profileId.trim() || busy) return;
+    if (!name || !hasAccount || busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -194,6 +200,13 @@ export function SubAccountsPage(): JSX.Element {
     <div className="flex flex-col gap-4 p-6 overflow-y-auto" data-testid="sub-page">
       <h2 className="text-lg font-semibold">{t("biz.sub.title")}</h2>
 
+      <p className="text-xs text-slate-400">{t("live.accounts.current", { id: profileId })}</p>
+      {!hasAccount && (
+        <p role="note" className="text-xs text-amber-300">
+          {t("live.accounts.selectFirst")}
+        </p>
+      )}
+
       {error && (
         <div role="alert" className="text-sm text-red-300">
           {t("biz.sub.failedToast", { detail: error })}
@@ -273,16 +286,12 @@ export function SubAccountsPage(): JSX.Element {
             <option value="kuaishou-shop">kuaishou-shop</option>
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-xs">
+        <span className="flex flex-col gap-1 text-xs">
           {t("biz.sub.profileId")}
-          <input
-            aria-label={t("biz.sub.profileId")}
-            value={profileId}
-            onChange={(e) => setProfileId(e.target.value)}
-            placeholder="profile-id"
-            className="h-8 px-2 rounded-md bg-transparent border border-[var(--border)]"
-          />
-        </label>
+          <span className="h-8 flex items-center px-2 rounded-md bg-white/5 text-slate-300">
+            {profileId || "—"}
+          </span>
+        </span>
         <label className="flex flex-col gap-1 text-xs">
           {t("biz.sub.platformUserId")}
           <input
@@ -292,7 +301,7 @@ export function SubAccountsPage(): JSX.Element {
             className="h-8 px-2 rounded-md bg-transparent border border-[var(--border)]"
           />
         </label>
-        <Button variant="primary" disabled={!displayName.trim() || !profileId.trim() || busy} onClick={() => void onCreate()}>
+        <Button variant="primary" disabled={!displayName.trim() || !hasAccount || busy} onClick={() => void onCreate()}>
           {t("biz.sub.create")}
         </Button>
       </section>

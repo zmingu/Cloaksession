@@ -5,6 +5,11 @@ import { useT } from "../../i18n/LanguageProvider";
 import { autoReply } from "../../lib/autoReply";
 import type { AutoReplyRecord, ReplyResult } from "../../types";
 
+interface Props {
+  /** 账号键（浏览器环境 = 快手小店账号）。由「直播互动」工作台传入。 */
+  accountId: string;
+}
+
 /**
  * C-group: 自动回复（关键词）.
  *
@@ -12,18 +17,19 @@ import type { AutoReplyRecord, ReplyResult } from "../../types";
  * listener, no danmaku), plus persisted `auto_reply_records` history and a
  * confirmed manual record write for preview verification / seeding.
  */
-export function CAutoReplyPanel(): JSX.Element {
+export function CAutoReplyPanel({ accountId }: Props): JSX.Element {
   const t = useT();
   const [question, setQuestion] = useState("");
   const [goodsTitle, setGoodsTitle] = useState("");
   const [goodsTokens, setGoodsTokens] = useState("");
   const [preview, setPreview] = useState<ReplyResult | null>(null);
-  const [accountId, setAccountId] = useState("");
   const [history, setHistory] = useState<AutoReplyRecord[] | null>(null);
   const [confirmingRecord, setConfirmingRecord] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const hasAccount = accountId.trim() !== "";
 
   async function doPreview(): Promise<void> {
     setBusy(true);
@@ -85,6 +91,8 @@ export function CAutoReplyPanel(): JSX.Element {
   return (
     <section aria-label={t("biz.reply.title")} className="space-y-4">
       <p className="text-[12px] text-slate-400">{t("biz.reply.desc")}</p>
+
+      <p className="text-[12px] text-slate-400">{t("live.accounts.current", { id: accountId })}</p>
 
       <div className="grid grid-cols-2 gap-2">
         <label className="col-span-2 flex flex-col gap-1 text-[12px] text-slate-300">
@@ -158,19 +166,22 @@ export function CAutoReplyPanel(): JSX.Element {
       )}
 
       <div className="flex items-center gap-2">
-        <label className="flex flex-1 flex-col gap-1 text-[12px] text-slate-300">
+        <span className="flex flex-1 flex-col gap-1 text-[12px] text-slate-300">
           {t("biz.reply.form.account")}
-          <input
-            aria-label={t("biz.reply.form.account")}
-            className="rounded-md bg-white/5 px-2 py-1.5 text-slate-100"
-            value={accountId}
-            onChange={(e) => setAccountId(e.target.value)}
-          />
-        </label>
-        <Button variant="ghost" disabled={busy} onClick={() => void doHistory()}>
+          <span className="rounded-md bg-white/5 px-2 py-1.5 text-slate-100">
+            {accountId || "—"}
+          </span>
+        </span>
+        <Button variant="ghost" disabled={busy || !hasAccount} onClick={() => void doHistory()}>
           {t("biz.reply.history.refresh")}
         </Button>
       </div>
+
+      {!hasAccount && (
+        <p role="note" className="text-[12px] text-amber-300">
+          {t("live.accounts.selectFirst")}
+        </p>
+      )}
 
       <div aria-label={t("biz.reply.history.title")}>
         {history == null || history.length === 0 ? (

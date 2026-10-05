@@ -25,6 +25,8 @@ const EXPECTED = {
   ],
   "src/lib/liveRoomMonitor.ts": [
     "start_live_room_monitor", "stop_live_room_monitor", "get_live_room_monitor_state",
+    // 多槽改版：无参列举全部槽快照。
+    "list_live_room_monitor_states",
   ],
 };
 
@@ -48,8 +50,8 @@ test("all A-group commands have TS wrappers", () => {
   }
   assert.equal(
     total,
-    19,
-    "3 kuaishou-auth + 3 mate-login + 10 live-launch (7 profile + 3 mate) + 3 live-room-monitor",
+    20,
+    "3 kuaishou-auth + 3 mate-login + 10 live-launch (7 profile + 3 mate) + 4 live-room-monitor",
   );
 });
 
@@ -65,7 +67,7 @@ test("A-group event subscriptions are awaitable and return an unlisten", () => {
   }
 });
 
-test("live_launch_prerequisites and stop_live_room_monitor take no arguments", () => {
+test("live_launch_prerequisites takes no args; monitor stop/state take a profileId; list takes none", () => {
   // The real contract is the invoke call: no second argument object at all.
   const launch = read("src/lib/liveLaunch.ts");
   assert.ok(
@@ -73,13 +75,19 @@ test("live_launch_prerequisites and stop_live_room_monitor take no arguments", (
     "live_launch_prerequisites must be invoked with no arguments",
   );
   const monitor = read("src/lib/liveRoomMonitor.ts");
+  // 多槽改版：stop / get 均按 profileId 定位单个监控实例（旧版无参）。
   assert.ok(
-    monitor.includes('invoke<LiveRoomMonitorState>("stop_live_room_monitor")'),
-    "stop_live_room_monitor takes no profileId",
+    monitor.includes('invoke<LiveRoomMonitorState>("stop_live_room_monitor", { profileId })'),
+    "stop_live_room_monitor must carry the profileId",
   );
   assert.ok(
-    monitor.includes('invoke<LiveRoomMonitorState>("get_live_room_monitor_state")'),
-    "get_live_room_monitor_state takes no arguments",
+    monitor.includes('invoke<LiveRoomMonitorState>("get_live_room_monitor_state", { profileId })'),
+    "get_live_room_monitor_state must carry the profileId",
+  );
+  // 列举全部槽仍是无参命令。
+  assert.ok(
+    monitor.includes('invoke<LiveRoomMonitorState[]>("list_live_room_monitor_states")'),
+    "list_live_room_monitor_states takes no arguments",
   );
 });
 

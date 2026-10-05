@@ -19,7 +19,11 @@ test.beforeEach(async ({ page }) => {
 
 const commentsPage = (page: Page) => page.getByTestId("comments-page");
 const subPage = (page: Page) => page.getByTestId("sub-page");
-const profileInput = (page: Page) => commentsPage(page).getByLabel("Profile ID", { exact: true });
+/**
+ * 账号工作台改版后，监听账号不再手输：它来自「直播互动」左侧账号栏选中的
+ * profileId（fixture 里唯一的浏览器环境）。
+ */
+const ACCOUNT = "fixture-profile";
 
 test("listener start/stop drives status pill and streams snake_case events", async ({ page }) => {
   await setListenSubFixture(page, {
@@ -39,24 +43,25 @@ test("listener start/stop drives status pill and streams snake_case events", asy
   await enterInteract(page);
   await expect(commentsPage(page)).toBeVisible();
   await expect(commentsPage(page).getByText("Stopped").first()).toBeVisible();
-  await profileInput(page).fill("p1");
+  // 账号来自左侧账号栏（无手输框）。
+  await expect(commentsPage(page).getByPlaceholder("profile-id")).toHaveCount(0);
+  await expect(commentsPage(page).getByText(`Current account: ${ACCOUNT}`)).toBeVisible();
   await commentsPage(page).getByRole("button", { name: "Start listening", exact: true }).click();
   const starts = (await listenSubRequests(page)).filter((r) => r.command === "comment_listener_start");
   expect(starts).toHaveLength(1);
-  expect(starts[0].args).toEqual({ profileId: "p1", targetId: null });
+  expect(starts[0].args).toEqual({ profileId: ACCOUNT, targetId: null });
   await expect(commentsPage(page).getByText("Running")).toBeVisible();
   await expect(commentsPage(page).getByTestId("comments-stream")).toContainText("nick: 好看");
   await commentsPage(page).getByRole("button", { name: "Load history", exact: true }).click();
   await expect(commentsPage(page).getByTestId("comments-history")).toContainText("落库弹幕");
   await commentsPage(page).getByRole("button", { name: "Stop", exact: true }).click();
   const stops = (await listenSubRequests(page)).filter((r) => r.command === "comment_listener_stop");
-  expect(stops).toEqual([{ command: "comment_listener_stop", args: { profileId: "p1" } }]);
+  expect(stops).toEqual([{ command: "comment_listener_stop", args: { profileId: ACCOUNT } }]);
   await expect(commentsPage(page).getByText("Stopped").first()).toBeVisible();
 });
 
 test("listener backend errors render the raw message under a Chinese template", async ({ page }) => {
   await enterInteract(page);
-  await profileInput(page).fill("p1");
   await page.evaluate(() => {
     const internals = (window as any).__TAURI_INTERNALS__;
     const original = internals.invoke;

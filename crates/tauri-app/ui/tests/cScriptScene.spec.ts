@@ -23,14 +23,15 @@ test("auto-message, auto-reply and scene panels render stacked in the same sub-s
   await expect(msgPanel(page)).toBeVisible();
   await expect(replyPanel(page)).toBeVisible();
   await expect(scenePanel(page)).toBeVisible();
-  await expect(msgPanel(page).getByLabel(/账号 ID|Account ID/)).toBeVisible();
+  // 账号工作台改版后，主播互动面板不再手输账号 ID，改为展示账号栏选中的 profileId。
+  await expect(msgPanel(page).getByText("Current account: fixture-profile")).toBeVisible();
   await expect(replyPanel(page).getByLabel(/要预览的评论|Comment to preview/)).toBeVisible();
   await expect(scenePanel(page).getByLabel(/场景名称|Scene name/)).toBeVisible();
 });
 
 test("auto-message start is confirmed and never sends random-space injection", async ({ page }) => {
   await openScripts(page);
-  await msgPanel(page).getByLabel(/账号 ID|Account ID/).fill("account-1");
+  // 账号来自左侧账号栏（fixture 的唯一 profile）；台词归属该账号。
   await msgPanel(page).getByLabel(/时间偏移|Offset \(sec\)/).fill("5");
   await msgPanel(page).getByLabel(/弹幕模板|Message template/).fill("欢迎 {主播名称}");
   await msgPanel(page).getByRole("button", { name: /添加台词|Add line/ }).click();
@@ -43,7 +44,7 @@ test("auto-message start is confirmed and never sends random-space injection", a
   const starts = (await cgroupRequests(page)).filter((call) => call.command === "auto_message_start");
   expect(starts).toHaveLength(1);
   expect(starts[0].args.lines).toEqual([
-    { offset_sec: 5, message: "欢迎 {主播名称}", account_id: "account-1" },
+    { offset_sec: 5, message: "欢迎 {主播名称}", account_id: "fixture-profile" },
   ]);
   // No random-space injection anywhere in the IPC args.
   const raw = JSON.stringify(starts[0].args).toLowerCase();

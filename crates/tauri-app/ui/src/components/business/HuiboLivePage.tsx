@@ -4,10 +4,10 @@ import { useT } from "../../i18n/LanguageProvider";
 import { huiboLive, type HuiboVideo, type ShopLiveState } from "../../lib/huiboLive";
 import { confirm } from "../atoms";
 import { Button } from "../atoms/Button";
-import type { ProfileSummary } from "../../types";
 
 interface Props {
-  profiles: ProfileSummary[];
+  /** 当前选中的浏览器环境（账号维度的键）；空字符串表示未选。 */
+  profileId: string;
 }
 
 function errText(e: unknown): string {
@@ -15,22 +15,25 @@ function errText(e: unknown): string {
 }
 
 /**
- * 跟播/回播页 (jieger `huiboLive`).
+ * 跟播/回播页 (jieger `huiboLive`)。
+ *
+ * **账号维度**：不再自持 profile 选择器，改为接收上游选中的 `profileId`，
+ * 只渲染该账号的开播控制（命令调用语义不变：`get_huibo_video_list` /
+ * `start_huibo_live` / `get_shop_live_state` / `cancel_huibo_task`）。
  *
  * `startLive` only drives the flow — the re-read `ShopLiveState`
  * (`liveState`, fetched right after start) is the source of truth for
  * success. `cancel` is confirm-gated.
  */
-export function HuiboLivePage({ profiles }: Props): JSX.Element {
+export function HuiboLivePage({ profileId }: Props): JSX.Element {
   const t = useT();
-  const [profileId, setProfileId] = useState(profiles[0]?.id ?? "");
   const [videos, setVideos] = useState<HuiboVideo[] | null>(null);
   const [replayId, setReplayId] = useState("");
   const [live, setLive] = useState<ShopLiveState | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const currentProfile = profileId || profiles[0]?.id || "";
+  const currentProfile = profileId;
 
   async function run(key: string, fn: () => Promise<void>): Promise<void> {
     setBusy(key);
@@ -93,21 +96,13 @@ export function HuiboLivePage({ profiles }: Props): JSX.Element {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm">
+        <div className="flex flex-col gap-1 text-sm">
           {t("biz.profile")}
-          <select
-            aria-label={t("biz.profile")}
-            className="h-8 rounded-md px-2 bg-transparent border border-[var(--border)]"
-            value={currentProfile}
-            onChange={(e) => setProfileId(e.target.value)}
-          >
-            {profiles.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
+          {/* 账号来自左侧侧栏选中项（不再自持选择器）。 */}
+          <p data-testid="huibo-current-account" className="h-8 flex items-center text-muted-foreground">
+            {currentProfile !== "" ? currentProfile : t("live.accounts.selectFirst")}
+          </p>
+        </div>
         <label className="flex flex-col gap-1 text-sm">
           {t("biz.huibo.replayId")}
           <select

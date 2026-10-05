@@ -17,10 +17,14 @@ function statusPill(enabled: boolean, status: LiveRoomMonitorState["status"]): P
   }
 }
 
+interface Props {
+  /** 账号键（浏览器环境 = 快手小店账号）。由「直播互动」工作台传入。 */
+  profileId: string;
+}
+
 /** 直播间监控页 (R4/R5): 配置表单 + 状态 + 启停. */
-export function LiveRoomMonitorPage(): JSX.Element {
+export function LiveRoomMonitorPage({ profileId }: Props): JSX.Element {
   const t = useT();
-  const [profileId, setProfileId] = useState("");
   const [liveRoomUrl, setLiveRoomUrl] = useState("");
   const [sceneId, setSceneId] = useState("");
   const [groupId, setGroupId] = useState("");
@@ -35,11 +39,12 @@ export function LiveRoomMonitorPage(): JSX.Element {
     let unlisten = (): void => {};
     let active = true;
     void onLiveRoomMonitorStateChanged((s) => {
-      if (active) setState(s);
+      // 多账号：只接收本账号（或未归属）的快照。
+      if (active && (s.profileId == null || s.profileId === profileId)) setState(s);
     }).then((fn) => {
       if (active) unlisten = fn;
     });
-    void liveRoomMonitor.state().then(
+    void liveRoomMonitor.state(profileId).then(
       (s) => { if (active) setState(s); },
       () => {},
     );
@@ -47,9 +52,10 @@ export function LiveRoomMonitorPage(): JSX.Element {
       active = false;
       unlisten();
     };
-  }, []);
+  }, [profileId]);
 
-  const ready = profileId.trim() !== "" && liveRoomUrl.trim() !== "";
+  const hasAccount = profileId.trim() !== "";
+  const ready = hasAccount && liveRoomUrl.trim() !== "";
   const numOrNull = (v: string): number | null => {
     const s = v.trim();
     if (s === "") return null;
@@ -58,6 +64,7 @@ export function LiveRoomMonitorPage(): JSX.Element {
   };
 
   async function onStart(): Promise<void> {
+    if (!hasAccount) return;
     setBusy(true);
     setError(null);
     try {
@@ -78,10 +85,11 @@ export function LiveRoomMonitorPage(): JSX.Element {
   }
 
   async function onStop(): Promise<void> {
+    if (!hasAccount) return;
     setBusy(true);
     setError(null);
     try {
-      setState(await liveRoomMonitor.stop());
+      setState(await liveRoomMonitor.stop(profileId));
     } catch (e) {
       setError(typeof e === "string" ? e : (e as Error).message ?? String(e));
     } finally {
@@ -90,10 +98,11 @@ export function LiveRoomMonitorPage(): JSX.Element {
   }
 
   async function onRefresh(): Promise<void> {
+    if (!hasAccount) return;
     setBusy(true);
     setError(null);
     try {
-      setState(await liveRoomMonitor.state());
+      setState(await liveRoomMonitor.state(profileId));
     } catch (e) {
       setError(typeof e === "string" ? e : (e as Error).message ?? String(e));
     } finally {
@@ -111,11 +120,9 @@ export function LiveRoomMonitorPage(): JSX.Element {
         <p className="text-[12px] text-slate-500 mt-1">{t("biz.monitor.hint")}</p>
       </div>
 
-      <label className="flex flex-col gap-1 text-[12px] text-slate-400">
-        {t("biz.monitor.profileId")}
-        <input value={profileId} onChange={(e) => setProfileId(e.target.value)} placeholder="profile-id" className={inputCls}
-          style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }} />
-      </label>
+      <p className="text-[12px] text-slate-400">
+        {t("live.accounts.current", { id: profileId })}
+      </p>
       <label className="flex flex-col gap-1 text-[12px] text-slate-400">
         {t("biz.monitor.liveRoomUrl")}
         <input value={liveRoomUrl} onChange={(e) => setLiveRoomUrl(e.target.value)} placeholder="https://live.kuaishou.com/…" className={inputCls}
@@ -148,14 +155,20 @@ export function LiveRoomMonitorPage(): JSX.Element {
         {t("biz.monitor.autoExit")}
       </label>
 
+      {!hasAccount && (
+        <p role="note" className="text-[12px] text-amber-300">
+          {t("live.accounts.selectFirst")}
+        </p>
+      )}
+
       <div className="flex items-center gap-2">
         <Button variant="primary" size="sm" disabled={!ready || busy} onClick={() => void onStart()}>
           {t("biz.monitor.start")}
         </Button>
-        <Button variant="secondary" size="sm" disabled={busy} onClick={() => void onStop()}>
+        <Button variant="secondary" size="sm" disabled={!hasAccount || busy} onClick={() => void onStop()}>
           {t("biz.monitor.stop")}
         </Button>
-        <Button variant="ghost" size="sm" disabled={busy} onClick={() => void onRefresh()}>
+        <Button variant="ghost" size="sm" disabled={!hasAccount || busy} onClick={() => void onRefresh()}>
           {t("biz.monitor.refresh")}
         </Button>
         {state !== null && (

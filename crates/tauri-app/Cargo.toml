@@ -40,6 +40,8 @@ percent-encoding = "2"
 tempfile = "3"
 futures = "0.3"
 tokio-tungstenite = "0.24"
+# `test` 特性提供 tauri::test::mock_app，供 driver 多槽监控等离线单测使用。
+tauri = { version = "2", features = ["test"] }
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
